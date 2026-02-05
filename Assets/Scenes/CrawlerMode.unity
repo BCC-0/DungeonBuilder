@@ -447,6 +447,7 @@ GameObject:
   - component: {fileID: 519420031}
   - component: {fileID: 519420029}
   - component: {fileID: 519420030}
+  - component: {fileID: 519420033}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -516,7 +517,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_BackGroundColor: {r: 0, g: 0, b: 0, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -534,12 +535,12 @@ Camera:
   m_NormalizedViewPortRect:
     serializedVersion: 2
     x: 0
-    y: 0
+    y: 0.006172836
     width: 1
-    height: 1
+    height: 0.9876543
   near clip plane: 0.3
   far clip plane: 1000
-  field of view: 34
+  field of view: 0.00001
   orthographic: 1
   orthographic size: 5
   m_Depth: -1
@@ -572,6 +573,22 @@ Transform:
   m_Children: []
   m_Father: {fileID: 836631102}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &519420033
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 519420028}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0618f71726e34664d856eda80a365f06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetAspect: 1.8
+  baseOrthoSize: 5
+  canvasScaler: {fileID: 1998052334}
+  canvas: {fileID: 1998052335}
 --- !u!1 &619394800
 GameObject:
   m_ObjectHideFlags: 0
@@ -691,7 +708,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 517, y: -332}
+  m_AnchoredPosition: {x: 533, y: -325}
   m_SizeDelta: {x: 200, y: 200}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &677432511
@@ -801,12 +818,12 @@ Transform:
   m_GameObject: {fileID: 704769782}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 1.4370565, y: -0.8803713, z: 0.00838675}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1998052332}
-  m_Father: {fileID: 1703448264}
+  m_Father: {fileID: 836631102}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &836631100
 GameObject:
@@ -821,6 +838,7 @@ GameObject:
   - component: {fileID: 836631103}
   - component: {fileID: 836631104}
   - component: {fileID: 836631105}
+  - component: {fileID: 836631106}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -897,6 +915,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 519420032}
+  - {fileID: 704769783}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &836631103
@@ -975,6 +994,21 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
   m_Radius: 0.5
+--- !u!114 &836631106
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 836631100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c8e2ac748614b1b479547d5c222de220, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  player: {fileID: 836631103}
+  mobileUIRoot: {fileID: 704769782}
+  playerInput: {fileID: 1299033635}
 --- !u!114 &851280249
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1080,7 +1114,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 782, y: -193}
+  m_AnchoredPosition: {x: 798, y: -186}
   m_SizeDelta: {x: 200, y: 200}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1106289265
@@ -1272,7 +1306,7 @@ MonoBehaviour:
   m_ActionEvents:
   - m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1703448263}
+      - m_Target: {fileID: 836631106}
         m_TargetAssemblyTypeName: CrawlerInputHandler, Assembly-CSharp
         m_MethodName: OnMove
         m_Mode: 0
@@ -1288,7 +1322,7 @@ MonoBehaviour:
     m_ActionName: 'Player/Move[/Keyboard/w,/Keyboard/s,/Keyboard/a,/Keyboard/d]'
   - m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1703448263}
+      - m_Target: {fileID: 836631106}
         m_TargetAssemblyTypeName: CrawlerInputHandler, Assembly-CSharp
         m_MethodName: OnAttack
         m_Mode: 0
@@ -1304,7 +1338,7 @@ MonoBehaviour:
     m_ActionName: 'Player/Attack[/Mouse/leftButton]'
   - m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1703448263}
+      - m_Target: {fileID: 836631106}
         m_TargetAssemblyTypeName: CrawlerInputHandler, Assembly-CSharp
         m_MethodName: OnInteract
         m_Mode: 0
@@ -1320,7 +1354,7 @@ MonoBehaviour:
     m_ActionName: 'Player/Interact[/Keyboard/e,/Touchscreen/primaryTouch/tap]'
   - m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1703448263}
+      - m_Target: {fileID: 836631106}
         m_TargetAssemblyTypeName: CrawlerInputHandler, Assembly-CSharp
         m_MethodName: OnUseTool
         m_Mode: 0
@@ -1407,54 +1441,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Asset: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   m_ActionId: 15cef263-9014-4fd5-94d9-4e4a6234a6ef
---- !u!1 &1703448262
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1703448264}
-  - component: {fileID: 1703448263}
-  m_Layer: 0
-  m_Name: Crawler Input Handler
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1703448263
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1703448262}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c8e2ac748614b1b479547d5c222de220, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  player: {fileID: 836631103}
-  mobileUIRoot: {fileID: 704769782}
-  playerInput: {fileID: 1299033635}
---- !u!4 &1703448264
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1703448262}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.4370565, y: -0.8803713, z: 0.00838675}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 704769783}
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1748033124
 GameObject:
   m_ObjectHideFlags: 0
@@ -1612,10 +1598,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_UiScaleMode: 0
+  m_UiScaleMode: 1
   m_ReferencePixelsPerUnit: 100
   m_ScaleFactor: 1
-  m_ReferenceResolution: {x: 800, y: 600}
+  m_ReferenceResolution: {x: 1920, y: 1080}
   m_ScreenMatchMode: 0
   m_MatchWidthOrHeight: 0
   m_PhysicalUnit: 3
@@ -1632,8 +1618,8 @@ Canvas:
   m_GameObject: {fileID: 1998052331}
   m_Enabled: 1
   serializedVersion: 3
-  m_RenderMode: 0
-  m_Camera: {fileID: 0}
+  m_RenderMode: 1
+  m_Camera: {fileID: 519420031}
   m_PlaneDistance: 100
   m_PixelPerfect: 0
   m_ReceivesEvents: 1
@@ -1930,5 +1916,4 @@ SceneRoots:
   - {fileID: 619394802}
   - {fileID: 836631102}
   - {fileID: 1299033632}
-  - {fileID: 1703448264}
   - {fileID: 37187887}
