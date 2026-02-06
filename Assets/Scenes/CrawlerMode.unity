@@ -835,10 +835,10 @@ GameObject:
   m_Component:
   - component: {fileID: 836631102}
   - component: {fileID: 836631101}
+  - component: {fileID: 836631106}
   - component: {fileID: 836631103}
   - component: {fileID: 836631104}
   - component: {fileID: 836631105}
-  - component: {fileID: 836631106}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -1009,6 +1009,7 @@ MonoBehaviour:
   player: {fileID: 836631103}
   mobileUIRoot: {fileID: 704769782}
   playerInput: {fileID: 1299033635}
+  joyStick: {fileID: 4405449334453511771}
 --- !u!114 &851280249
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1585,7 +1586,7 @@ MonoBehaviour:
   m_BlockingObjects: 0
   m_BlockingMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 0
 --- !u!114 &1998052334
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1914,6 +1915,6 @@ SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
   - {fileID: 619394802}
-  - {fileID: 836631102}
   - {fileID: 1299033632}
   - {fileID: 37187887}
+  - {fileID: 836631102}

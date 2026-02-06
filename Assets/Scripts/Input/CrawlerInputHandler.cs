@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.EnhancedTouch;
 
 /// <summary>
 /// Receives player input via the New Input System
@@ -15,10 +16,11 @@ public class CrawlerInputHandler : MonoBehaviour
     private GameObject mobileUIRoot;
     [SerializeField]
     private PlayerInput playerInput;
-
-    // TODO: add reference to joystick.
+    [SerializeField]
+    private Joystick joyStick;
 
     private bool usingTouch = false;
+
 
     /// <summary>
     /// Gets a value indicating whether we are using touch screen.
@@ -99,22 +101,39 @@ public class CrawlerInputHandler : MonoBehaviour
         this.UpdateControlScheme(this.playerInput.currentControlScheme);
     }
 
+    private void OnEnable()
+    {
+        EnhancedTouchSupport.Enable();
+    }
+
+    private void OnDisable()
+    {
+        EnhancedTouchSupport.Disable();
+    }
+
+    private void Update()
+    {
+        // Add mobile movement support.
+        if (this.usingTouch)
+        {
+            this.player.SetMovement(this.joyStick.Direction);
+        }
+    }
+
     private void UpdateControlScheme(string scheme)
     {
         bool isTouchScheme = scheme == "Touch";
+        Debug.Log("Scheme = " + scheme);
 
-        if (this.usingTouch != isTouchScheme)
-        {
-            this.usingTouch = isTouchScheme;
-            this.SetMobileUI(this.usingTouch);
-        }
+        this.usingTouch = isTouchScheme;
+        this.SetMobileUI(this.usingTouch);
     }
 
     private void SetMobileUI(bool show)
     {
         if (this.mobileUIRoot != null)
         {
-            this.mobileUIRoot.SetActive(show);
+            //this.mobileUIRoot.SetActive(show);
         }
     }
 }
