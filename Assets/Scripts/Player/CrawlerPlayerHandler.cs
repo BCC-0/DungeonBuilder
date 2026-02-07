@@ -3,6 +3,7 @@ using UnityEngine;
 /// <summary>
 /// Handles player movement and using tools/weapons.
 /// </summary>
+[RequireComponent(typeof(CrawlerInputHandler))]
 public class CrawlerPlayerHandler : MonoBehaviour
 {
     [SerializeField]

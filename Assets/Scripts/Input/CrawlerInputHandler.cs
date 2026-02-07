@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.EnhancedTouch;
 
 /// <summary>
 /// Receives player input via the New Input System
@@ -15,10 +16,11 @@ public class CrawlerInputHandler : MonoBehaviour
     private GameObject mobileUIRoot;
     [SerializeField]
     private PlayerInput playerInput;
-
-    // TODO: add reference to joystick.
+    [SerializeField]
+    private Joystick joyStick;
 
     private bool usingTouch = false;
+
 
     /// <summary>
     /// Gets a value indicating whether we are using touch screen.
@@ -49,6 +51,7 @@ public class CrawlerInputHandler : MonoBehaviour
         this.player.SetMovement(move);
     }
 
+
     /// <summary>
     /// Called when the player interact button (keyboard) or the interaction object is pressed (mobile).
     /// </summary>
@@ -67,6 +70,14 @@ public class CrawlerInputHandler : MonoBehaviour
     }
 
     /// <summary>
+    /// Called when the mobile attack button is clicked or after the player input attack action is confirmed.
+    /// </summary>
+    public void OnAttackButton()
+    {
+        this.player.Attack();
+    }
+
+    /// <summary>
     /// Called when the player attack button is pressed.
     /// </summary>
     /// <param name="context">Input context.</param>
@@ -77,9 +88,16 @@ public class CrawlerInputHandler : MonoBehaviour
             return;
         }
 
-        this.player.Attack();
+        this.OnAttackButton();
     }
 
+    /// <summary>
+    /// Called when the mobile tool button is clicked or after the player input use tool action is confirmed.
+    /// </summary>
+    public void OnUseToolButton()
+    {
+        this.player.UseTool();
+    }
     /// <summary>
     /// Called when the player tool button is pressed.
     /// </summary>
@@ -91,7 +109,7 @@ public class CrawlerInputHandler : MonoBehaviour
             return;
         }
 
-        this.player.UseTool();
+        this.OnUseToolButton();
     }
 
     private void Start()
@@ -99,15 +117,37 @@ public class CrawlerInputHandler : MonoBehaviour
         this.UpdateControlScheme(this.playerInput.currentControlScheme);
     }
 
+    private void OnEnable()
+    {
+        EnhancedTouchSupport.Enable();
+    }
+
+    private void OnDisable()
+    {
+        EnhancedTouchSupport.Disable();
+    }
+
+    private void Update()
+    {
+        // Detect first touch input to switch UI dynamically
+        if (!this.usingTouch && Touchscreen.current != null && Touchscreen.current.touches.Count > 0)
+        {
+            this.UpdateControlScheme("Touch");
+        }
+
+        // Add mobile movement support.
+        if (this.usingTouch)
+        {
+            this.player.SetMovement(this.joyStick.Direction);
+        }
+    }
+
     private void UpdateControlScheme(string scheme)
     {
         bool isTouchScheme = scheme == "Touch";
 
-        if (this.usingTouch != isTouchScheme)
-        {
-            this.usingTouch = isTouchScheme;
-            this.SetMobileUI(this.usingTouch);
-        }
+        this.usingTouch = isTouchScheme;
+        this.SetMobileUI(this.usingTouch);
     }
 
     private void SetMobileUI(bool show)
