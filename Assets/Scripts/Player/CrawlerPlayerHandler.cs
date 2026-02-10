@@ -4,12 +4,10 @@ using UnityEngine;
 /// Handles player movement and using tools/weapons.
 /// </summary>
 [RequireComponent(typeof(CrawlerInputHandler))]
+[RequireComponent(typeof(CrawlerPlayerData))]
 public class CrawlerPlayerHandler : MonoBehaviour
 {
-    [SerializeField]
-    private float moveSpeed = 5f;
-
-    // TODO: Weapon and tool variables -> create scripts
+    private CrawlerPlayerData playerData;
 
     private Rigidbody2D rb;
     private Vector2 movementDirection;
@@ -40,7 +38,7 @@ public class CrawlerPlayerHandler : MonoBehaviour
     /// </summary>
     public void Attack()
     {
-        Debug.Log("Attack");
+        this.playerData.UseWeapon();
     }
 
     /// <summary>
@@ -48,18 +46,18 @@ public class CrawlerPlayerHandler : MonoBehaviour
     /// </summary>
     public void UseTool()
     {
-        // TODO: Call tool's own use method.
-        Debug.Log("Tool");
+        this.playerData.UseTool();
     }
 
     private void Start()
     {
         this.rb = this.GetComponent<Rigidbody2D>();
+        this.playerData = this.GetComponent<CrawlerPlayerData>();
     }
 
     private void FixedUpdate()
     {
-        Vector2 targetPosition = this.rb.position + (this.movementDirection * this.moveSpeed * Time.fixedDeltaTime);
+        Vector2 targetPosition = this.rb.position + (this.movementDirection * this.playerData.MoveSpeed * Time.fixedDeltaTime);
 
         this.rb.MovePosition(targetPosition);
     }

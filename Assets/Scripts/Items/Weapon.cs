@@ -2,56 +2,31 @@
 
 /// <summary>
 /// The base class for weapon items.
+/// Weapons are equippable items that deal damage and can attack enemies.
 /// </summary>
-public abstract class Weapon : Item
+public abstract class Weapon : EquippableItem
 {
     [Header("Weapon Stats")]
     [SerializeField]
     private float baseDamage;
-    [SerializeField]
-    private float attackCooldown;
 
-    [Header("Weapon Visuals")]
-    public AnimationClip attackAnimation;
-
-    protected float lastAttackTime;
-    
     /// <summary>
     /// Gets the base damage of this weapon.
     /// </summary>
     public float BaseDamage => this.baseDamage;
 
     /// <summary>
-    /// Gets the attack cooldown of this weapon.
+    /// Tool action, can check first if it is allowed here.
     /// </summary>
-    public float AttackCooldown => this.attackCooldown;
-
-    /// <summary>
-    /// Called when the player tries to use the weapon.
-    /// </summary>
-    public override void Use()
+    protected override void PerformAction()
     {
-        if (!this.CanUse())
-        {
-            return;
-        }
-
-        this.lastAttackTime = Time.time;
+        // Can do extra things beside just attacking here.
         this.PerformAttack();
     }
 
     /// <summary>
-    /// Gets whether the player can currently use this weapon.
-    /// Default returns true when the attack cooldown is over.
-    /// </summary>
-    /// <returns>Whether the player can use weapon.</returns>
-    public override bool CanUse()
-    {
-        return Time.time >= this.lastAttackTime + this.attackCooldown;
-    }
-
-    /// <summary>
-    /// Weapon-specific attack logic (melee hit, raycast, projectile, etc.)
+    /// Executes the weapon-specific attack logic.
+    /// Must be implemented in implementations.
     /// </summary>
     protected abstract void PerformAttack();
 }
