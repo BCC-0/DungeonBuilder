@@ -13,18 +13,10 @@ public abstract class EquippableItem : Item
     [SerializeField]
     private AnimationClip useAnimation;
 
-    private float lastUseTime = 0.0f;
-
     /// <summary>
     /// Gets the cooldown of this item between uses.
     /// </summary>
     public float Cooldown => this.cooldown;
-
-    /// <summary>
-    /// Gets the last time this item was used.
-    /// Useful for cooldown checks.
-    /// </summary>
-    public float LastUseTime => this.lastUseTime;
 
     /// <summary>
     /// Gets the animation played when this item is used.
@@ -32,18 +24,21 @@ public abstract class EquippableItem : Item
     /// </summary>
     public AnimationClip UseAnimation => this.useAnimation;
 
+
+
     /// <summary>
     /// Called when the player tries to use the item.
     /// Handles cooldown logic automatically and calls the derived PerformAction.
     /// </summary>
-    public override void Use()
+    /// <param name="playerData">The player to use the item.</param>
+    public override void Use(CrawlerPlayerData playerData)
     {
-        if (!this.CanUse())
+        if (!this.CanUse(playerData))
         {
             return;
         }
 
-        this.lastUseTime = Time.time;
+        playerData.SetLastUseTime(Time.time);
         this.PerformAction();
     }
 
@@ -51,12 +46,13 @@ public abstract class EquippableItem : Item
     /// Determines whether the item can currently be used.
     /// Default implementation checks cooldown.
     /// </summary>
-    /// <returns>True if the item can be used; otherwise, false.</returns>
-    public override bool CanUse()
+    /// <param name="playerData">The player to use the item.</param>
+    /// <returns>Whether the player can use this item.</returns>
+    public bool CanUse(CrawlerPlayerData playerData)
     {
-        Debug.Log("Current time: " + Time.time);
-        Debug.Log("versus last + cooldown: " + (this.lastUseTime + this.cooldown));
-        return Time.time >= this.lastUseTime + this.cooldown;
+        float lastUse = playerData.LastUseTime + this.cooldown;
+        Debug.Log("Last use time + cooldown: " + lastUse + " and current time: " + Time.time);
+        return Time.time >= lastUse;
     }
 
     /// <summary>

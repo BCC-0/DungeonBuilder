@@ -31,6 +31,8 @@ public class CrawlerPlayerData: MonoBehaviour
     [SerializeField]
     private Tool equippedTool;
 
+    private float lastUseTime = 0;
+
     /// <summary>
     /// Gets the player's maximum health.
     /// </summary>
@@ -60,6 +62,11 @@ public class CrawlerPlayerData: MonoBehaviour
     /// Gets the currently equipped tool.
     /// </summary>
     public Tool EquippedTool => this.equippedTool;
+
+    /// <summary>
+    /// Gets the last use time.
+    /// </summary>
+    public float LastUseTime => this.lastUseTime;
 
     /// <summary>
     /// Heals the player.
@@ -134,7 +141,7 @@ public class CrawlerPlayerData: MonoBehaviour
     /// </summary>
     public void UseWeapon()
     {
-        this.equippedWeapon?.Use();
+        this.equippedWeapon?.Use(this);
     }
 
     /// <summary>
@@ -142,7 +149,16 @@ public class CrawlerPlayerData: MonoBehaviour
     /// </summary>
     public void UseTool()
     {
-        this.equippedWeapon?.Use();
+        this.equippedWeapon?.Use(this);
+    }
+
+    /// <summary>
+    /// Sets the last time an equippable item was used.
+    /// </summary>
+    /// <param name="time">The current time when an item is used.</param>
+    public void SetLastUseTime(float time)
+    {
+        this.lastUseTime = time;
     }
 
     /// <summary>

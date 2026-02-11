@@ -9,8 +9,10 @@ public abstract class ConsumableItem : Item
     // e.g., public int maxStackSize = 1;
 
     /// <summary>
-    /// The action when the item is used.
-    /// Is called immediately for used items.
+    /// /// The action when the item is used.
+    /// Must be overridden by subclasses.
+    /// Should be called immediately for Consumable types.
     /// </summary>
-    public abstract override void Use();
+    /// <param name="playerData">The player to use the item.</param>
+    public abstract override void Use(CrawlerPlayerData playerData);
 }

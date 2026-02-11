@@ -67,14 +67,16 @@ public abstract class Item : ScriptableObject
     /// <summary>
     /// Gets the item type.
     /// </summary>
+    /// /// <summary>
     public ItemType ItemType => this.itemType;
 
     /// <summary>
-    /// The action when the item is used.
+    /// /// The action when the item is used.
     /// Must be overridden by subclasses.
     /// Should be called immediately for Consumable types.
     /// </summary>
-    public abstract void Use();
+    /// <param name="playerData">The player to use the item.</param>
+    public abstract void Use(CrawlerPlayerData playerData);
 
     /// <summary>
     /// Optional method to check if the item can be used currently.
