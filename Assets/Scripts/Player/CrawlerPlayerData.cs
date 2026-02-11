@@ -1,4 +1,6 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Linq;
+using TMPro;
 using UnityEngine;
 
 /// <summary>
@@ -24,12 +26,22 @@ public class CrawlerPlayerData: MonoBehaviour
     [SerializeField]
     private GameObject inventoryCanvas;
 
+    [SerializeField]
+    private TextMeshProUGUI inventoryDescriptionText;
+
+    [SerializeField]
+    private InventoryUI inventoryWeaponsUI;
+    [SerializeField]
+    private InventoryUI inventoryToolsUI;
+
     [Header("Equipped Items")]
     [SerializeField]
     private Weapon equippedWeapon;
+    private ItemButtonUI equippedWeaponButton;
 
     [SerializeField]
     private Tool equippedTool;
+    private ItemButtonUI equippedToolButton;
 
     private float lastUseTime = 0;
 
@@ -91,17 +103,32 @@ public class CrawlerPlayerData: MonoBehaviour
     /// <summary>
     /// Equips the specified item in the correct slot.
     /// </summary>
+    /// <param name="itemButtonUI">The button of the item to equip. Saved for outline removal.</param>
     /// <param name="item">Item to equip.</param>
-    public void EquipItem(Item item)
+    public void EquipItem(ItemButtonUI itemButtonUI, Item item)
     {
         if (item is Weapon weapon)
         {
+            if (this.equippedWeaponButton != null)
+            {
+                this.equippedWeaponButton.Deselect();
+            }
+
+            this.equippedWeaponButton = itemButtonUI;
             this.equippedWeapon = weapon;
+            this.inventoryDescriptionText.text = weapon.Description;
             Debug.Log($"Equipped weapon: {weapon.ItemName}");
         }
         else if (item is Tool tool)
         {
+            if (this.equippedToolButton != null)
+            {
+                this.equippedToolButton.Deselect();
+            }
+
+            this.equippedToolButton = itemButtonUI;
             this.equippedTool = tool;
+            this.inventoryDescriptionText.text = tool.Description;
             Debug.Log($"Equipped tool: {tool.ItemName}");
         }
         else
@@ -126,14 +153,15 @@ public class CrawlerPlayerData: MonoBehaviour
         Debug.Log($"Added to inventory: {item.ItemName}");
 
         // Auto-equip if slot is empty
-        if (item is Weapon weapon && this.equippedWeapon == null)
-        {
-            this.EquipItem(weapon);
-        }
-        else if (item is Tool tool && this.equippedTool == null)
-        {
-            this.EquipItem(tool);
-        }
+        // if (this.equippedWeapon == null && item is Weapon weapon)
+        // {
+        //    // TODO: Auto-equip first gotten weapon/tool and find the UI button from a function in inventory UI.
+        //    // this.EquipItem(weapon);
+        // }
+        // else if (this.equippedTool == null && item is Tool tool)
+        // {
+        //    // this.EquipItem(tool);
+        // }
     }
 
     /// <summary>
@@ -164,14 +192,58 @@ public class CrawlerPlayerData: MonoBehaviour
     /// <summary>
     /// Opens or closes the inventory depending on if it is opened.
     /// </summary>
-    public void OpenInventory()
+    /// <returns>Returns whether the inventory is opened after this.</returns>
+    public bool OpenInventory()
     {
-        Time.timeScale = this.inventoryCanvas.activeSelf ? 1f : 0f;
-        this.inventoryCanvas.SetActive(!this.inventoryCanvas.activeSelf);
+        // If it was not active yet, opened becomes true since we open it.
+        bool opened = !this.inventoryCanvas.activeSelf;
+        Time.timeScale = opened ? 0f : 1f;
+        this.inventoryCanvas.SetActive(opened);
+
+        // Populate both weapons and tools parts.
+        if (opened)
+        {
+            this.OnInventoryChange();
+        }
+
+        return opened;
+    }
+
+    private void OnInventoryChange()
+    {
+        List<Item> weapons = this.inventory
+            .Where(item => item.ItemType == ItemType.Weapon)
+            .ToList();
+
+        List<Item> tools = this.inventory
+            .Where(item => item.ItemType == ItemType.Tool)
+            .ToList();
+
+        // Populate UI sections
+        this.inventoryWeaponsUI.PopulateInventory(this, weapons.ToArray());
+        this.inventoryToolsUI.PopulateInventory(this, tools.ToArray());
     }
 
     private void Awake()
     {
         this.currentHealth = this.maxHealth;
+
+        // Close inventory if it is opened.
+        if (this.inventoryCanvas.activeSelf)
+        {
+            this.OpenInventory();
+        }
+
+        // For debugging purposed
+        // TODO: Remove:
+        for (int i = 0; i < 100; i++)
+        {
+            Weapon wi = this.equippedWeapon;
+            wi.name = this.equippedWeapon.name + i;
+            this.inventory.Add(wi);
+        }
+
+        this.OnInventoryChange();
+
     }
 }

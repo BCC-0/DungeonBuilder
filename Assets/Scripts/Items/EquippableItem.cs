@@ -51,7 +51,6 @@ public abstract class EquippableItem : Item
     public bool CanUse(CrawlerPlayerData playerData)
     {
         float lastUse = playerData.LastUseTime + this.cooldown;
-        Debug.Log("Last use time + cooldown: " + lastUse + " and current time: " + Time.time);
         return Time.time >= lastUse;
     }
 

@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
 /// Handles player movement and using tools/weapons.
@@ -11,6 +11,13 @@ public class CrawlerPlayerHandler : MonoBehaviour
 
     private Rigidbody2D rb;
     private Vector2 movementDirection;
+
+    private bool canMove;
+
+    /// <summary>
+    /// Gets a value indicating whether the player can currently move.
+    /// </summary>
+    public bool CanMove => this.canMove;
 
     /// <summary>
     /// Sets the current movement direction of the player.
@@ -51,9 +58,21 @@ public class CrawlerPlayerHandler : MonoBehaviour
     /// <summary>
     /// Opens or closes the inventory.
     /// </summary>
-    public void OpenInventory()
+    /// <returns>Returns whether the inventory has opened after calling.</returns>
+    public bool OpenInventory()
     {
-        this.playerData.OpenInventory();
+        // TODO: Check here if we can open the inventory.
+        return this.playerData.OpenInventory();
+    }
+
+    /// <summary>
+    /// Sets whether the player can do anything.
+    /// Currently only used for pausing the game (inventory).
+    /// </summary>
+    /// <param name="canMove">Whether the player can move after this.</param>
+    public void SetCanMove(bool canMove)
+    {
+        this.canMove = canMove;
     }
 
     private void Start()
@@ -68,5 +87,4 @@ public class CrawlerPlayerHandler : MonoBehaviour
 
         this.rb.MovePosition(targetPosition);
     }
-
 }
