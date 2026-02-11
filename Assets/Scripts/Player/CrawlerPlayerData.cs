@@ -233,17 +233,5 @@ public class CrawlerPlayerData: MonoBehaviour
         {
             this.OpenInventory();
         }
-
-        // For debugging purposed
-        // TODO: Remove:
-        for (int i = 0; i < 100; i++)
-        {
-            Weapon wi = this.equippedWeapon;
-            wi.name = this.equippedWeapon.name + i;
-            this.inventory.Add(wi);
-        }
-
-        this.OnInventoryChange();
-
     }
 }
