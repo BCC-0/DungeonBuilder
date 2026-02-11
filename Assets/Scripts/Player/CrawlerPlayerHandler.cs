@@ -29,7 +29,6 @@ public class CrawlerPlayerHandler : MonoBehaviour
     {
         // TODO: Call interaction of object.
         // First find object using the map's find at location!
-
         Debug.Log("Interacted with " + interaction);
     }
 
@@ -47,6 +46,14 @@ public class CrawlerPlayerHandler : MonoBehaviour
     public void UseTool()
     {
         this.playerData.UseTool();
+    }
+
+    /// <summary>
+    /// Opens or closes the inventory.
+    /// </summary>
+    public void OpenInventory()
+    {
+        this.playerData.OpenInventory();
     }
 
     private void Start()

@@ -21,7 +21,6 @@ public class CrawlerInputHandler : MonoBehaviour
 
     private bool usingTouch = false;
 
-
     /// <summary>
     /// Gets a value indicating whether we are using touch screen.
     /// </summary>
@@ -50,7 +49,6 @@ public class CrawlerInputHandler : MonoBehaviour
         Vector2 move = context.ReadValue<Vector2>();
         this.player.SetMovement(move);
     }
-
 
     /// <summary>
     /// Called when the player interact button (keyboard) or the interaction object is pressed (mobile).
@@ -98,6 +96,7 @@ public class CrawlerInputHandler : MonoBehaviour
     {
         this.player.UseTool();
     }
+
     /// <summary>
     /// Called when the player tool button is pressed.
     /// </summary>
@@ -110,6 +109,28 @@ public class CrawlerInputHandler : MonoBehaviour
         }
 
         this.OnUseToolButton();
+    }
+
+    /// <summary>
+    /// Called when the mobile inventory button is clicked or after the player input use tool action is confirmed.
+    /// </summary>
+    public void OnOpenInventoryButton()
+    {
+        this.player.OpenInventory();
+    }
+
+    /// <summary>
+    /// Called when the player inventory button is pressed.
+    /// </summary>
+    /// <param name="context">Input context.</param>
+    public void OnOpenInventory(InputAction.CallbackContext context)
+    {
+        if (!context.performed)
+        {
+            return;
+        }
+
+        this.OnOpenInventoryButton();
     }
 
     private void Start()

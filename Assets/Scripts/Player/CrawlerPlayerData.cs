@@ -21,6 +21,9 @@ public class CrawlerPlayerData: MonoBehaviour
     [SerializeField]
     private List<Item> inventory = new List<Item>();
 
+    [SerializeField]
+    private GameObject inventoryCanvas;
+
     [Header("Equipped Items")]
     [SerializeField]
     private Weapon equippedWeapon;
@@ -42,6 +45,7 @@ public class CrawlerPlayerData: MonoBehaviour
     /// Gets the player's move speed.
     /// </summary>
     public float MoveSpeed => this.moveSpeed;
+
     /// <summary>
     /// Gets the player's inventory.
     /// </summary>
@@ -139,6 +143,15 @@ public class CrawlerPlayerData: MonoBehaviour
     public void UseTool()
     {
         this.equippedWeapon?.Use();
+    }
+
+    /// <summary>
+    /// Opens or closes the inventory depending on if it is opened.
+    /// </summary>
+    public void OpenInventory()
+    {
+        Time.timeScale = this.inventoryCanvas.activeSelf ? 1f : 0f;
+        this.inventoryCanvas.SetActive(!this.inventoryCanvas.activeSelf);
     }
 
     private void Awake()
