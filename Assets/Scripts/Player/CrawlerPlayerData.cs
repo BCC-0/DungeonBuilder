@@ -233,5 +233,11 @@ public class CrawlerPlayerData: MonoBehaviour
         {
             this.OpenInventory();
         }
+
+        //Debugging:
+        for(int i = 0; i < 200; i++)
+        {
+            inventory.Add(equippedWeapon);
+        }
     }
 }
