@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿using System.Reflection;
+using System.Text;
+using UnityEngine;
 
 /// <summary>
 /// Defines the kind of item.
@@ -114,5 +116,35 @@ public abstract class Item : ScriptableObject
     public virtual string GetDisplayInfo()
     {
         return $"{this.itemName}\n{this.description}";
+    }
+
+    /// <summary>
+    /// Gets the description for all user-editable fields.
+    /// </summary>
+    /// <returns>A string with the descriptions.</returns>
+    public virtual string GetRuntimeEditableDescription()
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.AppendLine(this.GetDisplayInfo()); // existing name/description
+
+        // Include all [RuntimeEditable] fields
+        var type = this.GetType();
+        while (type != null && type != typeof(ScriptableObject))
+        {
+            FieldInfo[] fields = type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+            foreach (var field in fields)
+            {
+                // Only include fields marked as RuntimeEditable
+                if (field.GetCustomAttribute<RuntimeEditableAttribute>() != null)
+                {
+                    object value = field.GetValue(this);
+                    sb.AppendLine($"{field.Name}: {value}");
+                }
+            }
+
+            type = type.BaseType;
+        }
+
+        return sb.ToString();
     }
 }

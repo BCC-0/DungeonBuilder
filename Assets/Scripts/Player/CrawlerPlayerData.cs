@@ -116,7 +116,7 @@ public class CrawlerPlayerData: MonoBehaviour
 
             this.equippedWeaponButton = itemButtonUI;
             this.equippedWeapon = weapon;
-            this.inventoryDescriptionText.text = weapon.Description;
+            this.inventoryDescriptionText.text = weapon.GetRuntimeEditableDescription();
             Debug.Log($"Equipped weapon: {weapon.ItemName}");
         }
         else if (item is Tool tool)
@@ -232,12 +232,6 @@ public class CrawlerPlayerData: MonoBehaviour
         if (this.inventoryCanvas.activeSelf)
         {
             this.OpenInventory();
-        }
-
-        //Debugging:
-        for(int i = 0; i < 200; i++)
-        {
-            inventory.Add(equippedWeapon);
         }
     }
 }

@@ -87,4 +87,24 @@ public class CrawlerPlayerHandler : MonoBehaviour
 
         this.rb.MovePosition(targetPosition);
     }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        GameObject gameObject = collision.gameObject;
+        if (gameObject.CompareTag("Item"))
+        {
+            ItemObject itemObject = gameObject.GetComponent<ItemObject>();
+            if (itemObject == null)
+            {
+                Debug.LogError("Item object doesn't include ItemObject script!");
+                return;
+            }
+
+            // TODO: Add get item animation!
+            this.playerData.AddToInventory(itemObject.Item);
+            Destroy(gameObject);
+        }
+
+        // TODO: Add damage
+    }
 }
