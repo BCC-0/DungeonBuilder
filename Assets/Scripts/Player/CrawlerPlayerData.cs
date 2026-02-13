@@ -224,7 +224,7 @@ public class CrawlerPlayerData: MonoBehaviour
         this.inventoryToolsUI.PopulateInventory(this, tools.ToArray());
     }
 
-    private void Awake()
+    private void Start()
     {
         this.currentHealth = this.maxHealth;
 

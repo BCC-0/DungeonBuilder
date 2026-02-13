@@ -37,7 +37,7 @@ public class InventoryUI : MonoBehaviour
         this.scrollRect.verticalNormalizedPosition = 1f;
     }
 
-    private void Awake()
+    private void Start()
     {
         this.scrollRect = this.GetComponent<ScrollRect>();
     }
