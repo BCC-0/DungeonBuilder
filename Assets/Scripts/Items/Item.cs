@@ -1,5 +1,7 @@
-﻿using System.Reflection;
+﻿using System;
+using System.Reflection;
 using System.Text;
+using System.Xml;
 using UnityEngine;
 
 /// <summary>
@@ -43,6 +45,11 @@ public abstract class Item : ScriptableObject
     [Header("Item Classification")]
     [SerializeField]
     private ItemType itemType;
+
+    [Header("Runtime Handling")]
+    [SerializeField]
+    [HideInInspector]
+    private string uniqueID;
 
     /// <summary>
     /// Gets the name of the item.

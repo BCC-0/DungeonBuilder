@@ -1004,7 +1004,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 49827510}
   m_Direction: 0
   m_Value: 0
-  m_Size: 0.9999999
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -1709,9 +1709,9 @@ Camera:
   m_NormalizedViewPortRect:
     serializedVersion: 2
     x: 0
-    y: 0.12962961
+    y: 0.006172836
     width: 1
-    height: 0.7407408
+    height: 0.9876543
   near clip plane: 0.3
   far clip plane: 1000
   field of view: 0.00001
@@ -1845,8 +1845,8 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 204855081}
   m_HandleRect: {fileID: 204855080}
   m_Direction: 0
-  m_Value: 1
-  m_Size: 0.99999994
+  m_Value: 0
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -1973,6 +1973,63 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &619404067
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 3129296959860650563, guid: b9e56d176db2ca74792544912370704c, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -5.241653
+      objectReference: {fileID: 0}
+    - target: {fileID: 3129296959860650563, guid: b9e56d176db2ca74792544912370704c, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.4557773
+      objectReference: {fileID: 0}
+    - target: {fileID: 3129296959860650563, guid: b9e56d176db2ca74792544912370704c, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3129296959860650563, guid: b9e56d176db2ca74792544912370704c, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3129296959860650563, guid: b9e56d176db2ca74792544912370704c, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3129296959860650563, guid: b9e56d176db2ca74792544912370704c, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3129296959860650563, guid: b9e56d176db2ca74792544912370704c, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3129296959860650563, guid: b9e56d176db2ca74792544912370704c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3129296959860650563, guid: b9e56d176db2ca74792544912370704c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3129296959860650563, guid: b9e56d176db2ca74792544912370704c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8022417813264199186, guid: b9e56d176db2ca74792544912370704c, type: 3}
+      propertyPath: m_Name
+      value: Item
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: b9e56d176db2ca74792544912370704c, type: 3}
 --- !u!1 &677432509
 GameObject:
   m_ObjectHideFlags: 0
@@ -2386,7 +2443,7 @@ MonoBehaviour:
   inventoryDescriptionText: {fileID: 2003982022}
   inventoryWeaponsUI: {fileID: 1981723453}
   inventoryToolsUI: {fileID: 363185988}
-  equippedWeapon: {fileID: 11400000, guid: 0d686244c6abf20459d598782b1e6ac7, type: 2}
+  equippedWeapon: {fileID: 0}
   equippedTool: {fileID: 0}
 --- !u!114 &851280249
 MonoBehaviour:
@@ -3567,7 +3624,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 72727039}
   m_Direction: 2
   m_Value: 1
-  m_Size: 0.14160179
+  m_Size: 0.1416018
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -5045,8 +5102,8 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 711176221}
   m_HandleRect: {fileID: 711176220}
   m_Direction: 0
-  m_Value: 1
-  m_Size: 0.99999994
+  m_Value: 0
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -5374,3 +5431,4 @@ SceneRoots:
   - {fileID: 1299033632}
   - {fileID: 37187887}
   - {fileID: 836631102}
+  - {fileID: 619404067}
