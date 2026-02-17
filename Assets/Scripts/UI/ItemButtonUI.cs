@@ -18,6 +18,16 @@ public class ItemButtonUI : MonoBehaviour
     private CrawlerPlayerData player;
 
     /// <summary>
+    /// Gets the type of this item.
+    /// </summary>
+    public ItemType ItemType => this.item.ItemType;
+
+    /// <summary>
+    /// Gets the item.
+    /// </summary>
+    public Item Item => this.item;
+
+    /// <summary>
     /// Sets this button to a certain item.
     /// </summary>
     /// <param name="player">The player that has this item in it's inventory.</param>
@@ -39,7 +49,15 @@ public class ItemButtonUI : MonoBehaviour
     /// </summary>
     public void OnClick()
     {
-        this.player.EquipItem(this, this.item);
+        this.player.EquipItem(this.item);
+        this.OnSelect();
+    }
+
+    /// <summary>
+    /// Called when this item is selected.
+    /// </summary>
+    public void OnSelect()
+    {
         this.outlineImage.enabled = true;
     }
 
@@ -47,11 +65,6 @@ public class ItemButtonUI : MonoBehaviour
     /// Called by the playerData class when another item of this type is selected.
     /// </summary>
     public void Deselect()
-    {
-        this.outlineImage.enabled = false;
-    }
-
-    private void Start()
     {
         this.outlineImage.enabled = false;
     }

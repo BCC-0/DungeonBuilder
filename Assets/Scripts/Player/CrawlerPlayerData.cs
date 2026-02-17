@@ -37,11 +37,9 @@ public class CrawlerPlayerData: MonoBehaviour
     [Header("Equipped Items")]
     [SerializeField]
     private Weapon equippedWeapon;
-    private ItemButtonUI equippedWeaponButton;
 
     [SerializeField]
     private Tool equippedTool;
-    private ItemButtonUI equippedToolButton;
 
     private float lastUseTime = 0;
 
@@ -103,38 +101,36 @@ public class CrawlerPlayerData: MonoBehaviour
     /// <summary>
     /// Equips the specified item in the correct slot.
     /// </summary>
-    /// <param name="itemButtonUI">The button of the item to equip. Saved for outline removal.</param>
     /// <param name="item">Item to equip.</param>
-    public void EquipItem(ItemButtonUI itemButtonUI, Item item)
+    public void EquipItem(Item item)
     {
+        if (item == null)
+        {
+            return;
+        }
+
         if (item is Weapon weapon)
         {
-            if (this.equippedWeaponButton != null)
-            {
-                this.equippedWeaponButton.Deselect();
-            }
-
-            this.equippedWeaponButton = itemButtonUI;
             this.equippedWeapon = weapon;
-            this.inventoryDescriptionText.text = weapon.Description;
-            Debug.Log($"Equipped weapon: {weapon.ItemName}");
+            this.inventoryDescriptionText.text = weapon.GetRuntimeEditableDescription();
         }
         else if (item is Tool tool)
         {
-            if (this.equippedToolButton != null)
-            {
-                this.equippedToolButton.Deselect();
-            }
-
-            this.equippedToolButton = itemButtonUI;
             this.equippedTool = tool;
             this.inventoryDescriptionText.text = tool.Description;
-            Debug.Log($"Equipped tool: {tool.ItemName}");
         }
-        else
+
+        var uibuttons = FindObjectsByType<ItemButtonUI>(FindObjectsSortMode.InstanceID);
+        foreach (var btn in uibuttons)
         {
-            // Should never happen! (Can only happen if the player somehow obtains a consumable item).
-            Debug.LogWarning($"Cannot equip item of type {item.ItemType}");
+            if ((btn.ItemType == ItemType.Weapon && item is Weapon) ||
+                (btn.ItemType == ItemType.Tool && item is Tool))
+            {
+                if (btn != null)
+                {
+                    btn.Deselect();
+                }
+            }
         }
     }
 
@@ -152,16 +148,14 @@ public class CrawlerPlayerData: MonoBehaviour
         this.inventory.Add(item);
         Debug.Log($"Added to inventory: {item.ItemName}");
 
-        // Auto-equip if slot is empty
-        // if (this.equippedWeapon == null && item is Weapon weapon)
-        // {
-        //    // TODO: Auto-equip first gotten weapon/tool and find the UI button from a function in inventory UI.
-        //    // this.EquipItem(weapon);
-        // }
-        // else if (this.equippedTool == null && item is Tool tool)
-        // {
-        //    // this.EquipItem(tool);
-        // }
+        if (item is Weapon weapon && this.equippedWeapon == null)
+        {
+            this.EquipItem(weapon);
+        }
+        else if (item is Tool tool && this.equippedTool == null)
+        {
+            this.EquipItem(tool);
+        }
     }
 
     /// <summary>
@@ -177,7 +171,7 @@ public class CrawlerPlayerData: MonoBehaviour
     /// </summary>
     public void UseTool()
     {
-        this.equippedWeapon?.Use(this);
+        this.equippedTool?.Use(this);
     }
 
     /// <summary>
@@ -224,7 +218,7 @@ public class CrawlerPlayerData: MonoBehaviour
         this.inventoryToolsUI.PopulateInventory(this, tools.ToArray());
     }
 
-    private void Awake()
+    private void Start()
     {
         this.currentHealth = this.maxHealth;
 
@@ -233,17 +227,5 @@ public class CrawlerPlayerData: MonoBehaviour
         {
             this.OpenInventory();
         }
-
-        // For debugging purposed
-        // TODO: Remove:
-        for (int i = 0; i < 100; i++)
-        {
-            Weapon wi = this.equippedWeapon;
-            wi.name = this.equippedWeapon.name + i;
-            this.inventory.Add(wi);
-        }
-
-        this.OnInventoryChange();
-
     }
 }
