@@ -68,7 +68,6 @@ public class FixedAspectRatio : MonoBehaviour
         }
     }
 
-
     private void Start()
     {
         this.cam = this.GetComponent<Camera>();
@@ -78,17 +77,4 @@ public class FixedAspectRatio : MonoBehaviour
         this.cam.backgroundColor = Color.black;
         this.AdjustRatio();
     }
-
-// Visual debugging for different aspect ratios.
-#if UNITY_EDITOR
-    private void OnValidate()
-    {
-        if (this.cam == null)
-        {
-            this.cam = this.GetComponent<Camera>();
-        }
-
-        this.AdjustRatio();
-    }
-#endif
 }
