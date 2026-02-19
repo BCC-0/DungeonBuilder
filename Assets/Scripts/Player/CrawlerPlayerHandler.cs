@@ -12,7 +12,9 @@ public class CrawlerPlayerHandler : MonoBehaviour
     private Rigidbody2D rb;
     private Vector2 movementDirection;
 
-    private bool canMove;
+    private bool canMove = true;
+
+    private Animator animator;
 
     /// <summary>
     /// Gets a value indicating whether the player can currently move.
@@ -25,7 +27,7 @@ public class CrawlerPlayerHandler : MonoBehaviour
     /// <param name="move">The movement direction.</param>
     public void SetMovement(Vector2 move)
     {
-        this.movementDirection = move;
+        this.movementDirection = move.normalized;
     }
 
     /// <summary>
@@ -62,7 +64,10 @@ public class CrawlerPlayerHandler : MonoBehaviour
     public bool OpenInventory()
     {
         // TODO: Check here if we can open the inventory.
-        return this.playerData.OpenInventory();
+        bool open = this.playerData.OpenInventory();
+
+        this.SetCanMove(!open);
+        return open;
     }
 
     /// <summary>
@@ -79,6 +84,12 @@ public class CrawlerPlayerHandler : MonoBehaviour
     {
         this.rb = this.GetComponent<Rigidbody2D>();
         this.playerData = this.GetComponent<CrawlerPlayerData>();
+        this.animator = this.GetComponent<Animator>();
+    }
+
+    private void Update()
+    {
+        this.UpdateAnimator();
     }
 
     private void FixedUpdate()
@@ -106,5 +117,33 @@ public class CrawlerPlayerHandler : MonoBehaviour
         }
 
         // TODO: Add damage
+    }
+
+    private void UpdateAnimator()
+    {
+        if (!this.canMove)
+        {
+            return;
+        }
+
+        if (this.movementDirection != Vector2.zero)
+        {
+            Vector2 dir = this.movementDirection.normalized;
+
+            if (Mathf.Abs(dir.x) > Mathf.Abs(dir.y))
+            {
+                dir.y = 0;
+            }
+            else
+            {
+                dir.x = 0;
+            }
+
+            this.animator.SetFloat("MoveX", dir.x);
+            this.animator.SetFloat("MoveY", dir.y);
+        }
+
+        float speed = this.movementDirection.sqrMagnitude > 0f ? 1f : 0f;
+        this.animator.SetFloat("Speed", speed);
     }
 }
