@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using UnityEngine;
 
 /// <summary>
 /// Handles player movement and using tools/weapons.
@@ -53,7 +54,10 @@ public class CrawlerPlayerHandler : MonoBehaviour
     /// </summary>
     public void Attack()
     {
-        this.playerData.UseWeapon(this);
+        if (this.canMove)
+        {
+            this.playerData.UseWeapon(this);
+        }
     }
 
     /// <summary>
@@ -61,7 +65,10 @@ public class CrawlerPlayerHandler : MonoBehaviour
     /// </summary>
     public void UseTool()
     {
-        this.playerData.UseTool(this);
+        if (this.canMove)
+        {
+            this.playerData.UseTool(this);
+        }
     }
 
     /// <summary>
@@ -93,24 +100,26 @@ public class CrawlerPlayerHandler : MonoBehaviour
     /// <param name="clip">The clip to set.</param>
     public void PlayUseAnimation(AnimationClip clip)
     {
-        if (clip == null)
-        {
-            Debug.LogWarning("PlayUseAnimation called with NULL clip.");
-            return;
-        }
-
-        if (this.overrideController == null)
-        {
-            Debug.LogError("OverrideController is NULL! Did Awake run?");
-            return;
-        }
-
         this.overrideController["Use"] = clip;
 
-        Debug.Log($"Use state clip set to: {clip.name}");
-
-        this.animator.Update(0f);
+        // this.animator.Update(0f);
         this.animator.SetTrigger("Use");
+    }
+
+    /// <summary>
+    /// Pauses the player's movement for the given time.
+    /// </summary>
+    /// <param name="time">The time to pause the player.</param>
+    public void PausePlayerMovement(float time)
+    {
+        this.StartCoroutine(this.PlayerPauser(time));
+    }
+
+    private IEnumerator PlayerPauser(float time)
+    {
+        this.SetCanMove(false);
+        yield return new WaitForSeconds(time);
+        this.SetCanMove(true);
     }
 
     private void Start()
@@ -119,22 +128,8 @@ public class CrawlerPlayerHandler : MonoBehaviour
         this.playerData = this.GetComponent<CrawlerPlayerData>();
         this.animator = this.GetComponent<Animator>();
 
-        if (this.animator == null)
-        {
-            Debug.LogError("Animator component missing!");
-            return;
-        }
-
-        if (this.animator.runtimeAnimatorController == null)
-        {
-            Debug.LogError("Animator has no RuntimeAnimatorController assigned!");
-            return;
-        }
-
         this.overrideController = new AnimatorOverrideController(this.animator.runtimeAnimatorController);
         this.animator.runtimeAnimatorController = this.overrideController;
-
-        Debug.Log("AnimatorOverrideController initialized successfully.");
     }
 
     private void Update()
@@ -144,9 +139,12 @@ public class CrawlerPlayerHandler : MonoBehaviour
 
     private void FixedUpdate()
     {
-        Vector2 targetPosition = this.rb.position + (this.movementDirection * this.playerData.MoveSpeed * Time.fixedDeltaTime);
+        if (this.CanMove)
+        {
+            Vector2 targetPosition = this.rb.position + (this.movementDirection * this.playerData.MoveSpeed * Time.fixedDeltaTime);
 
-        this.rb.MovePosition(targetPosition);
+            this.rb.MovePosition(targetPosition);
+        }
     }
 
     private void OnCollisionEnter2D(Collision2D collision)

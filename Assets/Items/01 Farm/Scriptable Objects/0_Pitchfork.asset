@@ -18,9 +18,9 @@ MonoBehaviour:
   prefab: {fileID: 0}
   itemType: 0
   uniqueID: 
-  cooldown: 1.2
-  useUp: {fileID: 7400000, guid: 843ed9c276d755542965cea8ca8f252c, type: 2}
-  useDown: {fileID: 7400000, guid: 421ca0095a6f1e240a00b2ebc9ed02e4, type: 2}
-  useLeft: {fileID: 7400000, guid: db96e46b74b39e74794c6d221b169a98, type: 2}
-  useRight: {fileID: 7400000, guid: 633f77d4ee1ce924db63310b33471da8, type: 2}
+  cooldown: 0.5
+  useUp: {fileID: 7400000, guid: 18060cb893e922f4c961305952a1ce2a, type: 2}
+  useDown: {fileID: 7400000, guid: ca75be9d5bac5204fbfd452e05981277, type: 2}
+  useLeft: {fileID: 7400000, guid: c1acbb3ec05e52c49a3719998564c5d3, type: 2}
+  useRight: {fileID: 7400000, guid: 92574eebc4f30e3478fe010d944bf225, type: 2}
   baseDamage: 10

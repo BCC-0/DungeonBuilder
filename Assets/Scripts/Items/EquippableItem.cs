@@ -50,7 +50,7 @@ public abstract class EquippableItem : Item
 
         AnimationClip clip = this.GetAnimation(playerHandler.LastFacingDirection);
         playerHandler.PlayUseAnimation(clip);
-
+        playerHandler.PausePlayerMovement(clip.length);
         playerData.SetLastUseTime(Time.time);
         this.PerformAction();
     }
