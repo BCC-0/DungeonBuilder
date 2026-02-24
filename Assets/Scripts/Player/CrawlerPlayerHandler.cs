@@ -13,8 +13,15 @@ public class CrawlerPlayerHandler : MonoBehaviour
     private Vector2 movementDirection;
 
     private bool canMove = true;
+    private Vector2 lastFacingDirection = Vector2.down;
 
     private Animator animator;
+    private AnimatorOverrideController overrideController;
+
+    /// <summary>
+    /// Gets the last direction this player was facing.
+    /// </summary>
+    public Vector2 LastFacingDirection => this.lastFacingDirection;
 
     /// <summary>
     /// Gets a value indicating whether the player can currently move.
@@ -46,7 +53,7 @@ public class CrawlerPlayerHandler : MonoBehaviour
     /// </summary>
     public void Attack()
     {
-        this.playerData.UseWeapon();
+        this.playerData.UseWeapon(this);
     }
 
     /// <summary>
@@ -54,7 +61,7 @@ public class CrawlerPlayerHandler : MonoBehaviour
     /// </summary>
     public void UseTool()
     {
-        this.playerData.UseTool();
+        this.playerData.UseTool(this);
     }
 
     /// <summary>
@@ -80,11 +87,54 @@ public class CrawlerPlayerHandler : MonoBehaviour
         this.canMove = canMove;
     }
 
+    /// <summary>
+    /// Plays a weapon/tool animation dynamically via override controller.
+    /// </summary>
+    /// <param name="clip">The clip to set.</param>
+    public void PlayUseAnimation(AnimationClip clip)
+    {
+        if (clip == null)
+        {
+            Debug.LogWarning("PlayUseAnimation called with NULL clip.");
+            return;
+        }
+
+        if (this.overrideController == null)
+        {
+            Debug.LogError("OverrideController is NULL! Did Awake run?");
+            return;
+        }
+
+        this.overrideController["Use"] = clip;
+
+        Debug.Log($"Use state clip set to: {clip.name}");
+
+        this.animator.Update(0f);
+        this.animator.SetTrigger("Use");
+    }
+
     private void Start()
     {
         this.rb = this.GetComponent<Rigidbody2D>();
         this.playerData = this.GetComponent<CrawlerPlayerData>();
         this.animator = this.GetComponent<Animator>();
+
+        if (this.animator == null)
+        {
+            Debug.LogError("Animator component missing!");
+            return;
+        }
+
+        if (this.animator.runtimeAnimatorController == null)
+        {
+            Debug.LogError("Animator has no RuntimeAnimatorController assigned!");
+            return;
+        }
+
+        this.overrideController = new AnimatorOverrideController(this.animator.runtimeAnimatorController);
+        this.animator.runtimeAnimatorController = this.overrideController;
+
+        Debug.Log("AnimatorOverrideController initialized successfully.");
     }
 
     private void Update()
@@ -126,24 +176,16 @@ public class CrawlerPlayerHandler : MonoBehaviour
             return;
         }
 
-        if (this.movementDirection != Vector2.zero)
+        Vector2 dir = this.movementDirection;
+
+        if (dir != Vector2.zero)
         {
-            Vector2 dir = this.movementDirection.normalized;
-
-            if (Mathf.Abs(dir.x) > Mathf.Abs(dir.y))
-            {
-                dir.y = 0;
-            }
-            else
-            {
-                dir.x = 0;
-            }
-
-            this.animator.SetFloat("MoveX", dir.x);
-            this.animator.SetFloat("MoveY", dir.y);
+            this.lastFacingDirection = dir;
         }
 
-        float speed = this.movementDirection.sqrMagnitude > 0f ? 1f : 0f;
-        this.animator.SetFloat("Speed", speed);
+        this.animator.SetFloat("MoveX", this.lastFacingDirection.x);
+        this.animator.SetFloat("MoveY", this.lastFacingDirection.y);
+
+        this.animator.SetFloat("Speed", dir.sqrMagnitude > 0 ? 1f : 0f);
     }
 }
