@@ -8,11 +8,12 @@ public abstract class ConsumableItem : Item
     // Optional shared properties for all consumables can go here
     // e.g., public int maxStackSize = 1;
 
+    // TODO: Set up animations for consumables.
+
     /// <summary>
-    /// /// The action when the item is used.
-    /// Must be overridden by subclasses.
-    /// Should be called immediately for Consumable types.
+    /// Called when the player tries to use the item.
     /// </summary>
-    /// <param name="playerData">The player to use the item.</param>
-    public abstract override void Use(CrawlerPlayerData playerData);
+    /// <param name="playerHandler">The player handler to use the item.</param>
+    /// <param name="playerData">The player data to use the item.</param>
+    public abstract override void Use(CrawlerPlayerHandler playerHandler, CrawlerPlayerData playerData);
 }

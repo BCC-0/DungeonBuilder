@@ -84,8 +84,9 @@ public abstract class Item : ScriptableObject
     /// Must be overridden by subclasses.
     /// Should be called immediately for Consumable types.
     /// </summary>
-    /// <param name="playerData">The player to use the item.</param>
-    public abstract void Use(CrawlerPlayerData playerData);
+    /// <param name="playerHandler">The player handler to use the item.</param>
+    /// <param name="playerData">The player data to use the item.</param>
+    public abstract void Use(CrawlerPlayerHandler playerHandler, CrawlerPlayerData playerData);
 
     /// <summary>
     /// Optional method to check if the item can be used currently.

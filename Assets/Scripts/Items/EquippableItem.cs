@@ -7,11 +7,13 @@
 public abstract class EquippableItem : Item
 {
     [Header("Equippable Item Settings")]
-    [SerializeField]
-    private float cooldown;
+    [SerializeField] private float cooldown;
 
-    [SerializeField]
-    private AnimationClip useAnimation;
+    [Header("Directional Animations")]
+    [SerializeField] private AnimationClip useUp;
+    [SerializeField] private AnimationClip useDown;
+    [SerializeField] private AnimationClip useLeft;
+    [SerializeField] private AnimationClip useRight;
 
     /// <summary>
     /// Gets the cooldown of this item between uses.
@@ -19,25 +21,36 @@ public abstract class EquippableItem : Item
     public float Cooldown => this.cooldown;
 
     /// <summary>
-    /// Gets the animation played when this item is used.
-    /// AnimationClips of equipabble items should have the player as root.
+    /// Returns the correct animation clip for the given direction.
     /// </summary>
-    public AnimationClip UseAnimation => this.useAnimation;
+    /// <param name="direction">The direction of the clip we want.</param>
+    /// <returns>The corresponding animation clip.</returns>
+    public AnimationClip GetAnimation(Vector2 direction)
+    {
+        if (Mathf.Abs(direction.x) > Mathf.Abs(direction.y))
+        {
+            return direction.x > 0 ? this.useRight : this.useLeft;
+        }
 
-
+        return direction.y > 0 ? this.useUp : this.useDown;
+    }
 
     /// <summary>
     /// Called when the player tries to use the item.
     /// Handles cooldown logic automatically and calls the derived PerformAction.
     /// </summary>
-    /// <param name="playerData">The player to use the item.</param>
-    public override void Use(CrawlerPlayerData playerData)
+    /// <param name="playerHandler">The player handler to use the item.</param>
+    /// <param name="playerData">The player data to use the item.</param>
+    public override void Use(CrawlerPlayerHandler playerHandler, CrawlerPlayerData playerData)
     {
         if (!this.CanUse(playerData))
         {
             return;
         }
 
+        AnimationClip clip = this.GetAnimation(playerHandler.LastFacingDirection);
+        playerHandler.PlayUseAnimation(clip);
+        playerHandler.PausePlayerMovement(clip.length);
         playerData.SetLastUseTime(Time.time);
         this.PerformAction();
     }

@@ -12,7 +12,6 @@ public class Pitchfork : Weapon
     protected override void PerformAttack()
     {
         // For now, just log the attack
-        Debug.Log($"{this.ItemName} attacks dealing {this.BaseDamage} damage.");
 
         // TODO after implementing enemies.
     }

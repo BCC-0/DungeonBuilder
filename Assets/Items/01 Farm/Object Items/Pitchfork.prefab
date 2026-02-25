@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 4911899575539996239}
   - component: {fileID: 1786317876283086935}
   m_Layer: 0
-  m_Name: Item
+  m_Name: Pitchfork
   m_TagString: Item
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
