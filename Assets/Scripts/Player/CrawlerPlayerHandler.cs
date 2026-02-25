@@ -13,7 +13,7 @@ public class CrawlerPlayerHandler : MonoBehaviour
     private Rigidbody2D rb;
     private Vector2 movementDirection;
 
-    private bool canMove = true;
+    private int movementLockCount = 0;
     private Vector2 lastFacingDirection = Vector2.down;
 
     private Animator animator;
@@ -27,7 +27,7 @@ public class CrawlerPlayerHandler : MonoBehaviour
     /// <summary>
     /// Gets a value indicating whether the player can currently move.
     /// </summary>
-    public bool CanMove => this.canMove;
+    public bool CanMove => this.movementLockCount <= 0;
 
     /// <summary>
     /// Sets the current movement direction of the player.
@@ -54,7 +54,7 @@ public class CrawlerPlayerHandler : MonoBehaviour
     /// </summary>
     public void Attack()
     {
-        if (this.canMove)
+        if (this.CanMove)
         {
             this.playerData.UseWeapon(this);
         }
@@ -65,7 +65,7 @@ public class CrawlerPlayerHandler : MonoBehaviour
     /// </summary>
     public void UseTool()
     {
-        if (this.canMove)
+        if (this.CanMove)
         {
             this.playerData.UseTool(this);
         }
@@ -86,12 +86,20 @@ public class CrawlerPlayerHandler : MonoBehaviour
 
     /// <summary>
     /// Sets whether the player can do anything.
-    /// Currently only used for pausing the game (inventory).
+    /// Used for pausing, animating, stuns, etc.
     /// </summary>
     /// <param name="canMove">Whether the player can move after this.</param>
     public void SetCanMove(bool canMove)
     {
-        this.canMove = canMove;
+        if (canMove)
+        {
+            // Removes this lock.
+            this.movementLockCount--;
+            return;
+        }
+
+        // Adds a lock, since the player shouldn't move now.
+        this.movementLockCount++;
     }
 
     /// <summary>
@@ -169,7 +177,7 @@ public class CrawlerPlayerHandler : MonoBehaviour
 
     private void UpdateAnimator()
     {
-        if (!this.canMove)
+        if (!this.CanMove)
         {
             return;
         }
