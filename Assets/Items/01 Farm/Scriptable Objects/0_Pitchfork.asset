@@ -17,6 +17,10 @@ MonoBehaviour:
   description: The pitchfork is a simple stabbing weapon.
   prefab: {fileID: 0}
   itemType: 0
-  cooldown: 1.2
-  useAnimation: {fileID: 0}
+  uniqueID: 
+  cooldown: 0.5
+  useUp: {fileID: 7400000, guid: 18060cb893e922f4c961305952a1ce2a, type: 2}
+  useDown: {fileID: 7400000, guid: ca75be9d5bac5204fbfd452e05981277, type: 2}
+  useLeft: {fileID: 7400000, guid: c1acbb3ec05e52c49a3719998564c5d3, type: 2}
+  useRight: {fileID: 7400000, guid: 92574eebc4f30e3478fe010d944bf225, type: 2}
   baseDamage: 10

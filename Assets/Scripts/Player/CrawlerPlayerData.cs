@@ -161,17 +161,19 @@ public class CrawlerPlayerData: MonoBehaviour
     /// <summary>
     /// Uses the currently equipped weapon.
     /// </summary>
-    public void UseWeapon()
+    /// <param name="playerHandler">The player handler used for animating.</param>
+    public void UseWeapon(CrawlerPlayerHandler playerHandler)
     {
-        this.equippedWeapon?.Use(this);
+        this.equippedWeapon?.Use(playerHandler, this);
     }
 
     /// <summary>
     /// Uses the currently equipped tool.
     /// </summary>
-    public void UseTool()
+    /// <param name="playerHandler">The player handler used for animating.</param>
+    public void UseTool(CrawlerPlayerHandler playerHandler)
     {
-        this.equippedTool?.Use(this);
+        this.equippedTool?.Use(playerHandler, this);
     }
 
     /// <summary>
