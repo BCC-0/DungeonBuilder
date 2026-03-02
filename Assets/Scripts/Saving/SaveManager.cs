@@ -1,92 +1,71 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 using UnityEngine;
 
-/// <summary>
-/// Handles saving and loading maps.
-/// </summary>
 public static class SaveManager
 {
-    // All registered saveable objects in this map.
     private static Dictionary<string, SaveableEntity> saveables =
         new Dictionary<string, SaveableEntity>();
 
-    /// <summary>
-    /// Register a saveable object.
-    /// Called automatically by SaveableEntity.
-    /// </summary>
-    /// <param name="entity">The entity to register into the dictionary.</param>
     public static void Register(SaveableEntity entity)
     {
         if (!saveables.ContainsKey(entity.GetUniqueID()))
         {
             saveables.Add(entity.GetUniqueID(), entity);
-        }
-        else
-        {
-            Debug.Log("This entity has already been registered.");
+            Debug.Log($"[SaveManager] Registered entity {entity.name} ({entity.GetType().Name})");
         }
     }
 
-    /// <summary>
-    /// Save all registered objects to a JSON file.
-    /// </summary>
-    /// <param name="filePath">The file path to save the game to.</param>
-    public static void SaveGame(string filePath)
+    public static void SaveGame(string path)
     {
-        Dictionary<string, object> state = new Dictionary<string, object>();
+        var state = new Dictionary<string, Dictionary<string, object>>();
 
         foreach (var entity in saveables.Values)
         {
-            state[entity.GetUniqueID()] = entity.CaptureState();
+            var captured = entity.CaptureState();
+            state[entity.GetUniqueID()] = captured;
+            Debug.Log($"[SaveManager] Saved entity {entity.name} ({captured.Count} fields)");
         }
 
-        // Wrap in helper to serialize dictionary
-        string json = JsonUtility.ToJson(new SerializableDictionary(state), true);
-        File.WriteAllText(filePath, json);
-        Debug.Log($"Game saved to {filePath}");
+        BinaryFormatter bf = new BinaryFormatter();
+        using FileStream file = File.Create(path);
+        bf.Serialize(file, state);
+
+        Debug.Log($"[SaveManager] Saved {saveables.Count} entities to {path}");
     }
 
-    /// <summary>
-    /// Load all registered objects from a JSON file.
-    /// </summary>
-    /// <param name="filePath"> The file path to load the game from.</param>
-    public static void LoadGame(string filePath)
+    public static void LoadGame(string path)
     {
-        if (!File.Exists(filePath))
+        if (!File.Exists(path))
         {
-            Debug.LogWarning("Save file not found: " + filePath);
+            Debug.LogWarning($"[SaveManager] Save file not found: {path}");
             return;
         }
 
-        string json = File.ReadAllText(filePath);
-        var wrapper = JsonUtility.FromJson<SerializableDictionary>(json);
-        var state = wrapper.ToDictionary();
+        BinaryFormatter bf = new BinaryFormatter();
+        using FileStream file = File.Open(path, FileMode.Open);
+        var state = (Dictionary<string, Dictionary<string, object>>)bf.Deserialize(file);
 
         foreach (var entity in saveables.Values)
         {
-            if (state.TryGetValue(entity.GetUniqueID(), out object savedState))
+            if (state.TryGetValue(entity.GetUniqueID(), out var savedState))
             {
                 entity.RestoreState(savedState);
+                Debug.Log($"[SaveManager] Loaded entity {entity.name}");
             }
         }
 
-        Debug.Log("Game loaded from " + filePath);
+        Debug.Log($"[SaveManager] Loaded {saveables.Count} entities from {path}");
     }
 
-    /// <summary>
-    /// Finds an entity by it's id.
-    /// </summary>
-    /// <param name="id">The id to find it by.</param>
-    /// <returns>Returns the SaveableEntity.</returns>
     public static SaveableEntity GetEntityByID(string id)
     {
-        if (saveables.TryGetValue(id, out SaveableEntity entity))
-        {
+        if (saveables.TryGetValue(id, out var entity))
             return entity;
-        }
 
-        Debug.LogWarning($"SaveManager: No entity found with ID {id}");
+        Debug.LogWarning($"[SaveManager] No entity found with ID {id}");
         return null;
     }
 }
