@@ -46,7 +46,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2a99ac3588f554148a2e4d071b6d63a0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  originalItem: {fileID: 0}
+  originalItem: {fileID: 11400000, guid: 0d686244c6abf20459d598782b1e6ac7, type: 2}
   runtimeItem: {fileID: 0}
 --- !u!212 &4911899575539996239
 SpriteRenderer:

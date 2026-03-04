@@ -7,14 +7,16 @@ using UnityEngine;
 /// Contains all player-related stats and inventory data.
 /// Handles equipped items, health, and inventory management.
 /// </summary>
-public class CrawlerPlayerData: MonoBehaviour
+public class CrawlerPlayerData : SaveableEntity
 {
     [Header("Player Attributes")]
     [SerializeField]
+    [SaveField]
     private int maxHealth = 100;
 
     [SerializeField]
-    private int currentHealth;
+    [SaveField]
+    private int currentHealth = 100;
 
     [SerializeField]
     private float moveSpeed = 5f;

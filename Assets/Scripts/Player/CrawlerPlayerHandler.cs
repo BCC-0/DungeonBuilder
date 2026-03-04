@@ -194,4 +194,18 @@ public class CrawlerPlayerHandler : MonoBehaviour
 
         this.animator.SetFloat("Speed", dir.sqrMagnitude > 0 ? 1f : 0f);
     }
+
+
+
+    // TODO: Remove debug:
+
+    public void SaveGame()
+    {
+        SaveManager.SaveMap("/A");
+    }
+
+    public void LoadGame()
+    {
+        SaveManager.LoadMap("/A");
+    }
 }
