@@ -201,11 +201,11 @@ public class CrawlerPlayerHandler : MonoBehaviour
 
     public void SaveGame()
     {
-        SaveManager.SaveGame(Application.persistentDataPath + "/A");
+        SaveManager.SaveMap("/A");
     }
 
     public void LoadGame()
     {
-        SaveManager.LoadGame(Application.persistentDataPath + "/A");
+        SaveManager.LoadMap("/A");
     }
 }

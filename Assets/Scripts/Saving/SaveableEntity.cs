@@ -1,74 +1,238 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.IO;
+using System.Reflection;
 using UnityEngine;
 
 /// <summary>
-/// Base class for anything that should be saveable in the game.
-/// Automatically assigns a UniqueID and registers itself with SaveManager.
+/// The base class for all entities that will be saved in a map.
+/// This automatically saves and restores transforms.
 /// </summary>
 public abstract class SaveableEntity : MonoBehaviour
 {
     [SerializeField]
     private string uniqueID;
 
+    /// <summary>
+    /// Gets the unique ID of this entity.
+    /// </summary>
+    /// <returns>The UID.</returns>
     public string GetUniqueID() => this.uniqueID;
 
     /// <summary>
-    /// Capture the state of all [SaveField] variables and the transform.
+    /// Writes all fields we need to save from this entity.
     /// </summary>
-    public virtual Dictionary<string, object> CaptureState()
+    /// <param name="writer">The writer which will save the fields.</param>
+    public virtual void Write(BinaryWriter writer)
     {
-        var state = SaveUtility.Capture(this);
+        // --- Save Transform ---
+        writer.Write(this.transform.position.x);
+        writer.Write(this.transform.position.y);
+        writer.Write(this.transform.position.z);
 
-        // Capture transform automatically
-        TransformData tdata = new TransformData
+        writer.Write(this.transform.rotation.x);
+        writer.Write(this.transform.rotation.y);
+        writer.Write(this.transform.rotation.z);
+        writer.Write(this.transform.rotation.w);
+
+        writer.Write(this.transform.localScale.x);
+        writer.Write(this.transform.localScale.y);
+        writer.Write(this.transform.localScale.z);
+
+        // --- Save Fields ---
+        var fields = this.GetSaveFields();
+        writer.Write(fields.Length);
+
+        foreach (var field in fields)
         {
-            Position = new SerializableVector3(transform.position),
-            Rotation = new SerializableQuaternion(transform.rotation),
-            Scale = new SerializableVector3(transform.localScale)
-        };
-        state["__Transform"] = tdata;
+            object value = field.GetValue(this);
+            writer.Write(field.Name);
 
-        Debug.Log($"[SaveableEntity] Captured state for {name} ({GetType().Name}) with {state.Count} fields.");
-        return state;
+            this.WriteValue(writer, field.FieldType, value);
+        }
     }
 
     /// <summary>
-    /// Restore all [SaveField] variables and the transform from saved data.
+    /// Reads all fields we need to restore for this entity.
     /// </summary>
-    public virtual void RestoreState(Dictionary<string, object> state)
+    /// <param name="reader">The reader which will read the fields to restore.</param>
+    public virtual void Read(BinaryReader reader)
     {
-        if (state == null)
+        // --- Load Transform ---
+        Vector3 pos = new Vector3(
+            reader.ReadSingle(),
+            reader.ReadSingle(),
+            reader.ReadSingle());
+
+        Quaternion rot = new Quaternion(
+            reader.ReadSingle(),
+            reader.ReadSingle(),
+            reader.ReadSingle(),
+            reader.ReadSingle());
+
+        Vector3 scale = new Vector3(
+            reader.ReadSingle(),
+            reader.ReadSingle(),
+            reader.ReadSingle());
+
+        this.transform.position = pos;
+        this.transform.rotation = rot;
+        this.transform.localScale = scale;
+
+        // --- Load Fields ---
+        int fieldCount = reader.ReadInt32();
+
+        var fields = this.GetSaveFields();
+        Dictionary<string, FieldInfo> fieldMap = new ();
+
+        foreach (var f in fields)
         {
-            Debug.LogWarning($"[SaveableEntity] RestoreState called with null for {name}");
-            return;
+            fieldMap[f.Name] = f;
         }
 
-        SaveUtility.Restore(this, state);
-
-        if (state.TryGetValue("__Transform", out object tobj) && tobj is TransformData tdata)
+        for (int i = 0; i < fieldCount; i++)
         {
-            transform.position = tdata.Position.ToVector3();
-            transform.rotation = tdata.Rotation.ToQuaternion();
-            transform.localScale = tdata.Scale.ToVector3();
-        Debug.Log($"[SaveableEntity] Restored transform for {name}: {tdata.Position}");
+            string fieldName = reader.ReadString();
+
+            if (fieldMap.TryGetValue(fieldName, out var field))
+            {
+                object value = this.ReadValue(reader, field.FieldType);
+                field.SetValue(this, value);
+            }
+            else
+            {
+                Debug.LogWarning($"Field {fieldName} not found on {this.name}");
+            }
         }
     }
 
+    /// <summary>
+    /// Registers this entity to the SaveManager and makes sure it has a unique ID.
+    /// </summary>
     protected virtual void Awake()
     {
-        if (string.IsNullOrEmpty(uniqueID))
-            uniqueID = Guid.NewGuid().ToString();
+        if (string.IsNullOrEmpty(this.uniqueID))
+        {
+            this.uniqueID = Guid.NewGuid().ToString();
+        }
 
         SaveManager.Register(this);
-        Debug.Log($"[SaveableEntity] Registered {name} with ID {uniqueID}");
     }
 
-    [Serializable]
-    public class TransformData
+    private FieldInfo[] GetSaveFields()
     {
-        public SerializableVector3 Position;
-        public SerializableQuaternion Rotation;
-        public SerializableVector3 Scale;
+        var allFields = this.GetType().GetFields(
+            BindingFlags.Instance |
+            BindingFlags.Public |
+            BindingFlags.NonPublic);
+
+        List<FieldInfo> saveFields = new ();
+
+        foreach (var field in allFields)
+        {
+            if (Attribute.IsDefined(field, typeof(SaveFieldAttribute)))
+            {
+                saveFields.Add(field);
+            }
+        }
+
+        return saveFields.ToArray();
+    }
+
+    private void WriteValue(BinaryWriter writer, Type type, object value)
+    {
+        if (type == typeof(int))
+        {
+            writer.Write((int)value);
+        }
+        else if (type == typeof(float))
+        {
+            writer.Write((float)value);
+        }
+        else if (type == typeof(bool))
+        {
+            writer.Write((bool)value);
+        }
+        else if (type == typeof(string))
+        {
+            writer.Write((string)value ?? string.Empty);
+        }
+        else if (typeof(SaveableEntity).IsAssignableFrom(type))
+        {
+            string id = value != null
+                ? ((SaveableEntity)value).GetUniqueID()
+                : string.Empty;
+            writer.Write(id);
+        }
+        else if (typeof(IList).IsAssignableFrom(type) &&
+                 type.IsGenericType &&
+                 typeof(SaveableEntity).IsAssignableFrom(
+                     type.GetGenericArguments()[0]))
+        {
+            IList list = value as IList;
+            writer.Write(list?.Count ?? 0);
+
+            if (list != null)
+            {
+                foreach (SaveableEntity entity in list)
+                {
+                    writer.Write(entity.GetUniqueID());
+                }
+            }
+        }
+        else
+        {
+            Debug.LogError($"Unsupported save type: {type}");
+        }
+    }
+
+    private object ReadValue(BinaryReader reader, Type type)
+    {
+        if (type == typeof(int))
+        {
+            return reader.ReadInt32();
+        }
+
+        if (type == typeof(float))
+        {
+            return reader.ReadSingle();
+        }
+
+        if (type == typeof(bool))
+        {
+            return reader.ReadBoolean();
+        }
+
+        if (type == typeof(string))
+        {
+            return reader.ReadString();
+        }
+
+        if (typeof(SaveableEntity).IsAssignableFrom(type))
+        {
+            string id = reader.ReadString();
+            return SaveManager.GetEntityByID(id);
+        }
+
+        if (typeof(IList).IsAssignableFrom(type) &&
+            type.IsGenericType &&
+            typeof(SaveableEntity).IsAssignableFrom(
+                type.GetGenericArguments()[0]))
+        {
+            int count = reader.ReadInt32();
+            IList list = (IList)Activator.CreateInstance(type);
+
+            for (int i = 0; i < count; i++)
+            {
+                string id = reader.ReadString();
+                list.Add(SaveManager.GetEntityByID(id));
+            }
+
+            return list;
+        }
+
+        Debug.LogError($"Unsupported load type: {type}");
+        return null;
     }
 }
