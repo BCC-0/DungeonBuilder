@@ -114,7 +114,7 @@ public class SaveableTilemap : SaveableEntity
             Y = y,
             TileID = tileID,
             HasCollision = hasCollision,
-            Tag = tag
+            Tag = tag,
         };
 
         this.tiles.Add(tile);
