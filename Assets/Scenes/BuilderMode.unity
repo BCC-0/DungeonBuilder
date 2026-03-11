@@ -128,6 +128,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 35717379}
+  - component: {fileID: 35717380}
   m_Layer: 0
   m_Name: CameraController
   m_TagString: Untagged
@@ -150,6 +151,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1554308927}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &35717380
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 35717378}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67705229d3f34354fa1a5e51836b47aa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &47208766
 GameObject:
   m_ObjectHideFlags: 0
@@ -282,6 +295,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 141539468}
+  - component: {fileID: 141539469}
   m_Layer: 0
   m_Name: TileEditorController
   m_TagString: Untagged
@@ -304,6 +318,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1554308927}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &141539469
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 141539467}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0c064a593e7c56b4bb40280b5f73041f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &142968687
 GameObject:
   m_ObjectHideFlags: 0
@@ -313,6 +339,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 142968688}
+  - component: {fileID: 142968689}
   m_Layer: 0
   m_Name: EntityEditorController
   m_TagString: Untagged
@@ -335,6 +362,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1554308927}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &142968689
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 142968687}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c7c8b5258132b8419d2b58ecd24217f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  selectedPrefab: {fileID: 0}
 --- !u!1 &224760214
 GameObject:
   m_ObjectHideFlags: 0
@@ -959,6 +999,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1740556537}
+  - component: {fileID: 1740556538}
   m_Layer: 0
   m_Name: MapEditorManager
   m_TagString: Untagged
@@ -982,6 +1023,18 @@ Transform:
   - {fileID: 2019441079}
   m_Father: {fileID: 1554308927}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1740556538
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1740556536}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7e1a971ead4d80f44b034fd87a5150bb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &2019441078
 GameObject:
   m_ObjectHideFlags: 0
