@@ -1,58 +1,55 @@
 ﻿using UnityEngine;
 
 /// <summary>
-/// The camera controller controls camera movements (zooming, panning) in the builder mode.
+/// Handles camera movements (zooming and panning) in builder mode.
 /// </summary>
 public class CameraController : MonoBehaviour
 {
-    private float zoomSpeed = 0.1f;
-    private float panSpeed = 0.01f;
+    [SerializeField] private float zoomSpeed = 0.1f;
+    [SerializeField] private float panSpeed = 0.01f;
+
     private Camera cam;
 
     /// <summary>
-    /// Gets or sets the zoom speed of this camera.
+    /// Called by the Pan action in the InputAction map.
+    /// Always pans the camera by the given delta.
     /// </summary>
-    public float ZoomSpeed
+    /// <param name="delta">The movement delta.</param>
+    public void OnPan(Vector2 delta)
     {
-        get { return this.zoomSpeed; }
-        set { this.zoomSpeed = value; }
+        this.PanCamera(delta);
     }
 
     /// <summary>
-    /// Gets or sets the panning speed of this camera.
+    /// Called by the PointerDelta action in the InputAction map.
+    /// Only pans if the current tool is Drag.
     /// </summary>
-    public float PanSpeed
+    /// <param name="delta">The movement delta.</param>
+    public void OnPointerDelta(Vector2 delta)
     {
-        get { return this.panSpeed; }
-        set { this.panSpeed = value; }
+        if (MapEditorManager.Instance.CurrentTool == EditorTool.Drag)
+        {
+            this.PanCamera(delta);
+        }
     }
 
-
-    private void Awake()
+    /// <summary>
+    /// Zooms the camera by a given amount.
+    /// </summary>
+    /// <param name="amount">Positive to zoom in, negative to zoom out.</param>
+    public void OnZoom(float amount)
     {
-        this.cam = this.GetComponent<Camera>();
-    }
-
-    private void OnEnable()
-    {
-        EditorEventBus.OnZoom += this.Zoom;
-        EditorEventBus.OnPan += this.Pan;
-    }
-
-    private void OnDisable()
-    {
-        EditorEventBus.OnZoom -= this.Zoom;
-        EditorEventBus.OnPan -= this.Pan;
-    }
-
-    private void Zoom(float amount)
-    {
-        this.cam.orthographicSize -= amount * this.ZoomSpeed;
+        this.cam.orthographicSize -= amount * this.zoomSpeed;
         this.cam.orthographicSize = Mathf.Clamp(this.cam.orthographicSize, 3f, 50f);
     }
 
-    private void Pan(Vector2 delta)
+    private void PanCamera(Vector2 delta)
     {
-        this.transform.position -= new Vector3(delta.x, delta.y, 0) * this.PanSpeed;
+        this.transform.position -= new Vector3(delta.x, delta.y, 0) * this.panSpeed;
+    }
+
+    private void Awake()
+    {
+        this.cam = Camera.main;
     }
 }

@@ -1,46 +1,45 @@
 ﻿using UnityEngine;
 
 /// <summary>
-/// The entity editor controller controls the entities (foreground) in the map editor.
+/// Controls entity placement, movement, and deletion in the map editor foreground layer.
+/// Works with Unity Events, no subscriptions required.
 /// </summary>
 public class EntityEditorController : MonoBehaviour
 {
-    [SerializeField]
-    private GameObject selectedPrefab;
+    [SerializeField] private GameObject selectedPrefab;
     private Vector3 currentPos;
 
     /// <summary>
-    /// Gets or sets the currently selected prefab.
+    /// Gets or sets the currently selected prefab for painting entities.
     /// </summary>
     public GameObject SelectedPrefab
     {
-        get { return this.selectedPrefab; }
-        set { this.selectedPrefab = value; }
+        get => this.selectedPrefab;
+        set => this.selectedPrefab = value;
     }
 
-    private void OnEnable()
+    /// <summary>
+    /// Updates the current pointer position (screen-to-world) for placing entities.
+    /// Hook to PlayerInput Point action.
+    /// </summary>
+    /// <param name="worldPos">The world position of the pointer.</param>
+    public void OnPointerMoved(Vector3 worldPos)
     {
-        EditorEventBus.OnPointerMoved += pos => this.currentPos = pos;
-        EditorEventBus.OnPrimaryDown += this.ApplyTool;
-        EditorEventBus.OnDelete += this.DeleteSelected;
+        this.currentPos = worldPos;
     }
 
-    private void OnDisable()
+    /// <summary>
+    /// Called when the primary button/touch is pressed.
+    /// Places or erases entities depending on the current tool.
+    /// Hook to PlayerInput Primary action started event.
+    /// </summary>
+    public void OnPrimaryDown()
     {
-        EditorEventBus.OnPrimaryDown -= this.ApplyTool;
-        EditorEventBus.OnDelete -= this.DeleteSelected;
-    }
-
-    private void ApplyTool()
-    {
-        if (MapEditorManager.Instance.CurrentLayer != EditLayer.Foreground)
-        {
-            return;
-        }
+        if (MapEditorManager.Instance.CurrentLayer != EditLayer.Foreground) return;
 
         var tool = MapEditorManager.Instance.CurrentTool;
 
-        if (tool == EditorTool.Brush)
+        if (tool == EditorTool.Brush && this.SelectedPrefab != null)
         {
             Instantiate(this.SelectedPrefab, this.currentPos, Quaternion.identity);
         }
@@ -51,6 +50,21 @@ public class EntityEditorController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Deletes all selected entities.
+    /// Hook to PlayerInput Delete action.
+    /// </summary>
+    public void OnDelete()
+    {
+        foreach (var entity in MapEditorManager.Instance.SelectedEntities)
+        {
+            Destroy(entity.gameObject);
+        }
+    }
+
+    /// <summary>
+    /// Attempts to erase an entity under the pointer.
+    /// </summary>
     private void TryErase()
     {
         RaycastHit2D hit = Physics2D.Raycast(this.currentPos, Vector2.zero);
@@ -63,14 +77,6 @@ public class EntityEditorController : MonoBehaviour
         if (entity != null)
         {
             Destroy(entity.gameObject);
-        }
-    }
-
-    private void DeleteSelected()
-    {
-        foreach (var e in MapEditorManager.Instance.SelectedEntities)
-        {
-            Destroy(e.gameObject);
         }
     }
 }

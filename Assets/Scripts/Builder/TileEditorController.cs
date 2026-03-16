@@ -2,7 +2,8 @@
 using UnityEngine.Tilemaps;
 
 /// <summary>
-/// The tile editor controller controls the tiles (background) in the map editor.
+/// Controls tile placement and removal in the map editor background layer.
+/// Works with the Unity Events system (no subscriptions needed).
 /// </summary>
 public class TileEditorController : MonoBehaviour
 {
@@ -12,40 +13,31 @@ public class TileEditorController : MonoBehaviour
     private bool holding;
 
     /// <summary>
-    /// Gets or sets the tilemap that is being edited by this controller.
+    /// Gets or sets the Tilemap being edited.
     /// </summary>
     public Tilemap Tilemap
     {
-        get { return this.tilemap; }
-        set { this.tilemap = value; }
+        get => this.tilemap;
+        set => this.tilemap = value;
     }
 
     /// <summary>
-    /// Gets or sets the currently selected tile.
+    /// Gets or sets the currently selected TileBase for painting.
     /// </summary>
     public TileBase SelectedTile
     {
-        get { return this.selectedTile; }
-        set { this.selectedTile = value; }
+        get => this.selectedTile;
+        set => this.selectedTile = value;
     }
 
-    private void OnEnable()
+    /// <summary>
+    /// Updates the current pointer position (screen-to-world) for editing tiles.
+    /// Hook to PlayerInput Point action.
+    /// </summary>
+    /// <param name="worldPos">The world position of the pointer.</param>
+    public void OnPointerMoved(Vector3 worldPos)
     {
-        EditorEventBus.OnPointerMoved += this.UpdatePointer;
-        EditorEventBus.OnPrimaryDown += this.StartAction;
-        EditorEventBus.OnPrimaryUp += this.StopAction;
-    }
-
-    private void OnDisable()
-    {
-        EditorEventBus.OnPointerMoved -= this.UpdatePointer;
-        EditorEventBus.OnPrimaryDown -= this.StartAction;
-        EditorEventBus.OnPrimaryUp -= this.StopAction;
-    }
-
-    private void UpdatePointer(Vector3 pos)
-    {
-        this.currentPos = pos;
+        this.currentPos = worldPos;
 
         if (this.holding)
         {
@@ -53,7 +45,12 @@ public class TileEditorController : MonoBehaviour
         }
     }
 
-    private void StartAction()
+    /// <summary>
+    /// Called when the primary button/touch is pressed.
+    /// Starts the brush or eraser action.
+    /// Hook to PlayerInput Primary action started event.
+    /// </summary>
+    public void OnPrimaryDown()
     {
         if (MapEditorManager.Instance.CurrentLayer != EditLayer.Background)
         {
@@ -64,21 +61,29 @@ public class TileEditorController : MonoBehaviour
         this.ApplyTool();
     }
 
-    private void StopAction() => this.holding = false;
+    /// <summary>
+    /// Called when the primary button/touch is released.
+    /// Stops the brush or eraser action.
+    /// Hook to PlayerInput Primary action canceled event.
+    /// </summary>
+    public void OnPrimaryUp()
+    {
+        this.holding = false;
+    }
 
     private void ApplyTool()
     {
+        Vector3Int cell = this.tilemap.WorldToCell(this.currentPos);
         var tool = MapEditorManager.Instance.CurrentTool;
-        Vector3Int cell = this.Tilemap.WorldToCell(this.currentPos);
 
-        if (tool == EditorTool.Brush)
+        if (tool == EditorTool.Brush && this.SelectedTile != null)
         {
-            this.Tilemap.SetTile(cell, this.SelectedTile);
+            this.tilemap.SetTile(cell, this.SelectedTile);
         }
 
         if (tool == EditorTool.Eraser)
         {
-            this.Tilemap.SetTile(cell, null);
+            this.tilemap.SetTile(cell, null);
         }
     }
 }

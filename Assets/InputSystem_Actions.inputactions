@@ -675,7 +675,7 @@
             "actions": [
                 {
                     "name": "Point",
-                    "type": "Value",
+                    "type": "PassThrough",
                     "id": "577b91b0-546b-42da-9740-c8dddc01707a",
                     "expectedControlType": "Vector2",
                     "processors": "",
@@ -692,10 +692,118 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "Pan",
-                    "type": "Value",
+                    "name": "PanButton",
+                    "type": "Button",
                     "id": "b2b29110-80fb-49df-af59-56d7889b56f8",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "PointerDelta",
+                    "type": "Value",
+                    "id": "9550cad3-afee-491e-9293-2cf8b82069b4",
                     "expectedControlType": "Vector2",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Zoom",
+                    "type": "Value",
+                    "id": "9effb6ef-0edd-45bf-b64d-cd30b42f2fba",
+                    "expectedControlType": "Axis",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Slot1",
+                    "type": "Button",
+                    "id": "2936d058-7ac2-4ada-89b5-7c6bcd2c20b7",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Slot2",
+                    "type": "Button",
+                    "id": "fdfdc037-7806-4ebf-8fd7-b2054c1ae3eb",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Slot3",
+                    "type": "Button",
+                    "id": "ecfb32ae-4901-4127-9ce3-0c95cebbd102",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Slot4",
+                    "type": "Button",
+                    "id": "5255c859-2f94-468b-bc3a-6753b692df2c",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Slot5",
+                    "type": "Button",
+                    "id": "082f071c-72f3-4b40-a98c-54cc1162fe9b",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Slot6",
+                    "type": "Button",
+                    "id": "b58623f9-623a-445e-a77b-8b9215d38cb0",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Slot7",
+                    "type": "Button",
+                    "id": "fce9c68d-825e-40c0-a132-c8470b7aac9f",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Slot8",
+                    "type": "Button",
+                    "id": "72a33bf0-ce2e-4878-b799-1ad6173fbae4",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Slot9",
+                    "type": "Button",
+                    "id": "661524a4-7520-4ef7-9f4d-eb8239bbfad2",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Slot0",
+                    "type": "Button",
+                    "id": "cece0343-d204-4c12-a24c-fec6f7703ba3",
+                    "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": true
@@ -716,7 +824,7 @@
                 {
                     "name": "",
                     "id": "d57c7828-3bb0-4c73-a427-e7511dd24304",
-                    "path": "<Touchscreen>/primaryTouch/position",
+                    "path": "<Touchscreen>/touch0/position",
                     "interactions": "",
                     "processors": "",
                     "groups": ";Touch",
@@ -749,22 +857,143 @@
                 {
                     "name": "",
                     "id": "0c68bcac-d5d3-4e95-ab55-af987ce62972",
-                    "path": "<Mouse>/scroll",
+                    "path": "<Mouse>/middleButton",
                     "interactions": "",
                     "processors": "",
                     "groups": ";Keyboard&Mouse",
-                    "action": "Pan",
+                    "action": "PanButton",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
                 {
                     "name": "",
-                    "id": "4e359b0d-5da2-4a32-b33f-946b8328c89e",
-                    "path": "",
+                    "id": "301f1ed0-851a-46e1-9e6b-8907d55dd626",
+                    "path": "<Pointer>/delta",
                     "interactions": "",
                     "processors": "",
-                    "groups": ";Touch",
-                    "action": "Pan",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "PointerDelta",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "bcb7309f-2964-46c3-97cf-c6ed11e5ba88",
+                    "path": "<Mouse>/scroll/y",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "Zoom",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "82964a5d-5d25-4490-938e-62dae12f78db",
+                    "path": "<Keyboard>/1",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "Slot1",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "58d69cbc-aade-4cf4-8739-6174dcad8431",
+                    "path": "<Keyboard>/2",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "Slot2",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "96742c2c-1a87-47b2-a106-84f6cae3f9f3",
+                    "path": "<Keyboard>/3",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "Slot3",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "4a23de15-7938-4c31-ad8c-226d6e5e0fee",
+                    "path": "<Keyboard>/4",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "Slot4",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "ed795201-2d0a-498c-a81a-3a7841015bcf",
+                    "path": "<Keyboard>/5",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "Slot5",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "dabb9be3-9e92-492b-9342-116f7b28218d",
+                    "path": "<Keyboard>/6",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "Slot6",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "847eb5e7-6f8c-4edd-8508-b75afb3f73e1",
+                    "path": "<Keyboard>/7",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "Slot7",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "b0d14cb8-3a5d-4994-863a-a25a04e1fbe7",
+                    "path": "<Keyboard>/8",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "Slot8",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "206c6801-3ab8-4d37-926c-eda730d03740",
+                    "path": "<Keyboard>/9",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "Slot9",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "67fb8845-b1db-49e4-a6ed-9ce7c0cd90c9",
+                    "path": "<Keyboard>/0",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "Slot0",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

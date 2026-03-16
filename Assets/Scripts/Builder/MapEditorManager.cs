@@ -54,15 +54,15 @@ public class MapEditorManager : MonoBehaviour
     private EditLayer currentLayer;
 
     private SaveableEntity selectedEntity;
-    private List<SaveableEntity> selectedEntities = new ();
+    private List<SaveableEntity> selectedEntities = new List<SaveableEntity>();
 
     /// <summary>
-    /// Gets or sets the instance of the MapEditorManager.
+    /// Gets the instance of the MapEditorManager.
     /// </summary>
     public static MapEditorManager Instance
     {
         get => instance;
-        set => instance = value;
+        private set => instance = value;
     }
 
     /// <summary>
