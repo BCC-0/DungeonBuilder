@@ -692,7 +692,25 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "PanButton",
+                    "name": "Delete",
+                    "type": "Button",
+                    "id": "ef5eea16-6e20-4322-999b-9949b127c9e0",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Zoom",
+                    "type": "Value",
+                    "id": "9effb6ef-0edd-45bf-b64d-cd30b42f2fba",
+                    "expectedControlType": "Axis",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Pan",
                     "type": "Button",
                     "id": "b2b29110-80fb-49df-af59-56d7889b56f8",
                     "expectedControlType": "",
@@ -705,15 +723,6 @@
                     "type": "Value",
                     "id": "9550cad3-afee-491e-9293-2cf8b82069b4",
                     "expectedControlType": "Vector2",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": true
-                },
-                {
-                    "name": "Zoom",
-                    "type": "Value",
-                    "id": "9effb6ef-0edd-45bf-b64d-cd30b42f2fba",
-                    "expectedControlType": "Axis",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": true
@@ -861,7 +870,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": ";Keyboard&Mouse",
-                    "action": "PanButton",
+                    "action": "Pan",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -994,6 +1003,17 @@
                     "processors": "",
                     "groups": ";Keyboard&Mouse",
                     "action": "Slot0",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "ffb671ab-7509-403f-b45f-2c124c88e6e8",
+                    "path": "",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Delete",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
