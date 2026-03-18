@@ -9,11 +9,16 @@ public class BuilderInputHandler : MonoBehaviour
     [SerializeField]
     private Camera cam;
     [SerializeField]
+    private MapEditorManager mapEditorManager;
+    [SerializeField]
     private TileEditorController tileEditor;
     [SerializeField]
     private EntityEditorController entityEditor;
     [SerializeField]
     private CameraController cameraController;
+
+    private bool isMiddleMouseHeld;
+    private bool isPrimaryHeld;
 
     /// <summary>
     /// Called when the pointer is moved.
@@ -44,13 +49,30 @@ public class BuilderInputHandler : MonoBehaviour
     {
         if (ctx.started)
         {
-            this.tileEditor.OnPrimaryDown();
-            this.entityEditor.OnPrimaryDown();
+            this.isPrimaryHeld = true;
+
+            if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
+            {
+                this.tileEditor.OnPrimaryDown();
+            }
+            else
+            {
+                this.entityEditor.OnPrimaryDown();
+            }
         }
 
         if (ctx.canceled)
         {
-            this.tileEditor.OnPrimaryUp();
+            this.isPrimaryHeld = false;
+
+            if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
+            {
+                this.tileEditor.OnPrimaryUp();
+            }
+            else
+            {
+                this.entityEditor.OnPrimaryUp();
+            }
         }
     }
 
@@ -90,13 +112,15 @@ public class BuilderInputHandler : MonoBehaviour
     /// <param name="ctx">The input context.</param>
     public void OnPan(InputAction.CallbackContext ctx)
     {
-        if (!ctx.performed)
+        if (ctx.started)
         {
-            return;
+            this.isMiddleMouseHeld = true;
         }
 
-        Vector2 delta = ctx.ReadValue<Vector2>();
-        this.cameraController.OnPan(delta);
+        if (ctx.canceled)
+        {
+            this.isMiddleMouseHeld = false;
+        }
     }
 
     /// <summary>
@@ -112,76 +136,26 @@ public class BuilderInputHandler : MonoBehaviour
         }
 
         Vector2 delta = ctx.ReadValue<Vector2>();
-        this.cameraController.OnPointerDelta(delta);
+
+        if (this.ShouldPan())
+        {
+            this.cameraController.Pan(delta);
+        }
     }
 
     /// <summary>
-    /// Pressed slot 0 button.
+    /// Selects a slot based on bound button pressed.
     /// </summary>
     /// <param name="ctx">The input context.</param>
-    public void OnSelectSlot0(InputAction.CallbackContext ctx) => this.OnSelectSlot(ctx, 0);
-
-    /// <summary>
-    /// Pressed slot 1 button.
-    /// </summary>
-    /// <param name="ctx">The input context.</param>
-    public void OnSelectSlot1(InputAction.CallbackContext ctx) => this.OnSelectSlot(ctx, 1);
-
-    /// <summary>
-    /// Pressed slot 2 button.
-    /// </summary>
-    /// <param name="ctx">The input context.</param>
-    public void OnSelectSlot2(InputAction.CallbackContext ctx) => this.OnSelectSlot(ctx, 2);
-
-    /// <summary>
-    /// Pressed slot 3 button.
-    /// </summary>
-    /// <param name="ctx">The input context.</param>
-    public void OnSelectSlot3(InputAction.CallbackContext ctx) => this.OnSelectSlot(ctx, 3);
-
-    /// <summary>
-    /// Pressed slot 4 button.
-    /// </summary>
-    /// <param name="ctx">The input context.</param>
-    public void OnSelectSlot4(InputAction.CallbackContext ctx) => this.OnSelectSlot(ctx, 4);
-
-    /// <summary>
-    /// Pressed slot 5 button.
-    /// </summary>
-    /// <param name="ctx">The input context.</param>
-    public void OnSelectSlot5(InputAction.CallbackContext ctx) => this.OnSelectSlot(ctx, 5);
-
-    /// <summary>
-    /// Pressed slot 6 button.
-    /// </summary>
-    /// <param name="ctx">The input context.</param>
-    public void OnSelectSlot6(InputAction.CallbackContext ctx) => this.OnSelectSlot(ctx, 6);
-
-    /// <summary>
-    /// Pressed slot 7 button.
-    /// </summary>
-    /// <param name="ctx">The input context.</param>
-    public void OnSelectSlot7(InputAction.CallbackContext ctx) => this.OnSelectSlot(ctx, 7);
-
-    /// <summary>
-    /// Pressed slot 8 button.
-    /// </summary>
-    /// <param name="ctx">The input context.</param>
-    public void OnSelectSlot8(InputAction.CallbackContext ctx) => this.OnSelectSlot(ctx, 8);
-
-    /// <summary>
-    /// Pressed slot 9 button.
-    /// </summary>
-    /// <param name="ctx">The input context.</param>
-    public void OnSelectSlot9(InputAction.CallbackContext ctx) => this.OnSelectSlot(ctx, 9);
-
-    private void OnSelectSlot(InputAction.CallbackContext ctx, int index)
+    public void OnSelectSlot(InputAction.CallbackContext ctx)
     {
         if (!ctx.performed)
         {
             return;
         }
 
+        int index = (int)ctx.ReadValue<float>(); // or from binding
+        Debug.Log("Selected slot " + index);
         this.SelectSlot(index);
     }
 
@@ -193,5 +167,18 @@ public class BuilderInputHandler : MonoBehaviour
     private void SelectSlot(int index)
     {
         // TODO: Slot selection with both entities and tiles.
+    }
+
+    /// <summary>
+    /// Checks if we should pan, which is either:
+    /// * middleMouse + drag
+    /// * drag tool + click + drag.
+    /// </summary>
+    /// <returns>A value indicating whether we should pan.</returns>
+    private bool ShouldPan()
+    {
+        Debug.Log("Primary = " + this.isPrimaryHeld);
+        Debug.Log("Middle = " + this.isMiddleMouseHeld);
+        return this.isMiddleMouseHeld || (this.isPrimaryHeld && this.mapEditorManager.CurrentTool == EditorTool.Drag);
     }
 }

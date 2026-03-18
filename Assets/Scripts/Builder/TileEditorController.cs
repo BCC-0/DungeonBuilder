@@ -32,58 +32,32 @@ public class TileEditorController : MonoBehaviour
 
     /// <summary>
     /// Updates the current pointer position (screen-to-world) for editing tiles.
-    /// Hook to PlayerInput Point action.
     /// </summary>
     /// <param name="worldPos">The world position of the pointer.</param>
     public void OnPointerMoved(Vector3 worldPos)
     {
         this.currentPos = worldPos;
-
-        if (this.holding)
-        {
-            this.ApplyTool();
-        }
     }
 
     /// <summary>
-    /// Called when the primary button/touch is pressed.
-    /// Starts the brush or eraser action.
-    /// Hook to PlayerInput Primary action started event.
+    /// Called on primary button pressed when in the background layer.
+    /// Places or erases entities depending on the current tool.
     /// </summary>
     public void OnPrimaryDown()
     {
-        if (MapEditorManager.Instance.CurrentLayer != EditLayer.Background)
-        {
-            return;
-        }
-
-        this.holding = true;
-        this.ApplyTool();
+        // TODO
     }
 
     /// <summary>
-    /// Called when the primary button/touch is released.
-    /// Stops the brush or eraser action.
-    /// Hook to PlayerInput Primary action canceled event.
+    /// // TODO: Add primary up.
     /// </summary>
     public void OnPrimaryUp()
     {
-        this.holding = false;
+        //TODO
     }
 
     private void ApplyTool()
     {
-        Vector3Int cell = this.tilemap.WorldToCell(this.currentPos);
-        var tool = MapEditorManager.Instance.CurrentTool;
-
-        if (tool == EditorTool.Brush && this.SelectedTile != null)
-        {
-            this.tilemap.SetTile(cell, this.SelectedTile);
-        }
-
-        if (tool == EditorTool.Eraser)
-        {
-            this.tilemap.SetTile(cell, null);
-        }
+        // TODO
     }
 }

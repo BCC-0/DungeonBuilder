@@ -162,7 +162,8 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 47208769}
   m_Father: {fileID: 1554308927}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &35717380
@@ -179,6 +180,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   zoomSpeed: 0.1
   panSpeed: 0.01
+  cam: {fileID: 47208768}
 --- !u!1 &47208766
 GameObject:
   m_ObjectHideFlags: 0
@@ -190,6 +192,7 @@ GameObject:
   - component: {fileID: 47208769}
   - component: {fileID: 47208768}
   - component: {fileID: 47208767}
+  - component: {fileID: 47208770}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -264,13 +267,57 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 47208766}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 35717379}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &47208770
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 47208766}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_RenderShadows: 1
+  m_RequiresDepthTextureOption: 2
+  m_RequiresOpaqueTextureOption: 2
+  m_CameraType: 0
+  m_Cameras: []
+  m_RendererIndex: -1
+  m_VolumeLayerMask:
+    serializedVersion: 2
+    m_Bits: 1
+  m_VolumeTrigger: {fileID: 0}
+  m_VolumeFrameworkUpdateModeOption: 2
+  m_RenderPostProcessing: 0
+  m_Antialiasing: 0
+  m_AntialiasingQuality: 2
+  m_StopNaN: 0
+  m_Dithering: 0
+  m_ClearDepth: 1
+  m_AllowXRRendering: 1
+  m_AllowHDROutput: 1
+  m_UseScreenCoordOverride: 0
+  m_ScreenSizeOverride: {x: 0, y: 0, z: 0, w: 0}
+  m_ScreenCoordScaleBias: {x: 0, y: 0, z: 0, w: 0}
+  m_RequiresDepthTexture: 0
+  m_RequiresColorTexture: 0
+  m_Version: 2
+  m_TaaSettings:
+    m_Quality: 3
+    m_FrameInfluence: 0.1
+    m_JitterScale: 1
+    m_MipBias: 0
+    m_VarianceClampScale: 0.9
+    m_ContrastAdaptiveSharpening: 0
 --- !u!1 &65852343
 GameObject:
   m_ObjectHideFlags: 0
@@ -1452,166 +1499,6 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 2019441081}
         m_TargetAssemblyTypeName: BuilderInputHandler, Assembly-CSharp
-        m_MethodName: OnSelectSlot1
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-    m_ActionId: 2936d058-7ac2-4ada-89b5-7c6bcd2c20b7
-    m_ActionName: 'Builder/Slot1[/Keyboard/1]'
-  - m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 2019441081}
-        m_TargetAssemblyTypeName: BuilderInputHandler, Assembly-CSharp
-        m_MethodName: OnSelectSlot2
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-    m_ActionId: fdfdc037-7806-4ebf-8fd7-b2054c1ae3eb
-    m_ActionName: 'Builder/Slot2[/Keyboard/2]'
-  - m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 2019441081}
-        m_TargetAssemblyTypeName: BuilderInputHandler, Assembly-CSharp
-        m_MethodName: OnSelectSlot3
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-    m_ActionId: ecfb32ae-4901-4127-9ce3-0c95cebbd102
-    m_ActionName: 'Builder/Slot3[/Keyboard/3]'
-  - m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 2019441081}
-        m_TargetAssemblyTypeName: BuilderInputHandler, Assembly-CSharp
-        m_MethodName: OnSelectSlot4
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-    m_ActionId: 5255c859-2f94-468b-bc3a-6753b692df2c
-    m_ActionName: 'Builder/Slot4[/Keyboard/4]'
-  - m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 2019441081}
-        m_TargetAssemblyTypeName: BuilderInputHandler, Assembly-CSharp
-        m_MethodName: OnSelectSlot5
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-    m_ActionId: 082f071c-72f3-4b40-a98c-54cc1162fe9b
-    m_ActionName: 'Builder/Slot5[/Keyboard/5]'
-  - m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 2019441081}
-        m_TargetAssemblyTypeName: BuilderInputHandler, Assembly-CSharp
-        m_MethodName: OnSelectSlot6
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-    m_ActionId: b58623f9-623a-445e-a77b-8b9215d38cb0
-    m_ActionName: 'Builder/Slot6[/Keyboard/6]'
-  - m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 2019441081}
-        m_TargetAssemblyTypeName: BuilderInputHandler, Assembly-CSharp
-        m_MethodName: OnSelectSlot7
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-    m_ActionId: fce9c68d-825e-40c0-a132-c8470b7aac9f
-    m_ActionName: 'Builder/Slot7[/Keyboard/7]'
-  - m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 2019441081}
-        m_TargetAssemblyTypeName: BuilderInputHandler, Assembly-CSharp
-        m_MethodName: OnSelectSlot8
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-    m_ActionId: 72a33bf0-ce2e-4878-b799-1ad6173fbae4
-    m_ActionName: 'Builder/Slot8[/Keyboard/8]'
-  - m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 2019441081}
-        m_TargetAssemblyTypeName: BuilderInputHandler, Assembly-CSharp
-        m_MethodName: OnSelectSlot9
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-    m_ActionId: 661524a4-7520-4ef7-9f4d-eb8239bbfad2
-    m_ActionName: 'Builder/Slot9[/Keyboard/9]'
-  - m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 2019441081}
-        m_TargetAssemblyTypeName: BuilderInputHandler, Assembly-CSharp
-        m_MethodName: OnSelectSlot0
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-    m_ActionId: cece0343-d204-4c12-a24c-fec6f7703ba3
-    m_ActionName: 'Builder/Slot0[/Keyboard/0]'
-  - m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 2019441081}
-        m_TargetAssemblyTypeName: BuilderInputHandler, Assembly-CSharp
         m_MethodName: OnDelete
         m_Mode: 0
         m_Arguments:
@@ -1624,6 +1511,22 @@ MonoBehaviour:
         m_CallState: 2
     m_ActionId: ef5eea16-6e20-4322-999b-9949b127c9e0
     m_ActionName: Builder/Delete
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 2019441081}
+        m_TargetAssemblyTypeName: BuilderInputHandler, Assembly-CSharp
+        m_MethodName: OnSelectSlot
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: 14b8bdb3-74f8-4776-857f-a361b36fdee9
+    m_ActionName: 'Builder/SelectSlot[/Keyboard/1,/Keyboard/2,/Keyboard/3,/Keyboard/4,/Keyboard/5,/Keyboard/6,/Keyboard/7,/Keyboard/8,/Keyboard/9,/Keyboard/0]'
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: 
   m_DefaultActionMap: Builder
@@ -1642,6 +1545,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cam: {fileID: 47208768}
+  mapEditorManager: {fileID: 1740556538}
   tileEditor: {fileID: 141539469}
   entityEditor: {fileID: 142968689}
   cameraController: {fileID: 35717380}
@@ -1724,7 +1628,6 @@ CanvasRenderer:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 47208769}
   - {fileID: 1554308927}
   - {fileID: 907279049}
   - {fileID: 1333399706}

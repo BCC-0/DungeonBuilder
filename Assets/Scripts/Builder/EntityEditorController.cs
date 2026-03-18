@@ -6,7 +6,8 @@
 /// </summary>
 public class EntityEditorController : MonoBehaviour
 {
-    [SerializeField] private GameObject selectedPrefab;
+    [SerializeField]
+    private GameObject selectedPrefab;
     private Vector3 currentPos;
 
     /// <summary>
@@ -20,7 +21,6 @@ public class EntityEditorController : MonoBehaviour
 
     /// <summary>
     /// Updates the current pointer position (screen-to-world) for placing entities.
-    /// Hook to PlayerInput Point action.
     /// </summary>
     /// <param name="worldPos">The world position of the pointer.</param>
     public void OnPointerMoved(Vector3 worldPos)
@@ -29,37 +29,41 @@ public class EntityEditorController : MonoBehaviour
     }
 
     /// <summary>
-    /// Called when the primary button/touch is pressed.
+    /// // TODO: Add primary up.
+    /// </summary>
+    public void OnPrimaryUp()
+    {
+        Debug.Log("Primary up entity editor.");
+        // TODO: If in placement mode:
+        // TODO: Stop placing entities when dragging.
+    }
+
+    /// <summary>
+    /// Called on primary button pressed when in the foreground layer.
     /// Places or erases entities depending on the current tool.
-    /// Hook to PlayerInput Primary action started event.
     /// </summary>
     public void OnPrimaryDown()
     {
-        if (MapEditorManager.Instance.CurrentLayer != EditLayer.Foreground) return;
+        Debug.Log("Primary down entity editor.");
+        // TODO: If in placement mode:
+        // Place one entity or multiple when dragging.
 
-        var tool = MapEditorManager.Instance.CurrentTool;
+        // TODO: If in erasing mode:
+        // Erase one entity or multiple when dragging.
 
-        if (tool == EditorTool.Brush && this.SelectedPrefab != null)
-        {
-            Instantiate(this.SelectedPrefab, this.currentPos, Quaternion.identity);
-        }
+        // TODO: If in editing mode:
+        // Edit the entity we are currently pointing at (if any).
+        // If this + shift, select multiple enemies and allow multi-edits.
 
-        if (tool == EditorTool.Eraser)
-        {
-            this.TryErase();
-        }
     }
 
     /// <summary>
     /// Deletes all selected entities.
-    /// Hook to PlayerInput Delete action.
     /// </summary>
     public void OnDelete()
     {
-        foreach (var entity in MapEditorManager.Instance.SelectedEntities)
-        {
-            Destroy(entity.gameObject);
-        }
+        Debug.Log("Deleting entities");
+        // TODO
     }
 
     /// <summary>
@@ -67,16 +71,7 @@ public class EntityEditorController : MonoBehaviour
     /// </summary>
     private void TryErase()
     {
-        RaycastHit2D hit = Physics2D.Raycast(this.currentPos, Vector2.zero);
-        if (hit.collider == null)
-        {
-            return;
-        }
-
-        var entity = hit.collider.GetComponent<SaveableEntity>();
-        if (entity != null)
-        {
-            Destroy(entity.gameObject);
-        }
+        Debug.Log("Deleting 1 entity");
+        // TODO
     }
 }
