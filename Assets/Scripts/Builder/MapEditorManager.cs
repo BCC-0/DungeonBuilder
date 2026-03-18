@@ -114,5 +114,6 @@ public class MapEditorManager : MonoBehaviour
     private void Awake()
     {
         Instance = this;
+        this.CurrentTool = EditorTool.Brush;
     }
 }

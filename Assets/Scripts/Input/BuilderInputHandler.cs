@@ -101,8 +101,10 @@ public class BuilderInputHandler : MonoBehaviour
             return;
         }
 
-        Vector2 delta = ctx.ReadValue<Vector2>();
-        this.cameraController.OnZoom(delta.y);
+        float delta = ctx.ReadValue<float>();
+        Vector2 pointerPos = Mouse.current.position.ReadValue();
+
+        this.cameraController.OnZoom(delta * 5f, pointerPos);
     }
 
     /// <summary>
@@ -144,6 +146,25 @@ public class BuilderInputHandler : MonoBehaviour
     }
 
     /// <summary>
+    /// Moves the camera based on WASD / arrow keys input.
+    /// </summary>
+    /// <param name="ctx">The input context.</param>
+    public void OnMoveCamera(InputAction.CallbackContext ctx)
+    {
+        // Read input vector (normalized in digital mode)
+        Vector2 cameraMoveDirection = ctx.ReadValue<Vector2>();
+
+        // Optional: set to zero on cancel
+        if (ctx.canceled)
+        {
+            cameraMoveDirection = Vector2.zero;
+        }
+
+        // Pass the direction to camera controller
+        this.cameraController.OnMove(cameraMoveDirection);
+    }
+
+    /// <summary>
     /// Selects a slot based on bound button pressed.
     /// </summary>
     /// <param name="ctx">The input context.</param>
@@ -177,8 +198,6 @@ public class BuilderInputHandler : MonoBehaviour
     /// <returns>A value indicating whether we should pan.</returns>
     private bool ShouldPan()
     {
-        Debug.Log("Primary = " + this.isPrimaryHeld);
-        Debug.Log("Middle = " + this.isMiddleMouseHeld);
         return this.isMiddleMouseHeld || (this.isPrimaryHeld && this.mapEditorManager.CurrentTool == EditorTool.Drag);
     }
 }
