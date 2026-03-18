@@ -7,6 +7,10 @@ using UnityEngine.Windows;
 /// </summary>
 public class CameraController : MonoBehaviour
 {
+    private const float MinCameraSize = 3f;
+    private const float DefaultCameraSize = 5f;
+    private const float MaxCameraSize = 25f;
+
     [SerializeField]
     private float zoomSpeed = 0.1f;
     [SerializeField]
@@ -15,27 +19,40 @@ public class CameraController : MonoBehaviour
     private float moveSpeed = 10f;
     [SerializeField]
     private Camera cam;
-
     [SerializeField]
     private Slider zoomSlider;
+    [SerializeField]
+    private float inertiaDamping = 6f;
+    [SerializeField]
+    private float inertiaThreshold = 0.01f;
+
+    private Vector3 inertiaVelocity;
+    private bool isPanning;
 
     private Vector2 cameraMoveDirection;
-
-    private const float minCameraSize = 3f;
-    private const float defaultCameraSize = 5f;
-    private const float maxCameraSize = 25f;
 
     /// <summary>
     /// Called by the Pan action in the InputAction map.
     /// Always pans the camera by the given delta.
     /// </summary>
     /// <param name="delta">The movement delta.</param>
-    public void Pan(Vector2 delta)
+    /// <param name="useInertia">When we use inertia, after stopping panning the movement will smoothly stop instead of instantly.</param>
+    public void Pan(Vector2 delta, bool useInertia = false)
     {
         float scale = this.cam.orthographicSize * this.panSpeed;
         Vector3 move = new Vector3(delta.x, delta.y, 0) * scale;
 
         this.transform.position -= move;
+
+        if (useInertia)
+        {
+            this.inertiaVelocity = (-move) / Time.deltaTime;
+            this.isPanning = true;
+        }
+        else
+        {
+            this.inertiaVelocity = Vector3.zero;
+        }
     }
 
     /// <summary>
@@ -47,11 +64,17 @@ public class CameraController : MonoBehaviour
     {
         Vector3 mouseBefore = this.cam.ScreenToWorldPoint(new Vector3(pointerScreenPosition.x, pointerScreenPosition.y, this.cam.nearClipPlane));
 
-        this.cam.orthographicSize -= amount * this.zoomSpeed;
-        this.cam.orthographicSize = Mathf.Clamp(this.cam.orthographicSize, minCameraSize, maxCameraSize);
+        float zoomFactor = this.cam.orthographicSize * 0.1f;
+        this.cam.orthographicSize -= amount * this.zoomSpeed * zoomFactor;
 
-        // Also update UI to keep it consistent.
-        this.zoomSlider.value = this.MapCameraSizeToSlider(this.cam.orthographicSize);
+        this.cam.orthographicSize = Mathf.Clamp(this.cam.orthographicSize, MinCameraSize, MaxCameraSize);
+
+        float newSlider = this.MapCameraSizeToSlider(this.cam.orthographicSize);
+
+        if (Mathf.Abs(this.zoomSlider.value - newSlider) > 0.001f)
+        {
+            this.zoomSlider.value = newSlider;
+        }
 
         Vector3 mouseAfter = this.cam.ScreenToWorldPoint(new Vector3(pointerScreenPosition.x, pointerScreenPosition.y, this.cam.nearClipPlane));
 
@@ -86,7 +109,6 @@ public class CameraController : MonoBehaviour
 
     private void Start()
     {
-        // Set initial slider value to camera size
         this.zoomSlider.value = this.MapCameraSizeToSlider(this.cam.orthographicSize);
     }
 
@@ -95,26 +117,53 @@ public class CameraController : MonoBehaviour
         if (sliderValue < 0.5f)
         {
             float t = sliderValue / 0.5f;
-            return Mathf.Lerp(minCameraSize, defaultCameraSize, t * t); // quadratic for slower growth
+            return Mathf.Lerp(MinCameraSize, DefaultCameraSize, t * t);
         }
         else
         {
             float t = (sliderValue - 0.5f) / 0.5f;
-            return Mathf.Lerp(defaultCameraSize, maxCameraSize, t * t * t); // cubic for faster growth
+            return Mathf.Lerp(DefaultCameraSize, MaxCameraSize, t * t * t);
         }
     }
 
     private float MapCameraSizeToSlider(float cameraSize)
     {
-        if (cameraSize < defaultCameraSize)
+        if (cameraSize < DefaultCameraSize)
         {
-            float t = (cameraSize - minCameraSize) / (defaultCameraSize - minCameraSize);
-            return Mathf.Sqrt(t) * 0.5f; // inverse of quadratic
+            float t = (cameraSize - MinCameraSize) / (DefaultCameraSize - MinCameraSize);
+            return Mathf.Sqrt(t) * 0.5f;
         }
         else
         {
-            float t = (cameraSize - defaultCameraSize) / (maxCameraSize - defaultCameraSize);
-            return (Mathf.Pow(t, 1f / 3f) * 0.5f) + 0.5f; // inverse of cubic
+            float t = (cameraSize - DefaultCameraSize) / (MaxCameraSize - DefaultCameraSize);
+            return (Mathf.Pow(t, 1f / 3f) * 0.5f) + 0.5f;
         }
+    }
+
+    private void Update()
+    {
+        this.ApplyInertia();
+    }
+
+    private void ApplyInertia()
+    {
+        if (this.isPanning)
+        {
+            this.isPanning = false;
+            return;
+        }
+
+        if (this.inertiaVelocity.magnitude < this.inertiaThreshold)
+        {
+            this.inertiaVelocity = Vector3.zero;
+            return;
+        }
+
+        this.transform.position += this.inertiaVelocity * Time.deltaTime;
+
+        this.inertiaVelocity = Vector3.Lerp(
+            this.inertiaVelocity,
+            Vector3.zero,
+            this.inertiaDamping * Time.deltaTime);
     }
 }

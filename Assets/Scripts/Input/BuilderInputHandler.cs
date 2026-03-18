@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿using System.Linq;
+using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
 /// <summary>
@@ -6,6 +8,8 @@ using UnityEngine.InputSystem;
 /// </summary>
 public class BuilderInputHandler : MonoBehaviour
 {
+    private static bool isPointerOverUI;
+
     [SerializeField]
     private Camera cam;
     [SerializeField]
@@ -16,9 +20,15 @@ public class BuilderInputHandler : MonoBehaviour
     private EntityEditorController entityEditor;
     [SerializeField]
     private CameraController cameraController;
+    [SerializeField]
+    private float holdThreshold = 0.2f;
 
     private bool isMiddleMouseHeld;
     private bool isPrimaryHeld;
+
+    private bool isTouching;
+    private float touchHoldTimer;
+    private float lastPinchDistance;
 
     /// <summary>
     /// Called when the pointer is moved.
@@ -47,6 +57,11 @@ public class BuilderInputHandler : MonoBehaviour
     /// <param name="ctx">The input context.</param>
     public void OnPrimary(InputAction.CallbackContext ctx)
     {
+        if (isPointerOverUI)
+        {
+            return;
+        }
+
         if (ctx.started)
         {
             this.isPrimaryHeld = true;
@@ -198,6 +213,86 @@ public class BuilderInputHandler : MonoBehaviour
     /// <returns>A value indicating whether we should pan.</returns>
     private bool ShouldPan()
     {
-        return this.isMiddleMouseHeld || (this.isPrimaryHeld && this.mapEditorManager.CurrentTool == EditorTool.Drag);
+        if (isPointerOverUI)
+        {
+            return false;
+        }
+
+        return this.isMiddleMouseHeld ||
+               (this.isPrimaryHeld && this.mapEditorManager.CurrentTool == EditorTool.Drag);
+    }
+
+    private void Update()
+    {
+        isPointerOverUI = EventSystem.current != null &&
+                          EventSystem.current.IsPointerOverGameObject();
+        this.HandleTouch();
+    }
+
+    private void HandleTouch()
+    {
+        if (Touchscreen.current == null)
+        {
+            return;
+        }
+
+        var touches = Touchscreen.current.touches;
+        var activeTouches = touches.Where(t => t.isInProgress).ToArray();
+
+        if (activeTouches.Length == 0)
+        {
+            this.isTouching = false;
+            this.touchHoldTimer = 0;
+            this.lastPinchDistance = 0;
+            return;
+        }
+
+        if (activeTouches.Length == 1)
+        {
+            var touch = activeTouches[0];
+
+            Vector2 delta = touch.delta.ReadValue();
+
+            if (!this.isTouching)
+            {
+                this.isTouching = true;
+                this.touchHoldTimer = 0;
+            }
+
+            this.touchHoldTimer += Time.deltaTime;
+
+            bool isDragTool = this.mapEditorManager.CurrentTool == EditorTool.Drag;
+            bool canPan = isDragTool || this.touchHoldTimer > this.holdThreshold;
+
+            if (!isPointerOverUI && canPan)
+            {
+                this.cameraController.Pan(delta);
+            }
+        }
+
+        if (activeTouches.Length >= 2)
+        {
+            var t1 = activeTouches[0];
+            var t2 = activeTouches[1];
+
+            Vector2 p1 = t1.position.ReadValue();
+            Vector2 p2 = t2.position.ReadValue();
+
+            float currentDistance = Vector2.Distance(p1, p2);
+
+            if (this.lastPinchDistance > 0)
+            {
+                float delta = currentDistance - this.lastPinchDistance;
+                Vector2 center = (p1 + p2) * 0.5f;
+
+                this.cameraController.OnZoom(delta * 0.01f, center);
+            }
+
+            this.lastPinchDistance = currentDistance;
+        }
+        else
+        {
+            this.lastPinchDistance = 0;
+        }
     }
 }

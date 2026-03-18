@@ -183,6 +183,8 @@ MonoBehaviour:
   moveSpeed: 5
   cam: {fileID: 47208768}
   zoomSlider: {fileID: 1446076483}
+  inertiaDamping: 6
+  inertiaThreshold: 0.01
 --- !u!1 &47208766
 GameObject:
   m_ObjectHideFlags: 0
@@ -1349,7 +1351,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -900, y: 0}
+  m_AnchoredPosition: {x: -899.99994, y: 0}
   m_SizeDelta: {x: -1800, y: -360}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &855735318
@@ -2717,6 +2719,7 @@ MonoBehaviour:
   tileEditor: {fileID: 141539469}
   entityEditor: {fileID: 142968689}
   cameraController: {fileID: 35717380}
+  holdThreshold: 0.2
 --- !u!1 &2057802365
 GameObject:
   m_ObjectHideFlags: 0
