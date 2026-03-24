@@ -22,6 +22,10 @@ public class BuilderInputHandler : MonoBehaviour
     private CameraController cameraController;
     [SerializeField]
     private float holdThreshold = 0.2f;
+    [SerializeField]
+    private float mobileZoomSpeed = 0.2f;
+    [SerializeField]
+    private float mobilePanSpeed = 0.2f;
 
     private bool isMiddleMouseHeld;
     private bool isPrimaryHeld;
@@ -239,6 +243,7 @@ public class BuilderInputHandler : MonoBehaviour
         var touches = Touchscreen.current.touches;
         var activeTouches = touches.Where(t => t.isInProgress).ToArray();
 
+        // Remove all possible actions when not touching.
         if (activeTouches.Length == 0)
         {
             this.isTouching = false;
@@ -247,6 +252,7 @@ public class BuilderInputHandler : MonoBehaviour
             return;
         }
 
+        // For dragging or placing.
         if (activeTouches.Length == 1)
         {
             var touch = activeTouches[0];
@@ -266,10 +272,11 @@ public class BuilderInputHandler : MonoBehaviour
 
             if (!isPointerOverUI && canPan)
             {
-                this.cameraController.Pan(delta);
+                this.cameraController.Pan(delta * this.mobilePanSpeed);
             }
         }
 
+        // For zooming.
         if (activeTouches.Length >= 2)
         {
             var t1 = activeTouches[0];
@@ -285,7 +292,7 @@ public class BuilderInputHandler : MonoBehaviour
                 float delta = currentDistance - this.lastPinchDistance;
                 Vector2 center = (p1 + p2) * 0.5f;
 
-                this.cameraController.OnZoom(delta * 0.01f, center);
+                this.cameraController.OnZoom(delta * this.mobileZoomSpeed, center);
             }
 
             this.lastPinchDistance = currentDistance;

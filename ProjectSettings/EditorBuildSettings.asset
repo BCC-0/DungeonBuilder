@@ -6,9 +6,11 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Scenes/BuilderMode.unity
+    guid: 2c94dc5b2995e7f4c95dc6a1e556e1a6
+  - enabled: 1
     path: Assets/Scenes/CrawlerMode.unity
     guid: 8c9cfa26abfee488c85f1582747f6a02
   m_configObjects:
     com.unity.input.settings: {fileID: 11400000, guid: 9c547684af10a3b44bd83b92cbfd8a4b, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
-  m_UseUCBPForAssetBundles: 0

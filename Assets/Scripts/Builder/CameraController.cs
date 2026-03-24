@@ -11,6 +11,10 @@ public class CameraController : MonoBehaviour
     private const float DefaultCameraSize = 5f;
     private const float MaxCameraSize = 25f;
 
+    private float[] snapSliderValues = { 0f, 0.25f, 0.5f, 0.75f, 1f };
+
+    private bool isScrolling = false;
+
     [SerializeField]
     private float zoomSpeed = 0.1f;
     [SerializeField]
@@ -25,6 +29,12 @@ public class CameraController : MonoBehaviour
     private float inertiaDamping = 6f;
     [SerializeField]
     private float inertiaThreshold = 0.01f;
+    [SerializeField]
+    private float zoomThreshold = 0.01f;
+    [SerializeField]
+    private float snapThreshold = 0.02f;
+    [SerializeField]
+    private float scrollSnapDelay = 0.2f;
 
     private Vector3 inertiaVelocity;
     private bool isPanning;
@@ -62,22 +72,27 @@ public class CameraController : MonoBehaviour
     /// <param name="pointerScreenPosition">The position of the pointer on screen.</param>
     public void OnZoom(float amount, Vector2 pointerScreenPosition)
     {
+        if (Mathf.Abs(amount) < this.zoomThreshold)
+        {
+            Debug.Log(amount);
+
+            // Stopped zooming, can now snap.
+            this.isScrolling = false;
+            this.OnSliderChanged(this.zoomSlider.value);
+            return;
+        }
+
+        this.isScrolling = true;
         Vector3 mouseBefore = this.cam.ScreenToWorldPoint(new Vector3(pointerScreenPosition.x, pointerScreenPosition.y, this.cam.nearClipPlane));
 
-        float zoomFactor = this.cam.orthographicSize * 0.1f;
-        this.cam.orthographicSize -= amount * this.zoomSpeed * zoomFactor;
-
+        float zoomAmount = amount * this.zoomSpeed * Time.deltaTime * 100f;
+        this.cam.orthographicSize = Mathf.Clamp(this.cam.orthographicSize - zoomAmount, MinCameraSize, MaxCameraSize);
         this.cam.orthographicSize = Mathf.Clamp(this.cam.orthographicSize, MinCameraSize, MaxCameraSize);
 
         float newSlider = this.MapCameraSizeToSlider(this.cam.orthographicSize);
-
-        if (Mathf.Abs(this.zoomSlider.value - newSlider) > 0.001f)
-        {
-            this.zoomSlider.value = newSlider;
-        }
+        this.zoomSlider.value = newSlider;
 
         Vector3 mouseAfter = this.cam.ScreenToWorldPoint(new Vector3(pointerScreenPosition.x, pointerScreenPosition.y, this.cam.nearClipPlane));
-
         Vector3 diff = mouseBefore - mouseAfter;
         this.transform.position += diff;
     }
@@ -92,12 +107,15 @@ public class CameraController : MonoBehaviour
     }
 
     /// <summary>
-    /// Sets camera size directly from slider value.
+    /// Called when the zoom slider has changed value.
     /// </summary>
-    /// <param name="sliderValue">Slider value</param>
-    public void SetCameraSizeFromSlider(float sliderValue)
+    /// <param name="sliderValue">The new value of the slider.</param>
+    public void OnSliderChanged(float sliderValue)
     {
-        this.cam.orthographicSize = this.MapSliderToCameraSize(sliderValue);
+        float snappedSliderValue = this.isScrolling ? sliderValue : this.SnapSliderValue(sliderValue);
+        this.zoomSlider.value = snappedSliderValue;
+
+        this.cam.orthographicSize = this.MapSliderToCameraSize(snappedSliderValue);
     }
 
     private void FixedUpdate()
@@ -147,12 +165,6 @@ public class CameraController : MonoBehaviour
 
     private void ApplyInertia()
     {
-        if (this.isPanning)
-        {
-            this.isPanning = false;
-            return;
-        }
-
         if (this.inertiaVelocity.magnitude < this.inertiaThreshold)
         {
             this.inertiaVelocity = Vector3.zero;
@@ -165,5 +177,24 @@ public class CameraController : MonoBehaviour
             this.inertiaVelocity,
             Vector3.zero,
             this.inertiaDamping * Time.deltaTime);
+    }
+
+    private float SnapSliderValue(float sliderValue)
+    {
+        float closest = sliderValue;
+        float minDistance = float.MaxValue;
+
+        foreach (float snapValue in this.snapSliderValues)
+        {
+            float distance = Mathf.Abs(sliderValue - snapValue);
+            float scaledThreshold = this.snapThreshold * 2;
+            if (distance < scaledThreshold && distance < minDistance)
+            {
+                closest = snapValue;
+                minDistance = distance;
+            }
+        }
+
+        return closest;
     }
 }
