@@ -1,6 +1,5 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.Windows;
 
 /// <summary>
 /// Handles camera movements (zooming and panning) in builder mode.
@@ -12,8 +11,6 @@ public class CameraController : MonoBehaviour
     private const float MaxCameraSize = 25f;
 
     private float[] snapSliderValues = { 0f, 0.25f, 0.5f, 0.75f, 1f };
-
-    private bool isScrolling = false;
 
     [SerializeField]
     private float zoomSpeed = 0.1f;
@@ -30,16 +27,11 @@ public class CameraController : MonoBehaviour
     [SerializeField]
     private float inertiaThreshold = 0.01f;
     [SerializeField]
-    private float zoomThreshold = 0.01f;
-    [SerializeField]
     private float snapThreshold = 0.02f;
-    [SerializeField]
-    private float scrollSnapDelay = 0.2f;
 
     private Vector3 inertiaVelocity;
-    private bool isPanning;
-
     private Vector2 cameraMoveDirection;
+    private bool isZooming = false;
 
     /// <summary>
     /// Called by the Pan action in the InputAction map.
@@ -57,7 +49,6 @@ public class CameraController : MonoBehaviour
         if (useInertia)
         {
             this.inertiaVelocity = (-move) / Time.deltaTime;
-            this.isPanning = true;
         }
         else
         {
@@ -72,29 +63,18 @@ public class CameraController : MonoBehaviour
     /// <param name="pointerScreenPosition">The position of the pointer on screen.</param>
     public void OnZoom(float amount, Vector2 pointerScreenPosition)
     {
-        if (Mathf.Abs(amount) < this.zoomThreshold)
-        {
-            Debug.Log(amount);
-
-            // Stopped zooming, can now snap.
-            this.isScrolling = false;
-            this.OnSliderChanged(this.zoomSlider.value);
-            return;
-        }
-
-        this.isScrolling = true;
         Vector3 mouseBefore = this.cam.ScreenToWorldPoint(new Vector3(pointerScreenPosition.x, pointerScreenPosition.y, this.cam.nearClipPlane));
 
-        float zoomAmount = amount * this.zoomSpeed * Time.deltaTime * 100f;
+        float zoomAmount = amount * this.zoomSpeed * Time.deltaTime * 100f * (this.cam.orthographicSize / DefaultCameraSize);
         this.cam.orthographicSize = Mathf.Clamp(this.cam.orthographicSize - zoomAmount, MinCameraSize, MaxCameraSize);
-        this.cam.orthographicSize = Mathf.Clamp(this.cam.orthographicSize, MinCameraSize, MaxCameraSize);
 
         float newSlider = this.MapCameraSizeToSlider(this.cam.orthographicSize);
-        this.zoomSlider.value = newSlider;
+        this.isZooming = true;
+        this.zoomSlider.value = this.MapCameraSizeToSlider(this.cam.orthographicSize);
+        this.isZooming = false;
 
         Vector3 mouseAfter = this.cam.ScreenToWorldPoint(new Vector3(pointerScreenPosition.x, pointerScreenPosition.y, this.cam.nearClipPlane));
-        Vector3 diff = mouseBefore - mouseAfter;
-        this.transform.position += diff;
+        this.transform.position += mouseBefore - mouseAfter;
     }
 
     /// <summary>
@@ -112,9 +92,13 @@ public class CameraController : MonoBehaviour
     /// <param name="sliderValue">The new value of the slider.</param>
     public void OnSliderChanged(float sliderValue)
     {
-        float snappedSliderValue = this.isScrolling ? sliderValue : this.SnapSliderValue(sliderValue);
-        this.zoomSlider.value = snappedSliderValue;
+        if (this.isZooming)
+        {
+            return;
+        }
 
+        float snappedSliderValue = this.SnapSliderValue(sliderValue);
+        this.zoomSlider.value = snappedSliderValue;
         this.cam.orthographicSize = this.MapSliderToCameraSize(snappedSliderValue);
     }
 
