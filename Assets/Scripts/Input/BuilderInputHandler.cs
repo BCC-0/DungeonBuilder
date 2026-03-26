@@ -1,4 +1,6 @@
-﻿using System.Linq;
+﻿using System.Collections;
+using System.Linq;
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -26,6 +28,10 @@ public class BuilderInputHandler : MonoBehaviour
     private float mobileZoomSpeed = 0.2f;
     [SerializeField]
     private float mobilePanSpeed = 0.2f;
+    [SerializeField]
+    private RectTransform ripplePrefab;
+    [SerializeField]
+    private Canvas uiCanvas;
 
     private bool isMiddleMouseHeld;
     private bool isPrimaryHeld;
@@ -33,6 +39,12 @@ public class BuilderInputHandler : MonoBehaviour
     private bool isTouching;
     private float touchHoldTimer;
     private float lastPinchDistance;
+
+    private bool isTouchPanningOverride;
+    private Vector2 touchStartPosition;
+    private Coroutine rippleCoroutine;
+    private Sequence currentRippleSequence;
+    private RectTransform currentRipple;
 
     /// <summary>
     /// Called when the pointer is moved.
@@ -92,6 +104,11 @@ public class BuilderInputHandler : MonoBehaviour
             {
                 this.entityEditor.OnPrimaryUp();
             }
+
+            if (this.mapEditorManager.CurrentTool == EditorTool.Drag)
+            {
+                this.cameraController.EndPan();
+            }
         }
     }
 
@@ -141,6 +158,7 @@ public class BuilderInputHandler : MonoBehaviour
         if (ctx.canceled)
         {
             this.isMiddleMouseHeld = false;
+            this.HandleCameraPan(Vector2.zero, false);
         }
     }
 
@@ -156,11 +174,11 @@ public class BuilderInputHandler : MonoBehaviour
             return;
         }
 
-        Vector2 delta = ctx.ReadValue<Vector2>();
+        Vector2 pointerPos = Mouse.current.position.ReadValue();
 
         if (this.ShouldPan())
         {
-            this.cameraController.Pan(delta);
+            this.HandleCameraPan(pointerPos, true);
         }
     }
 
@@ -200,6 +218,20 @@ public class BuilderInputHandler : MonoBehaviour
     }
 
     /// <summary>
+    /// Selects the next tool.
+    /// </summary>
+    /// <param name="ctx">The input context.</param>
+    public void OnSwitchTool(InputAction.CallbackContext ctx)
+    {
+        if (!ctx.performed)
+        {
+            return;
+        }
+
+        this.mapEditorManager.SelectNextTool();
+    }
+
+    /// <summary>
     /// Called when the player tries to select a slot (with entities or tiles).
     /// Finds the difference in pointer position, is used to move the camera.
     /// </summary>
@@ -217,7 +249,7 @@ public class BuilderInputHandler : MonoBehaviour
     /// <returns>A value indicating whether we should pan.</returns>
     private bool ShouldPan()
     {
-        if (isPointerOverUI)
+        if (isPointerOverUI && !this.cameraController.IsPanning)
         {
             return false;
         }
@@ -243,40 +275,121 @@ public class BuilderInputHandler : MonoBehaviour
         var touches = Touchscreen.current.touches;
         var activeTouches = touches.Where(t => t.isInProgress).ToArray();
 
-        // Remove all possible actions when not touching.
         if (activeTouches.Length == 0)
         {
+            // Reset all touch states
             this.isTouching = false;
             this.touchHoldTimer = 0;
             this.lastPinchDistance = 0;
+            this.isTouchPanningOverride = false;
+            this.HandleCameraPan(Vector2.zero, false);
+
+            // Cancel ripple if any
+            if (this.rippleCoroutine != null)
+            {
+                this.StopCoroutine(this.rippleCoroutine);
+                this.rippleCoroutine = null;
+            }
+
             return;
         }
 
-        // For dragging or placing.
+        // Single touch behavior
         if (activeTouches.Length == 1)
         {
             var touch = activeTouches[0];
-
-            Vector2 delta = touch.delta.ReadValue();
+            Vector2 screenPos = touch.position.ReadValue();
+            Vector3 worldPos = this.cam.ScreenToWorldPoint(screenPos);
+            worldPos.z = 0;
 
             if (!this.isTouching)
             {
                 this.isTouching = true;
                 this.touchHoldTimer = 0;
+                this.isTouchPanningOverride = false;
+                this.touchStartPosition = screenPos;
+
+                if (!isPointerOverUI)
+                {
+                    this.tileEditor.OnPointerMoved(worldPos);
+                    this.entityEditor.OnPointerMoved(worldPos);
+
+                    // Start primary down if not drag
+                    if (this.mapEditorManager.CurrentTool != EditorTool.Drag)
+                    {
+                        if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
+                        {
+                            this.tileEditor.OnPrimaryDown();
+                        }
+                        else
+                        {
+                            this.entityEditor.OnPrimaryDown();
+                        }
+                    }
+                }
             }
 
             this.touchHoldTimer += Time.deltaTime;
 
-            bool isDragTool = this.mapEditorManager.CurrentTool == EditorTool.Drag;
-            bool canPan = isDragTool || this.touchHoldTimer > this.holdThreshold;
+            float moveDelta = Vector2.Distance(screenPos, this.touchStartPosition);
+            bool fingerIsStill = moveDelta < Screen.dpi * 0.05f;
 
-            if (!isPointerOverUI && canPan)
+            // Cancel ripple if finger moves while it’s animating
+            if (this.rippleCoroutine != null && !fingerIsStill)
             {
-                this.cameraController.Pan(delta * this.mobilePanSpeed);
+                if (this.currentRippleSequence != null)
+                {
+                    this.currentRippleSequence.Kill(false); // stop without calling OnComplete
+                    this.currentRippleSequence = null;
+                }
+
+                this.StartCoroutine(this.FadeOutRippleImmediate());
+                this.rippleCoroutine = null;
+            }
+
+            // Show ripple if hold threshold reached and finger is still
+            if (!this.isTouchPanningOverride &&
+                this.mapEditorManager.CurrentTool != EditorTool.Drag &&
+                fingerIsStill &&
+                this.touchHoldTimer >= this.holdThreshold &&
+                this.rippleCoroutine == null &&
+                !isPointerOverUI)
+            {
+                this.rippleCoroutine = this.StartCoroutine(this.PlayRipple(screenPos, () =>
+                {
+                    // After ripple ends, allow drag
+                    this.isTouchPanningOverride = true;
+
+                    if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
+                    {
+                        this.tileEditor.OnPrimaryUp();
+                    }
+                    else
+                    {
+                        this.entityEditor.OnPrimaryUp();
+                    }
+
+                    this.rippleCoroutine = null;
+                }));
+            }
+
+            // Handle drag / pointer movement
+            if (!isPointerOverUI || this.cameraController.IsPanning)
+            {
+                if (this.mapEditorManager.CurrentTool == EditorTool.Drag || this.isTouchPanningOverride)
+                {
+                    Vector2 delta = touch.delta.ReadValue();
+                    this.HandleCameraPan(screenPos, true);
+                }
+                else
+                {
+                    this.tileEditor.OnPointerMoved(worldPos);
+                    this.entityEditor.OnPointerMoved(worldPos);
+                }
             }
         }
 
-        // For zooming.
+        // Pinch zoom
         if (activeTouches.Length >= 2)
         {
             var t1 = activeTouches[0];
@@ -284,14 +397,12 @@ public class BuilderInputHandler : MonoBehaviour
 
             Vector2 p1 = t1.position.ReadValue();
             Vector2 p2 = t2.position.ReadValue();
-
             float currentDistance = Vector2.Distance(p1, p2);
 
             if (this.lastPinchDistance > 0)
             {
                 float delta = currentDistance - this.lastPinchDistance;
                 Vector2 center = (p1 + p2) * 0.5f;
-
                 this.cameraController.OnZoom(delta * this.mobileZoomSpeed, center);
             }
 
@@ -300,6 +411,93 @@ public class BuilderInputHandler : MonoBehaviour
         else
         {
             this.lastPinchDistance = 0;
+        }
+    }
+
+    private IEnumerator PlayRipple(Vector2 screenPosition, System.Action onComplete)
+    {
+        RectTransform ripple = Instantiate(this.ripplePrefab, this.uiCanvas.transform);
+        this.currentRipple = ripple;
+
+        CanvasGroup cg = ripple.GetComponent<CanvasGroup>();
+        if (cg == null)
+        {
+            cg = ripple.gameObject.AddComponent<CanvasGroup>();
+        }
+
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            this.uiCanvas.transform as RectTransform,
+            screenPosition,
+            this.uiCanvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : this.cam,
+            out Vector2 localPoint);
+
+        ripple.localPosition = localPoint;
+
+        ripple.localScale = Vector3.one * 2f;
+        cg.alpha = 0.6f;
+
+        float duration = 0.75f;
+        float dragStartTime = 0.25f;
+
+        this.currentRippleSequence = DOTween.Sequence();
+        this.currentRippleSequence.Append(ripple.DOScale(1f, duration).SetEase(Ease.OutCubic));
+        this.currentRippleSequence.Join(cg.DOFade(0f, duration));
+
+        bool dragActivated = false;
+
+        this.currentRippleSequence.OnUpdate(() =>
+        {
+            if (!dragActivated && this.currentRippleSequence.Elapsed() >= dragStartTime)
+            {
+                dragActivated = true;
+                onComplete?.Invoke();
+                Handheld.Vibrate();
+            }
+        });
+
+        this.currentRippleSequence.OnComplete(() =>
+        {
+            Destroy(ripple.gameObject);
+            this.currentRippleSequence = null;
+        });
+
+        yield return this.currentRippleSequence.WaitForCompletion();
+    }
+
+    private IEnumerator FadeOutRippleImmediate()
+    {
+        RectTransform ripple = this.currentRipple;
+        CanvasGroup cg = ripple.GetComponent<CanvasGroup>();
+        if (cg == null)
+        {
+            cg = ripple.gameObject.AddComponent<CanvasGroup>();
+        }
+
+        float duration = 0.4f;
+        float startAlpha = cg.alpha;
+        float timer = 0f;
+
+        while (timer < duration)
+        {
+            timer += Time.deltaTime;
+            cg.alpha = Mathf.Lerp(startAlpha, 0f, timer / duration);
+            yield return null;
+        }
+
+        Destroy(ripple.gameObject);
+    }
+
+    private void HandleCameraPan(Vector2 pointerPosition, bool isDragging)
+    {
+        if (isDragging)
+        {
+            // Pass current pointer position to CameraController
+            this.cameraController.Pan(pointerPosition);
+        }
+        else
+        {
+            // Stop pan when drag ends
+            this.cameraController.EndPan();
         }
     }
 }

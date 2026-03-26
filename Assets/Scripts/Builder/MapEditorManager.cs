@@ -56,6 +56,9 @@ public class MapEditorManager : MonoBehaviour
     private SaveableEntity selectedEntity;
     private List<SaveableEntity> selectedEntities = new List<SaveableEntity>();
 
+    [SerializeField]
+    private GameObject[] toolOutline;
+
     /// <summary>
     /// Gets the instance of the MapEditorManager.
     /// </summary>
@@ -111,8 +114,54 @@ public class MapEditorManager : MonoBehaviour
             : EditLayer.Background;
     }
 
+    /// <summary>
+    /// Switches to the next tool.
+    /// </summary>
+    public void SelectNextTool()
+    {
+        EditorTool[] tools = (EditorTool[])System.Enum.GetValues(typeof(EditorTool));
+
+        int currentIndex = System.Array.IndexOf(tools, this.CurrentTool);
+
+        int nextIndex = (currentIndex + 1) % tools.Length;
+
+        this.SelectTool(tools[nextIndex], nextIndex);
+    }
+
+    /// <summary>
+    /// Selects the drag tool.
+    /// </summary>
+    public void SelectDrag() => this.SelectTool(EditorTool.Drag, 0);
+
+    /// <summary>
+    /// Selects the brush tool.
+    /// </summary>
+    public void SelectBrush() => this.SelectTool(EditorTool.Brush, 1);
+
+    /// <summary>
+    /// Selects the eraser tool.
+    /// </summary>
+    public void SelectEraser() => this.SelectTool(EditorTool.Eraser, 2);
+
+    /// <summary>
+    /// Selects the selection tool.
+    /// </summary>
+    public void SelectSelection() => this.SelectTool(EditorTool.Selection, 3);
+
     private void Awake()
     {
         Instance = this;
+        this.SelectDrag();
+    }
+
+    private void SelectTool(EditorTool selectedTool, int selectedIndex)
+    {
+        this.CurrentTool = selectedTool;
+        Debug.Log($"Selected tool: {selectedTool}");
+
+        for (int i = 0; i < 4; i++)
+        {
+            this.toolOutline[i].SetActive(i == selectedIndex ? true : false);
+        }
     }
 }
