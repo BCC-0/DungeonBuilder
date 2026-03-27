@@ -10,7 +10,8 @@ public class ItemObject : MonoBehaviour
     private Item originalItem;
 
     [Header("Runtime Copy (Editable)")]
-    [SerializeField] private Item runtimeItem;
+    [SerializeField]
+    private Item runtimeItem;
     private SpriteRenderer spriteRenderer;
 
     /// <summary>

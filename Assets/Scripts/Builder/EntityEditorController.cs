@@ -9,6 +9,8 @@ public class EntityEditorController : MonoBehaviour
     [SerializeField]
     private GameObject selectedPrefab;
     private Vector3 currentPos;
+    private bool primaryHolding;
+    private bool secondaryHolding;
 
     /// <summary>
     /// Gets or sets the currently selected prefab for painting entities.
@@ -29,32 +31,39 @@ public class EntityEditorController : MonoBehaviour
     }
 
     /// <summary>
-    /// // TODO: Add primary up.
-    /// </summary>
-    public void OnPrimaryUp()
-    {
-        Debug.Log("Primary up entity editor.");
-        // TODO: If in placement mode:
-        // TODO: Stop placing entities when dragging.
-    }
-
-    /// <summary>
-    /// Called on primary button pressed when in the foreground layer.
-    /// Places or erases entities depending on the current tool.
+    /// Called on primary button pressed when in the background layer.
+    /// Places or erases tiles depending on the current tool.
     /// </summary>
     public void OnPrimaryDown()
     {
-        Debug.Log("Primary down entity editor.");
-        // TODO: If in placement mode:
-        // Place one entity or multiple when dragging.
+        this.primaryHolding = true;
+        this.ApplyTool();
+    }
 
-        // TODO: If in erasing mode:
-        // Erase one entity or multiple when dragging.
+    /// <summary>
+    /// Stops dragging tool if it was.
+    /// </summary>
+    public void OnPrimaryUp()
+    {
+        this.primaryHolding = false;
+    }
 
-        // TODO: If in editing mode:
-        // Edit the entity we are currently pointing at (if any).
-        // If this + shift, select multiple enemies and allow multi-edits.
+    /// <summary>
+    /// Called on secondary button pressed when in the background layer.
+    /// Erases entities depending on the current tool.
+    /// </summary>
+    public void OnSecondaryDown()
+    {
+        this.secondaryHolding = true;
+        this.ApplyTool();
+    }
 
+    /// <summary>
+    /// Stops dragging tool if it was.
+    /// </summary>
+    public void OnSecondaryUp()
+    {
+        this.secondaryHolding = false;
     }
 
     /// <summary>
@@ -63,6 +72,7 @@ public class EntityEditorController : MonoBehaviour
     public void OnDelete()
     {
         Debug.Log("Deleting entities");
+
         // TODO
     }
 
@@ -72,6 +82,12 @@ public class EntityEditorController : MonoBehaviour
     private void TryErase()
     {
         Debug.Log("Deleting 1 entity");
+
         // TODO
+    }
+
+    private void ApplyTool()
+    {
+        // TODO: Add applying tool for entities.
     }
 }

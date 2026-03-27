@@ -20,6 +20,22 @@ public class SaveableTilemap : SaveableEntity
     private List<GameObject> collisionObjects = new List<GameObject>();
 
     /// <summary>
+    /// Gets the TileMap.
+    /// </summary>
+    public Tilemap Tilemap
+    {
+        get { return this.tilemap; }
+    }
+
+    /// <summary>
+    /// Gets the TileLibrary.
+    /// </summary>
+    public TileLibrary TileLibrary
+    {
+        get { return this.tileLibrary; }
+    }
+
+    /// <summary>
     /// Writes the tilemap data to the save file.
     /// </summary>
     /// <param name="writer">Binary writer.</param>
@@ -106,6 +122,24 @@ public class SaveableTilemap : SaveableEntity
     /// <param name="tag">The tag of this tile.</param>
     public void SetTile(int x, int y, string tileID, bool hasCollision = false, string tag = null)
     {
+        // If tileID is null or empty, erase tile completely
+        if (string.IsNullOrEmpty(tileID))
+        {
+            this.tiles.RemoveAll(t => t.X == x && t.Y == y);
+            this.tilemap.SetTile(new Vector3Int(x, y, 0), null);
+
+            // Also remove any colliders at that position
+            GameObject existing = this.collisionObjects.Find(c => c.name == $"Collider_{x}_{y}");
+            if (existing != null)
+            {
+                this.collisionObjects.Remove(existing);
+                Destroy(existing);
+            }
+
+            return; // early exit since tile is erased
+        }
+
+        // Otherwise, remove old tile data at that position
         this.tiles.RemoveAll(t => t.X == x && t.Y == y);
 
         TileData tile = new TileData
@@ -128,7 +162,11 @@ public class SaveableTilemap : SaveableEntity
     private void UpdateSingleTile(TileData tile)
     {
         Vector3Int pos = new Vector3Int(tile.X, tile.Y, 0);
-        TileBase tileBase = this.tileLibrary.GetTileByID(tile.TileID);
+
+        // Only try to get a TileBase if tileID is not null
+        TileBase tileBase = string.IsNullOrEmpty(tile.TileID)
+            ? null
+            : this.tileLibrary.GetTileByID(tile.TileID);
 
         this.tilemap.SetTile(pos, tileBase);
 
@@ -155,8 +193,11 @@ public class SaveableTilemap : SaveableEntity
                 colObj.tag = tile.Tag;
             }
 
-            // Attach behavior if defined in library
-            string behaviorTypeName = this.tileLibrary.GetBehaviorType(tile.TileID);
+            // Only attach behavior if tileID is not null or empty
+            string behaviorTypeName = string.IsNullOrEmpty(tile.TileID)
+                ? null
+                : this.tileLibrary.GetBehaviorType(tile.TileID);
+
             if (!string.IsNullOrEmpty(behaviorTypeName))
             {
                 System.Type type = System.Type.GetType(behaviorTypeName);

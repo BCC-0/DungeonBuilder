@@ -63,6 +63,29 @@ public class TileLibrary : ScriptableObject
     }
 
     /// <summary>
+    /// Gets an ID for a given tile.
+    /// </summary>
+    /// <param name="tile">The tile.</param>
+    /// <returns>The found ID.</returns>
+    public string GetIDForTile(TileBase tile)
+    {
+        if (this.tileMap == null)
+        {
+            this.Initialize();
+        }
+
+        foreach (var entry in this.tileMap.Values)
+        {
+            if (entry.Tile == tile)
+            {
+                return entry.TileID;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Represents a single tile entry in the library.
     /// </summary>
     [Serializable]

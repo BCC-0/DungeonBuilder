@@ -519,6 +519,15 @@
                     "initialStateCheck": false
                 },
                 {
+                    "name": "Secondary",
+                    "type": "Button",
+                    "id": "d450fe28-cf1d-4776-9563-c02b12b19056",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
                     "name": "Delete",
                     "type": "Button",
                     "id": "ef5eea16-6e20-4322-999b-9949b127c9e0",
@@ -576,6 +585,33 @@
                     "name": "SwitchTool",
                     "type": "Button",
                     "id": "6f7a48a1-f26a-4a59-9b1d-72a2b98a0e5e",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "SwitchLayer",
+                    "type": "Button",
+                    "id": "3e96f915-2754-4068-928d-9abf91e7cd74",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Command",
+                    "type": "Button",
+                    "id": "4256d7ca-7744-4675-930f-0beb5418687d",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Save",
+                    "type": "Button",
+                    "id": "44368398-d7f7-4de2-84a1-ff7dbd778bfb",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -844,6 +880,50 @@
                     "processors": "",
                     "groups": ";Keyboard&Mouse",
                     "action": "SwitchTool",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "38631f34-2921-4ef5-b554-97836533fcdf",
+                    "path": "<Mouse>/rightButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "Secondary",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "8b7744e0-73ef-4b3d-8d9d-4203855aa4f4",
+                    "path": "<Keyboard>/capsLock",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "SwitchLayer",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "7927c599-8283-4fe0-9654-e518fbd010da",
+                    "path": "<Keyboard>/ctrl",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "Command",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "c3666ee3-f2f0-4217-a0d0-785be365e0f2",
+                    "path": "<Keyboard>/s",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Save",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

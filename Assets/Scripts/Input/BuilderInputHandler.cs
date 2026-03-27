@@ -44,6 +44,8 @@ public class BuilderInputHandler : MonoBehaviour
     private Sequence currentRippleSequence;
     private RectTransform currentRipple;
 
+    private bool command;
+
     /// <summary>
     /// Called when the pointer is moved.
     /// Finds the position of the pointer and communicates it to the tileEditor and the entityEditor.
@@ -66,7 +68,7 @@ public class BuilderInputHandler : MonoBehaviour
 
     /// <summary>
     /// Called when the primary button is called.
-    /// Action depends on position.
+    /// Action depends on position and tool.
     /// </summary>
     /// <param name="ctx">The input context.</param>
     public void OnPrimary(InputAction.CallbackContext ctx)
@@ -106,6 +108,43 @@ public class BuilderInputHandler : MonoBehaviour
             if (this.mapEditorManager.CurrentTool == EditorTool.Drag)
             {
                 this.cameraController.EndPan();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Called when the secondary button is pressed (right mouse button).
+    /// Used for erasing when we are using the brush tool.
+    /// </summary>
+    /// <param name="ctx">The input context.</param>
+    public void OnSecondary(InputAction.CallbackContext ctx)
+    {
+        if (isPointerOverUI)
+        {
+            return;
+        }
+
+        if (ctx.started)
+        {
+            if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
+            {
+                this.tileEditor.OnSecondaryDown();
+            }
+            else
+            {
+                this.entityEditor.OnSecondaryDown();
+            }
+        }
+
+        if (ctx.canceled)
+        {
+            if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
+            {
+                this.tileEditor.OnSecondaryUp();
+            }
+            else
+            {
+                this.entityEditor.OnSecondaryUp();
             }
         }
     }
@@ -227,6 +266,36 @@ public class BuilderInputHandler : MonoBehaviour
         }
 
         this.mapEditorManager.SelectNextTool();
+    }
+
+    /// <summary>
+    /// Selects the next tool.
+    /// </summary>
+    /// <param name="ctx">The input context.</param>
+    public void OnSwitchLayer(InputAction.CallbackContext ctx)
+    {
+        if (!ctx.performed)
+        {
+            return;
+        }
+
+        this.mapEditorManager.ToggleLayer();
+    }
+
+    /// <summary>
+    /// Enables the player to do a command action: (E.g. command + z undoes, command + r redoes, command + s saves).
+    /// </summary>
+    /// <param name="ctx">The input context.</param>
+    public void OnCommand(InputAction.CallbackContext ctx)
+    {
+        if (ctx.started)
+        {
+            this.command = true;
+        }
+        else if (ctx.canceled)
+        {
+            this.command = false;
+        }
     }
 
     /// <summary>
@@ -513,6 +582,4 @@ public class BuilderInputHandler : MonoBehaviour
 
         Destroy(ripple.gameObject);
     }
-
-    
 }

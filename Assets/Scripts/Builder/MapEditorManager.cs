@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using DG.Tweening;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -59,6 +60,9 @@ public class MapEditorManager : MonoBehaviour
     [SerializeField]
     private GameObject[] toolOutline;
 
+    [SerializeField]
+    private string mapName;
+
     /// <summary>
     /// Gets the instance of the MapEditorManager.
     /// </summary>
@@ -112,6 +116,23 @@ public class MapEditorManager : MonoBehaviour
         this.CurrentLayer = this.CurrentLayer == EditLayer.Background
             ? EditLayer.Foreground
             : EditLayer.Background;
+
+        Debug.Log("Selected " + this.CurrentLayer);
+
+        // Determine target alpha
+        float targetAlpha = this.CurrentLayer == EditLayer.Foreground ? 1f : 0.2f;
+
+        foreach (var entity in FindObjectsByType<SaveableEntity>())
+        {
+            SpriteRenderer sr = entity.GetComponent<SpriteRenderer>();
+            if (sr != null)
+            {
+                // Kill any existing tween on the color to avoid conflicts
+                sr.DOKill();
+
+                sr.DOFade(targetAlpha, 0.25f);
+            }
+        }
     }
 
     /// <summary>
@@ -126,6 +147,15 @@ public class MapEditorManager : MonoBehaviour
         int nextIndex = (currentIndex + 1) % tools.Length;
 
         this.SelectTool(tools[nextIndex], nextIndex);
+    }
+
+    /// <summary>
+    /// Saves the map using the mapName as filename.
+    /// </summary>
+    public void SaveMap()
+    {
+        // TODO: Should add username to path before releasing.
+        SaveManager.SaveMap(this.mapName);
     }
 
     /// <summary>
@@ -152,12 +182,12 @@ public class MapEditorManager : MonoBehaviour
     {
         Instance = this;
         this.SelectDrag();
+        SaveManager.LoadMap(this.mapName);
     }
 
     private void SelectTool(EditorTool selectedTool, int selectedIndex)
     {
         this.CurrentTool = selectedTool;
-        Debug.Log($"Selected tool: {selectedTool}");
 
         for (int i = 0; i < 4; i++)
         {
