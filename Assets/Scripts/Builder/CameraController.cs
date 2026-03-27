@@ -15,8 +15,6 @@ public class CameraController : MonoBehaviour
     [SerializeField]
     private float zoomSpeed = 0.1f;
     [SerializeField]
-    private float panSpeed = 0.002f;
-    [SerializeField]
     private float moveSpeed = 10f;
     [SerializeField]
     private Camera cam;
