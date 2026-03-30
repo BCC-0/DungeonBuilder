@@ -155,7 +155,7 @@ public class MapEditorManager : MonoBehaviour
     public void SaveMap()
     {
         // TODO: Should add username to path before releasing.
-        SaveManager.SaveMap(this.mapName);
+        SaveManager.SaveBuilderMap(this.mapName);
     }
 
     /// <summary>
@@ -183,7 +183,7 @@ public class MapEditorManager : MonoBehaviour
         Instance = this;
         this.SelectDrag();
 
-        SaveManager.LoadMap(this.mapName);
+        SaveManager.LoadBuilderMap(this.mapName);
     }
 
     private void SelectTool(EditorTool selectedTool, int selectedIndex)

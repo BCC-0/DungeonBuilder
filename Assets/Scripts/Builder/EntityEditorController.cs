@@ -76,18 +76,85 @@ public class EntityEditorController : MonoBehaviour
         // TODO
     }
 
-    /// <summary>
-    /// Attempts to erase an entity under the pointer.
-    /// </summary>
-    private void TryErase()
-    {
-        Debug.Log("Deleting 1 entity");
-
-        // TODO
-    }
-
     private void ApplyTool()
     {
-        // TODO: Add applying tool for entities.
+        EditorTool tool = MapEditorManager.Instance.CurrentTool;
+
+        switch (tool)
+        {
+            case EditorTool.Brush:
+                if (this.primaryHolding)
+                {
+                    this.TryPlace();
+                }
+                else if (this.secondaryHolding)
+                {
+                    this.TryErase();
+                }
+
+                break;
+
+            case EditorTool.Eraser:
+                if (this.primaryHolding || this.secondaryHolding)
+                {
+                    this.TryErase();
+                }
+
+                break;
+        }
+    }
+
+    private void TryPlace()
+    {
+        if (this.selectedPrefab == null)
+        {
+            return;
+        }
+
+        Vector3 snappedPos = new Vector3(
+            Mathf.Floor(this.currentPos.x) + 0.5f,
+            Mathf.Floor(this.currentPos.y) + 0.5f,
+            0f
+        );
+
+        foreach (var buildEntity in BuilderRegistry.GetAll())
+        {
+            if (Vector3.Distance(buildEntity.transform.position, snappedPos) < 0.1f)
+            {
+                return;
+            }
+        }
+
+        PrefabIdentity identity = this.selectedPrefab.GetComponent<PrefabIdentity>();
+        if (identity == null)
+        {
+            Debug.LogWarning("Selected prefab does not have a PrefabIdentity component.");
+            return;
+        }
+
+        GameObject go = new GameObject("BuilderEntity");
+        go.transform.position = snappedPos;
+        var builder = go.AddComponent<BuilderEntity>();
+        builder.Initialize(identity.PrefabID);
+    }
+
+    private void TryErase()
+    {
+        foreach (var builder in BuilderRegistry.GetAll())
+        {
+            if (Vector3.Distance(builder.transform.position, this.currentPos) < 0.5f)
+            {
+                Destroy(builder.gameObject);
+                return;
+            }
+        }
+    }
+
+    private void Update()
+    {
+        if (this.primaryHolding || this.secondaryHolding)
+        {
+            this.ApplyTool();
+        }
     }
 }

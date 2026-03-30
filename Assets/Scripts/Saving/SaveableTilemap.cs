@@ -11,7 +11,6 @@ public class SaveableTilemap : SaveableEntity
 {
     [SerializeField]
     private Tilemap tilemap;
-
     [SerializeField]
     private TileLibrary tileLibrary;
 
