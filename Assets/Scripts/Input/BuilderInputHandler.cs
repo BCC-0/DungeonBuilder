@@ -10,8 +10,6 @@ using UnityEngine.InputSystem;
 /// </summary>
 public class BuilderInputHandler : MonoBehaviour
 {
-    private static bool isPointerOverUI;
-
     [SerializeField]
     private Camera cam;
     [SerializeField]
@@ -46,6 +44,8 @@ public class BuilderInputHandler : MonoBehaviour
 
     private bool command;
 
+    private System.Collections.Generic.Dictionary<int, bool> touchesOverUI = new ();
+
     /// <summary>
     /// Called when the pointer is moved.
     /// Finds the position of the pointer and communicates it to the tileEditor and the entityEditor.
@@ -73,11 +73,6 @@ public class BuilderInputHandler : MonoBehaviour
     /// <param name="ctx">The input context.</param>
     public void OnPrimary(InputAction.CallbackContext ctx)
     {
-        if (isPointerOverUI)
-        {
-            return;
-        }
-
         if (ctx.started)
         {
             this.isPrimaryHeld = true;
@@ -119,11 +114,6 @@ public class BuilderInputHandler : MonoBehaviour
     /// <param name="ctx">The input context.</param>
     public void OnSecondary(InputAction.CallbackContext ctx)
     {
-        if (isPointerOverUI)
-        {
-            return;
-        }
-
         if (ctx.started)
         {
             if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
@@ -308,9 +298,9 @@ public class BuilderInputHandler : MonoBehaviour
         // TODO: Slot selection with both entities and tiles.
     }
 
-    private bool ShouldPan()
+    private bool ShouldPan(int touchId = -1)
     {
-        if (isPointerOverUI && !this.cameraController.IsPanning)
+        if (touchId >= 0 && this.touchesOverUI.TryGetValue(touchId, out bool overUI) && overUI && !this.cameraController.IsPanning)
         {
             return false;
         }
@@ -321,8 +311,6 @@ public class BuilderInputHandler : MonoBehaviour
 
     private void Update()
     {
-        isPointerOverUI = EventSystem.current != null &&
-                          EventSystem.current.IsPointerOverGameObject();
         this.HandleTouch();
     }
 
@@ -349,6 +337,15 @@ public class BuilderInputHandler : MonoBehaviour
         this.isTouchPanningOverride = false;
         this.HandleCameraPan(Vector2.zero, false);
 
+        foreach (var touch in Touchscreen.current.touches)
+        {
+            int id = touch.touchId.ReadValue();
+            if (!touch.isInProgress && touchesOverUI.ContainsKey(id))
+            {
+                touchesOverUI.Remove(id);
+            }
+        }
+
         // Cancel ripple if any
         if (this.rippleCoroutine != null)
         {
@@ -360,6 +357,8 @@ public class BuilderInputHandler : MonoBehaviour
     private void HandleOneTouch(UnityEngine.InputSystem.Controls.TouchControl[] activeTouches)
     {
         var touch = activeTouches[0];
+        int id = touch.touchId.ReadValue();
+
         Vector2 screenPos = touch.position.ReadValue();
         Vector3 worldPos = this.cam.ScreenToWorldPoint(screenPos);
         worldPos.z = 0;
@@ -371,41 +370,44 @@ public class BuilderInputHandler : MonoBehaviour
             this.isTouchPanningOverride = false;
             this.touchStartPosition = screenPos;
 
-            if (!isPointerOverUI)
+            if (!this.touchesOverUI.ContainsKey(id))
             {
-                this.tileEditor.OnPointerMoved(worldPos);
-                this.entityEditor.OnPointerMoved(worldPos);
+                this.touchesOverUI[id] = EventSystem.current.IsPointerOverGameObject(id);
+            }
 
-                // Start primary down if not drag
-                if (this.mapEditorManager.CurrentTool != EditorTool.Drag)
+            if (this.touchesOverUI[id])
+            {
+                return;
+            }
+
+            this.tileEditor.OnPointerMoved(worldPos);
+            this.entityEditor.OnPointerMoved(worldPos);
+
+            if (this.mapEditorManager.CurrentTool != EditorTool.Drag)
+            {
+                if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
                 {
-                    if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
-                    {
-                        this.tileEditor.OnPrimaryDown();
-                    }
-                    else
-                    {
-                        this.entityEditor.OnPrimaryDown();
-                    }
+                    this.tileEditor.OnPrimaryDown();
+                }
+                else
+                {
+                    this.entityEditor.OnPrimaryDown();
                 }
             }
         }
 
-        this.HandleRipple(screenPos);
+        this.HandleRipple(screenPos, id);
 
         // Handle drag / pointer movement
-        if (!isPointerOverUI || this.cameraController.IsPanning)
+        if (this.ShouldPan(id))
         {
-            if (this.mapEditorManager.CurrentTool == EditorTool.Drag || this.isTouchPanningOverride)
-            {
-                Vector2 delta = touch.delta.ReadValue();
-                this.HandleCameraPan(screenPos, true);
-            }
-            else
-            {
-                this.tileEditor.OnPointerMoved(worldPos);
-                this.entityEditor.OnPointerMoved(worldPos);
-            }
+            Vector2 delta = touch.delta.ReadValue();
+            this.HandleCameraPan(screenPos, true);
+        }
+        else
+        {
+            this.tileEditor.OnPointerMoved(worldPos);
+            this.entityEditor.OnPointerMoved(worldPos);
         }
     }
 
@@ -463,7 +465,7 @@ public class BuilderInputHandler : MonoBehaviour
         }
     }
 
-    private void HandleRipple(Vector2 screenPos)
+    private void HandleRipple(Vector2 screenPos, int id)
     {
         this.touchHoldTimer += Time.deltaTime;
 
@@ -489,7 +491,7 @@ public class BuilderInputHandler : MonoBehaviour
             fingerIsStill &&
             this.touchHoldTimer >= this.holdThreshold &&
             this.rippleCoroutine == null &&
-            !isPointerOverUI)
+            !this.touchesOverUI[id])
         {
             this.rippleCoroutine = this.StartCoroutine(this.PlayRipple(screenPos, () =>
             {
@@ -581,5 +583,10 @@ public class BuilderInputHandler : MonoBehaviour
         }
 
         Destroy(ripple.gameObject);
+    }
+
+    private bool IsTouchOverUI(UnityEngine.InputSystem.Controls.TouchControl touch)
+    {
+        return EventSystem.current.IsPointerOverGameObject(touch.touchId.ReadValue());
     }
 }

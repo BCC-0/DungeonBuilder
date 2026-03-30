@@ -182,7 +182,11 @@ public class MapEditorManager : MonoBehaviour
     {
         Instance = this;
         this.SelectDrag();
+    }
 
+    private void Start()
+    {
+        // After awake, to give the registry time to register all objects.
         SaveManager.LoadBuilderMap(this.mapName);
     }
 
