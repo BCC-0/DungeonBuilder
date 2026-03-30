@@ -7,7 +7,7 @@ using UnityEngine;
 /// </summary>
 public static class SaveManager
 {
-    private const int SaveVersion = 1;
+    private const int SaveVersion = 2;
 
     private static Dictionary<string, SaveableEntity> saveables =
         new Dictionary<string, SaveableEntity>();
@@ -42,7 +42,7 @@ public static class SaveManager
     /// Should be /[username]/[mapName]</param>
     public static void SaveMap(string path)
     {
-        path = Application.persistentDataPath + path;
+        path = Application.persistentDataPath + "/" + path;
 
         using FileStream stream = File.Create(path);
         using BinaryWriter writer = new BinaryWriter(stream);
@@ -53,6 +53,7 @@ public static class SaveManager
         foreach (var entity in saveables.Values)
         {
             writer.Write(entity.GetUniqueID());
+            writer.Write(entity.GetPrefabID());
             entity.Write(writer);
         }
 
@@ -65,7 +66,13 @@ public static class SaveManager
     /// <param name="path">The path to load from. Usually /[username]/[mapName]</param>
     public static void LoadMap(string path)
     {
-        path = Application.persistentDataPath + path;
+        // First initialize the registry if it hasn't been yet.
+        if (!SaveRegistry.IsInitialized)
+        {
+            SaveRegistry.InitializeRegistryFromResources();
+        }
+
+        path = Application.persistentDataPath + "/" + path;
         if (!File.Exists(path))
         {
             Debug.LogWarning("Save file not found.");
@@ -78,17 +85,43 @@ public static class SaveManager
         int version = reader.ReadInt32();
         int count = reader.ReadInt32();
 
+        // Don't clear, otherwise we remove the tilemap.
+        // saveables.Clear();
         for (int i = 0; i < count; i++)
         {
             string id = reader.ReadString();
 
-            if (saveables.TryGetValue(id, out var entity))
+            string prefabID = version >= 2 ? reader.ReadString() : "DefaultPrefab";
+
+            SaveableEntity existingSceneEntity = SaveManager.GetEntityByID(id);
+
+            if (existingSceneEntity != null && existingSceneEntity is SaveableTilemap)
             {
+                existingSceneEntity.Read(reader);
+                continue;
+            }
+
+            GameObject prefab = SaveRegistry.GetPrefab(prefabID);
+            if (prefab != null)
+            {
+                GameObject obj = GameObject.Instantiate(prefab);
+                SaveableEntity entity = obj.GetComponent<SaveableEntity>();
+                if (entity == null)
+                {
+                    Debug.LogWarning($"Prefab {prefabID} does not contain a SaveableEntity component.");
+                    continue;
+                }
+
+                typeof(SaveableEntity)
+                    .GetField("uniqueID", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                    .SetValue(entity, id);
+
                 entity.Read(reader);
+                Register(entity);
             }
             else
             {
-                Debug.LogWarning($"Entity with ID {id} not found during load.");
+                Debug.LogWarning($"Prefab {prefabID} not found for entity {id}.");
             }
         }
 

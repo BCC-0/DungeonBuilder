@@ -1,5 +1,5 @@
-﻿using DG.Tweening;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using DG.Tweening;
 using UnityEngine;
 
 /// <summary>
@@ -182,6 +182,7 @@ public class MapEditorManager : MonoBehaviour
     {
         Instance = this;
         this.SelectDrag();
+
         SaveManager.LoadMap(this.mapName);
     }
 

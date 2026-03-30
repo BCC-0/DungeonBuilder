@@ -9,6 +9,7 @@ using UnityEngine;
 /// The base class for all entities that will be saved in a map.
 /// This automatically saves and restores transforms.
 /// </summary>
+[RequireComponent(typeof(PrefabIdentity))]
 public abstract class SaveableEntity : MonoBehaviour
 {
     [SerializeField]
@@ -19,6 +20,16 @@ public abstract class SaveableEntity : MonoBehaviour
     /// </summary>
     /// <returns>The UID.</returns>
     public string GetUniqueID() => this.uniqueID;
+
+    /// <summary>
+    /// Gets the prefab ID of this entity. The prefab ID for each entity of the same type should be the same.
+    /// </summary>
+    /// <returns>The Prefab ID.</returns>
+    public string GetPrefabID()
+    {
+        PrefabIdentity identity = this.GetComponent<PrefabIdentity>();
+        return identity != null ? identity.PrefabID : null;
+    }
 
     /// <summary>
     /// Writes all fields we need to save from this entity.
