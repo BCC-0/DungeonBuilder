@@ -24,6 +24,7 @@ public static class SaveRegistry
     public static GameObject GetPrefab(string id)
     {
         prefabs.TryGetValue(id, out var prefab);
+        Debug.Log(prefab);
         return prefab;
     }
 
@@ -40,6 +41,7 @@ public static class SaveRegistry
             prefabs[identity.PrefabID] = identity.gameObject;
             Debug.Log("Loaded " + identity.PrefabID + " into the registry.");
         }
+
         Debug.Log("Loaded " + prefabs.Count + " entities into the registry.");
     }
 }

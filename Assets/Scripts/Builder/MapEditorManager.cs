@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Collections;
 using DG.Tweening;
 using UnityEngine;
 
@@ -63,6 +64,8 @@ public class MapEditorManager : MonoBehaviour
     [SerializeField]
     private string mapName;
 
+    private bool canSwitch = true;
+
     /// <summary>
     /// Gets the instance of the MapEditorManager.
     /// </summary>
@@ -113,9 +116,16 @@ public class MapEditorManager : MonoBehaviour
     /// </summary>
     public void ToggleLayer()
     {
+        if (!this.canSwitch)
+        {
+            return;
+        }
+
         this.CurrentLayer = this.CurrentLayer == EditLayer.Background
             ? EditLayer.Foreground
             : EditLayer.Background;
+
+        this.StartCoroutine(this.WaitForSwitch());
 
         Debug.Log("Selected " + this.CurrentLayer);
 
@@ -182,6 +192,7 @@ public class MapEditorManager : MonoBehaviour
     {
         Instance = this;
         this.SelectDrag();
+        this.ToggleLayer();
     }
 
     private void Start()
@@ -198,5 +209,12 @@ public class MapEditorManager : MonoBehaviour
         {
             this.toolOutline[i].SetActive(i == selectedIndex ? true : false);
         }
+    }
+
+    private IEnumerator WaitForSwitch()
+    {
+        this.canSwitch = false;
+        yield return new WaitForSeconds(0.1f);
+        this.canSwitch = true;
     }
 }

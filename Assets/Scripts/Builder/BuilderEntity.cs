@@ -20,11 +20,14 @@ public class BuilderEntity : SaveableEntity
     /// <param name="prefabID">The ID for the prefab we stimulate.</param>
     public void Initialize(string prefabID)
     {
+        Debug.Log("Initializing BuiderEntity with prefab " + prefabID);
         this.PrefabID = prefabID;
 
         GameObject runtimePrefab = SaveRegistry.GetPrefab(prefabID);
         if (runtimePrefab != null)
         {
+            Debug.Log("A");
+
             // Copy all [SaveField] values from the prefab to this entity
             var mb = runtimePrefab.GetComponent<SaveableEntity>();
             if (mb != null)
@@ -44,6 +47,7 @@ public class BuilderEntity : SaveableEntity
             }
 
             SpriteRenderer prefabRenderer = runtimePrefab.GetComponent<SpriteRenderer>();
+            Debug.Log("Prefab renderer for entity: " + prefabRenderer);
             if (prefabRenderer != null)
             {
                 SpriteRenderer sr = this.gameObject.AddComponent<SpriteRenderer>();

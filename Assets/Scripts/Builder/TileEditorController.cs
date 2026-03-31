@@ -74,6 +74,7 @@ public class TileEditorController : MonoBehaviour
 
     private void ApplyTool()
     {
+        Debug.Log("Background triggered.");
         if (this.saveableTilemap == null || (this.selectedTile == null && this.primaryHolding))
         {
             return;

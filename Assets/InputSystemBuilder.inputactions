@@ -632,11 +632,11 @@
                 },
                 {
                     "name": "",
-                    "id": "d57c7828-3bb0-4c73-a427-e7511dd24304",
+                    "id": "c72259c3-aa14-4fdf-aa7b-1fb7e0b29cc1",
                     "path": "<Touchscreen>/touch0/position",
                     "interactions": "",
                     "processors": "",
-                    "groups": ";Touch",
+                    "groups": "",
                     "action": "Point",
                     "isComposite": false,
                     "isPartOfComposite": false
@@ -648,17 +648,6 @@
                     "interactions": "",
                     "processors": "",
                     "groups": ";Keyboard&Mouse",
-                    "action": "Primary",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "35e200de-407c-41a8-8e2f-7ad6d2eab673",
-                    "path": "<Touchscreen>/Press",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": ";Touch",
                     "action": "Primary",
                     "isComposite": false,
                     "isPartOfComposite": false

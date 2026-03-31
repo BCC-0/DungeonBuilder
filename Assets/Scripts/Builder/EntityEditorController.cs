@@ -78,6 +78,7 @@ public class EntityEditorController : MonoBehaviour
 
     private void ApplyTool()
     {
+        Debug.Log("Foreground triggered.");
         EditorTool tool = MapEditorManager.Instance.CurrentTool;
 
         switch (tool)
@@ -106,6 +107,7 @@ public class EntityEditorController : MonoBehaviour
 
     private void TryPlace()
     {
+        Debug.Log("Trying to place 1.");
         if (this.selectedPrefab == null)
         {
             return;
@@ -114,8 +116,7 @@ public class EntityEditorController : MonoBehaviour
         Vector3 snappedPos = new Vector3(
             Mathf.Floor(this.currentPos.x) + 0.5f,
             Mathf.Floor(this.currentPos.y) + 0.5f,
-            0f
-        );
+            0f);
 
         foreach (var buildEntity in BuilderRegistry.GetAll())
         {
@@ -125,6 +126,7 @@ public class EntityEditorController : MonoBehaviour
             }
         }
 
+        Debug.Log("Trying to place 2.");
         PrefabIdentity identity = this.selectedPrefab.GetComponent<PrefabIdentity>();
         if (identity == null)
         {
