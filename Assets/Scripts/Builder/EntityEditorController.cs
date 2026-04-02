@@ -11,6 +11,7 @@ public class EntityEditorController : MonoBehaviour
     private Vector3 currentPos;
     private bool primaryHolding;
     private bool secondaryHolding;
+    private Transform entityParent;
 
     /// <summary>
     /// Gets or sets the currently selected prefab for painting entities.
@@ -78,7 +79,6 @@ public class EntityEditorController : MonoBehaviour
 
     private void ApplyTool()
     {
-        Debug.Log("Foreground triggered.");
         EditorTool tool = MapEditorManager.Instance.CurrentTool;
 
         switch (tool)
@@ -107,7 +107,6 @@ public class EntityEditorController : MonoBehaviour
 
     private void TryPlace()
     {
-        Debug.Log("Trying to place 1.");
         if (this.selectedPrefab == null)
         {
             return;
@@ -126,16 +125,15 @@ public class EntityEditorController : MonoBehaviour
             }
         }
 
-        Debug.Log("Trying to place 2.");
         PrefabIdentity identity = this.selectedPrefab.GetComponent<PrefabIdentity>();
         if (identity == null)
         {
-            Debug.LogWarning("Selected prefab does not have a PrefabIdentity component.");
             return;
         }
 
         GameObject go = new GameObject("BuilderEntity");
         go.transform.position = snappedPos;
+        go.transform.SetParent(this.entityParent);
         var builder = go.AddComponent<BuilderEntity>();
         builder.Initialize(identity.PrefabID);
     }
@@ -158,5 +156,10 @@ public class EntityEditorController : MonoBehaviour
         {
             this.ApplyTool();
         }
+    }
+
+    private void Start()
+    {
+        this.entityParent = GameObject.FindWithTag("Entity parent").transform;
     }
 }

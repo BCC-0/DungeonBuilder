@@ -82,6 +82,8 @@ public static class SaveManager
             return;
         }
 
+        Transform entityParent = GameObject.FindWithTag("Entity parent").transform;
+
         using FileStream stream = File.Open(path, FileMode.Open);
         using BinaryReader reader = new BinaryReader(stream);
 
@@ -110,6 +112,7 @@ public static class SaveManager
             {
                 GameObject obj = GameObject.Instantiate(prefab);
                 SaveableEntity entity = obj.GetComponent<SaveableEntity>();
+                obj.transform.SetParent(entityParent);
                 if (entity == null)
                 {
                     Debug.LogWarning($"Prefab {prefabID} does not contain a SaveableEntity component.");
@@ -171,6 +174,13 @@ public static class SaveManager
     /// <param name="path">The path to load from. Format: /[username]/[mapName]</param>
     public static void LoadBuilderMap(string path)
     {
+        // First initialize the registry if it hasn't been yet.
+        if (!SaveRegistry.IsInitialized)
+        {
+            SaveRegistry.InitializeRegistryFromResources();
+        }
+
+        Transform entityParent = GameObject.FindWithTag("Entity parent").transform;
         path = Application.persistentDataPath + "/" + path;
         if (!File.Exists(path))
         {
@@ -203,6 +213,7 @@ public static class SaveManager
             }
 
             GameObject go = new GameObject("BuilderEntity");
+            go.transform.SetParent(entityParent);
             var builder = go.AddComponent<BuilderEntity>();
 
             BuilderRegistry.Unregister(builder);
@@ -210,6 +221,8 @@ public static class SaveManager
             typeof(SaveableEntity)
                 .GetField("uniqueID", BindingFlags.NonPublic | BindingFlags.Instance)
                 .SetValue(builder, id);
+
+            builder.Initialize(prefabID);
 
             builder.Read(reader);
             BuilderRegistry.Register(builder);

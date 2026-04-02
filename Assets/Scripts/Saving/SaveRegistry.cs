@@ -35,11 +35,20 @@ public static class SaveRegistry
     {
         isInitialized = true;
         prefabs.Clear();
-        PrefabIdentity[] allPrefabs = Resources.LoadAll<PrefabIdentity>("Prefabs/SaveableEntities");
-        foreach (var identity in allPrefabs)
+        GameObject[] allPrefabs = Resources.LoadAll<GameObject>("Prefabs/SaveableEntities");
+
+        foreach (var prefab in allPrefabs)
         {
-            prefabs[identity.PrefabID] = identity.gameObject;
-            Debug.Log("Loaded " + identity.PrefabID + " into the registry.");
+            var identity = prefab.GetComponent<PrefabIdentity>();
+
+            if (identity == null)
+            {
+                Debug.LogWarning($"Prefab {prefab.name} has no PrefabIdentity!");
+                continue;
+            }
+
+            prefabs[identity.PrefabID] = prefab;
+            Debug.Log("Loaded " + identity.PrefabID);
         }
 
         Debug.Log("Loaded " + prefabs.Count + " entities into the registry.");
