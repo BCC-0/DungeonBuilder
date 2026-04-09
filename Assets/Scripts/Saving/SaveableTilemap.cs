@@ -6,18 +6,37 @@ using UnityEngine.Tilemaps;
 /// <summary>
 /// A saveable tilemap that stores tile data and can rebuild the visual map.
 /// </summary>
+[RequireComponent(typeof(Tilemap))]
 public class SaveableTilemap : SaveableEntity
 {
     [SerializeField]
     private Tilemap tilemap;
-
     [SerializeField]
     private TileLibrary tileLibrary;
 
-    [SerializeField]
-    private List<TileData> tiles = new List<TileData>();
+    private Dictionary<Vector2Int, TileData> tiles = new ();
+    private Dictionary<Vector2Int, GameObject> collisionObjects = new ();
 
-    private List<GameObject> collisionObjects = new List<GameObject>();
+    /// <summary>
+    /// Gets a value indicating whether this gameobject should already be in the scene before loading.
+    /// </summary>
+    public bool IsSceneEntity => true;
+
+    /// <summary>
+    /// Gets the TileMap.
+    /// </summary>
+    public Tilemap Tilemap
+    {
+        get { return this.tilemap; }
+    }
+
+    /// <summary>
+    /// Gets the TileLibrary.
+    /// </summary>
+    public TileLibrary TileLibrary
+    {
+        get { return this.tileLibrary; }
+    }
 
     /// <summary>
     /// Writes the tilemap data to the save file.
@@ -29,7 +48,7 @@ public class SaveableTilemap : SaveableEntity
 
         writer.Write(this.tiles.Count);
 
-        foreach (TileData tile in this.tiles)
+        foreach (TileData tile in this.tiles.Values)
         {
             writer.Write(tile.X);
             writer.Write(tile.Y);
@@ -48,6 +67,7 @@ public class SaveableTilemap : SaveableEntity
         base.Read(reader);
 
         this.tiles.Clear();
+
         int count = reader.ReadInt32();
 
         for (int i = 0; i < count; i++)
@@ -60,7 +80,9 @@ public class SaveableTilemap : SaveableEntity
                 HasCollision = reader.ReadBoolean(),
                 Tag = reader.ReadString(),
             };
-            this.tiles.Add(tile);
+
+            Vector2Int key = new Vector2Int(tile.X, tile.Y);
+            this.tiles[key] = tile;
         }
 
         this.RebuildTilemap();
@@ -80,7 +102,7 @@ public class SaveableTilemap : SaveableEntity
 
         this.tilemap.ClearAllTiles();
 
-        foreach (GameObject col in this.collisionObjects)
+        foreach (GameObject col in this.collisionObjects.Values)
         {
             if (col != null)
             {
@@ -90,7 +112,7 @@ public class SaveableTilemap : SaveableEntity
 
         this.collisionObjects.Clear();
 
-        foreach (TileData tile in this.tiles)
+        foreach (TileData tile in this.tiles.Values)
         {
             this.UpdateSingleTile(tile);
         }
@@ -106,8 +128,26 @@ public class SaveableTilemap : SaveableEntity
     /// <param name="tag">The tag of this tile.</param>
     public void SetTile(int x, int y, string tileID, bool hasCollision = false, string tag = null)
     {
-        this.tiles.RemoveAll(t => t.X == x && t.Y == y);
+        Vector2Int key = new Vector2Int(x, y);
+        Vector3Int pos = new Vector3Int(x, y, 0);
 
+        // Remove tile.
+        if (string.IsNullOrEmpty(tileID))
+        {
+            this.tiles.Remove(key);
+
+            this.tilemap.SetTile(pos, null);
+
+            if (this.collisionObjects.TryGetValue(key, out GameObject existing))
+            {
+                this.collisionObjects.Remove(key);
+                Destroy(existing);
+            }
+
+            return;
+        }
+
+        // Add or update tile.
         TileData tile = new TileData
         {
             X = x,
@@ -117,7 +157,9 @@ public class SaveableTilemap : SaveableEntity
             Tag = tag,
         };
 
-        this.tiles.Add(tile);
+        // Overwrite or add.
+        this.tiles[key] = tile;
+
         this.UpdateSingleTile(tile);
     }
 
@@ -128,16 +170,19 @@ public class SaveableTilemap : SaveableEntity
     private void UpdateSingleTile(TileData tile)
     {
         Vector3Int pos = new Vector3Int(tile.X, tile.Y, 0);
-        TileBase tileBase = this.tileLibrary.GetTileByID(tile.TileID);
+
+        TileBase tileBase = string.IsNullOrEmpty(tile.TileID)
+            ? null
+            : this.tileLibrary.GetTileByID(tile.TileID);
 
         this.tilemap.SetTile(pos, tileBase);
 
         // Remove existing collider if it exists
-        GameObject existing = this.collisionObjects.Find(c => c.name == $"Collider_{tile.X}_{tile.Y}");
-        if (existing != null)
+        Vector2Int key = new Vector2Int(tile.X, tile.Y);
+        if (this.collisionObjects.TryGetValue(key, out var existing))
         {
-            this.collisionObjects.Remove(existing);
             Destroy(existing);
+            this.collisionObjects.Remove(key);
         }
 
         // Add collider and behavior if needed
@@ -155,8 +200,10 @@ public class SaveableTilemap : SaveableEntity
                 colObj.tag = tile.Tag;
             }
 
-            // Attach behavior if defined in library
-            string behaviorTypeName = this.tileLibrary.GetBehaviorType(tile.TileID);
+            string behaviorTypeName = string.IsNullOrEmpty(tile.TileID)
+                ? null
+                : this.tileLibrary.GetBehaviorType(tile.TileID);
+
             if (!string.IsNullOrEmpty(behaviorTypeName))
             {
                 System.Type type = System.Type.GetType(behaviorTypeName);
@@ -166,7 +213,7 @@ public class SaveableTilemap : SaveableEntity
                 }
             }
 
-            this.collisionObjects.Add(colObj);
+            this.collisionObjects[key] = colObj;
         }
     }
 }

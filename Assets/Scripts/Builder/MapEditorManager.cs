@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
+using DG.Tweening;
 using UnityEngine;
 
 /// <summary>
@@ -56,6 +58,14 @@ public class MapEditorManager : MonoBehaviour
     private SaveableEntity selectedEntity;
     private List<SaveableEntity> selectedEntities = new List<SaveableEntity>();
 
+    [SerializeField]
+    private GameObject[] toolOutline;
+
+    [SerializeField]
+    private string mapName;
+
+    private bool canSwitch = true;
+
     /// <summary>
     /// Gets the instance of the MapEditorManager.
     /// </summary>
@@ -106,13 +116,105 @@ public class MapEditorManager : MonoBehaviour
     /// </summary>
     public void ToggleLayer()
     {
+        if (!this.canSwitch)
+        {
+            return;
+        }
+
         this.CurrentLayer = this.CurrentLayer == EditLayer.Background
             ? EditLayer.Foreground
             : EditLayer.Background;
+
+        this.StartCoroutine(this.WaitForSwitch());
+
+        Debug.Log("Selected " + this.CurrentLayer);
+
+        // Determine target alpha
+        float targetAlpha = this.CurrentLayer == EditLayer.Foreground ? 1f : 0.2f;
+
+        foreach (var entity in FindObjectsByType<SaveableEntity>())
+        {
+            SpriteRenderer sr = entity.GetComponent<SpriteRenderer>();
+            if (sr != null)
+            {
+                // Kill any existing tween on the color to avoid conflicts
+                sr.DOKill();
+
+                sr.DOFade(targetAlpha, 0.25f);
+            }
+        }
     }
+
+    /// <summary>
+    /// Switches to the next tool.
+    /// </summary>
+    public void SelectNextTool()
+    {
+        EditorTool[] tools = (EditorTool[])System.Enum.GetValues(typeof(EditorTool));
+
+        int currentIndex = System.Array.IndexOf(tools, this.CurrentTool);
+
+        int nextIndex = (currentIndex + 1) % tools.Length;
+
+        this.SelectTool(tools[nextIndex], nextIndex);
+    }
+
+    /// <summary>
+    /// Saves the map using the mapName as filename.
+    /// </summary>
+    public void SaveMap()
+    {
+        // TODO: Should add username to path before releasing.
+        SaveManager.SaveBuilderMap(this.mapName);
+    }
+
+    /// <summary>
+    /// Selects the drag tool.
+    /// </summary>
+    public void SelectDrag() => this.SelectTool(EditorTool.Drag, 0);
+
+    /// <summary>
+    /// Selects the brush tool.
+    /// </summary>
+    public void SelectBrush() => this.SelectTool(EditorTool.Brush, 1);
+
+    /// <summary>
+    /// Selects the eraser tool.
+    /// </summary>
+    public void SelectEraser() => this.SelectTool(EditorTool.Eraser, 2);
+
+    /// <summary>
+    /// Selects the selection tool.
+    /// </summary>
+    public void SelectSelection() => this.SelectTool(EditorTool.Selection, 3);
 
     private void Awake()
     {
         Instance = this;
+        this.SelectDrag();
+        this.ToggleLayer();
+    }
+
+    private void Start()
+    {
+        // After awake, to give the registry time to register all objects.
+        SaveManager.LoadBuilderMap(this.mapName);
+    }
+
+    private void SelectTool(EditorTool selectedTool, int selectedIndex)
+    {
+        this.CurrentTool = selectedTool;
+
+        for (int i = 0; i < 4; i++)
+        {
+            this.toolOutline[i].SetActive(i == selectedIndex ? true : false);
+        }
+    }
+
+    private IEnumerator WaitForSwitch()
+    {
+        this.canSwitch = false;
+        yield return new WaitForSeconds(0.1f);
+        this.canSwitch = true;
     }
 }

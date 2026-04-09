@@ -15,8 +15,6 @@ public class CameraController : MonoBehaviour
     [SerializeField]
     private float zoomSpeed = 0.1f;
     [SerializeField]
-    private float panSpeed = 0.002f;
-    [SerializeField]
     private float moveSpeed = 10f;
     [SerializeField]
     private Camera cam;
@@ -29,31 +27,86 @@ public class CameraController : MonoBehaviour
     [SerializeField]
     private float snapThreshold = 0.02f;
 
+    [SerializeField]
+    private float edgeThreshold = 25f;
+    [SerializeField]
+    private float edgePanSpeed = 15f;
+
     private Vector3 inertiaVelocity;
     private Vector2 cameraMoveDirection;
     private bool isZooming = false;
+    private Vector2? lastPointerPosition = null;
+    private bool isPanning = false;
+
+    /// <summary>
+    /// Gets a value indicating whether the camera is currently panning.
+    /// </summary>
+    public bool IsPanning { get => this.isPanning; private set => this.isPanning = value; }
 
     /// <summary>
     /// Called by the Pan action in the InputAction map.
-    /// Always pans the camera by the given delta.
+    /// Calculates delta based on currentPointerPosition and moves by it.
     /// </summary>
-    /// <param name="delta">The movement delta.</param>
+    /// <param name="currentPointerPosition">The movement delta.</param>
     /// <param name="useInertia">When we use inertia, after stopping panning the movement will smoothly stop instead of instantly.</param>
-    public void Pan(Vector2 delta, bool useInertia = false)
+    public void Pan(Vector2 currentPointerPosition, bool useInertia = false)
     {
-        float scale = this.cam.orthographicSize * this.panSpeed;
-        Vector3 move = new Vector3(delta.x, delta.y, 0) * scale;
+        this.isPanning = true;
+        float camZ = this.cam.transform.position.z;
 
-        this.transform.position -= move;
+        if (this.lastPointerPosition.HasValue)
+        {
+            Vector2 delta = currentPointerPosition - this.lastPointerPosition.Value;
 
-        if (useInertia)
-        {
-            this.inertiaVelocity = (-move) / Time.deltaTime;
+            float edgeX = this.GetEdgeFactor(
+                currentPointerPosition.x,
+                this.edgeThreshold,
+                Screen.width - this.edgeThreshold
+            );
+
+            float edgeY = this.GetEdgeFactor(
+                currentPointerPosition.y,
+                this.edgeThreshold,
+                Screen.height - this.edgeThreshold
+            );
+
+            Vector2 edgeDelta = new Vector2(edgeX, edgeY);
+
+            // Apply smooth edge movement
+            delta += edgeDelta * this.edgePanSpeed * Time.deltaTime * 100f;
+
+            // Apply edge movement (scaled)
+            delta += edgeDelta * this.edgePanSpeed;
+
+            Vector3 worldStart = this.cam.ScreenToWorldPoint(new Vector3(0, 0, -camZ));
+            Vector3 worldEnd = this.cam.ScreenToWorldPoint(new Vector3(delta.x, delta.y, -camZ));
+            Vector3 worldDelta = worldEnd - worldStart;
+
+            this.transform.position -= worldDelta;
+
+            // Inertia
+            if (useInertia)
+            {
+                this.inertiaVelocity = (-worldDelta) / Time.deltaTime;
+            }
+            else
+            {
+                this.inertiaVelocity = Vector3.zero;
+            }
         }
-        else
-        {
-            this.inertiaVelocity = Vector3.zero;
-        }
+
+        // Update last pointer position if pointer is on screen
+        this.lastPointerPosition = currentPointerPosition;
+    }
+
+    /// <summary>
+    /// Called by the Pan action in the InputAction map when it is cancelled.
+    /// Removes lastPointerPosition.
+    /// </summary>
+    public void EndPan()
+    {
+        this.isPanning = false;
+        this.lastPointerPosition = null;
     }
 
     /// <summary>
@@ -180,5 +233,20 @@ public class CameraController : MonoBehaviour
         }
 
         return closest;
+    }
+
+    private float GetEdgeFactor(float pos, float min, float max)
+    {
+        if (pos < min)
+        {
+            return -(1f - (pos / min));
+        }
+
+        if (pos > max)
+        {
+            return (pos - max) / min;
+        }
+
+        return 0f;
     }
 }
