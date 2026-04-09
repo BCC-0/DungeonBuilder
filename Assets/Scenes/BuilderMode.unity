@@ -3991,7 +3991,9 @@ GameObject:
   m_Component:
   - component: {fileID: 2019441079}
   - component: {fileID: 2019441080}
-  - component: {fileID: 2019441081}
+  - component: {fileID: 2019441084}
+  - component: {fileID: 2019441082}
+  - component: {fileID: 2019441083}
   m_Layer: 0
   m_Name: BuilderInputHandler
   m_TagString: Untagged
@@ -4080,25 +4082,13 @@ MonoBehaviour:
     m_ActionId: 9caa3d8a-6b2f-4e8e-8bad-6ede561bd9be
     m_ActionName: UI/TrackedDeviceOrientation
   - m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 2019441081}
-        m_TargetAssemblyTypeName: BuilderInputHandler, Assembly-CSharp
-        m_MethodName: OnPoint
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
     m_ActionId: 577b91b0-546b-42da-9740-c8dddc01707a
     m_ActionName: 'Builder/Point[/Mouse/position]'
   - m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 2019441081}
-        m_TargetAssemblyTypeName: BuilderInputHandler, Assembly-CSharp
+      - m_Target: {fileID: 2019441082}
+        m_TargetAssemblyTypeName: BuilderDesktopInputHandler, Assembly-CSharp
         m_MethodName: OnPrimary
         m_Mode: 0
         m_Arguments:
@@ -4113,8 +4103,8 @@ MonoBehaviour:
     m_ActionName: 'Builder/Primary[/Mouse/leftButton]'
   - m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 2019441081}
-        m_TargetAssemblyTypeName: BuilderInputHandler, Assembly-CSharp
+      - m_Target: {fileID: 2019441082}
+        m_TargetAssemblyTypeName: BuilderDesktopInputHandler, Assembly-CSharp
         m_MethodName: OnPan
         m_Mode: 0
         m_Arguments:
@@ -4128,25 +4118,13 @@ MonoBehaviour:
     m_ActionId: b2b29110-80fb-49df-af59-56d7889b56f8
     m_ActionName: 'Builder/PanButton[/Mouse/middleButton]'
   - m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 2019441081}
-        m_TargetAssemblyTypeName: BuilderInputHandler, Assembly-CSharp
-        m_MethodName: OnPointerDelta
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
     m_ActionId: 9550cad3-afee-491e-9293-2cf8b82069b4
     m_ActionName: 'Builder/PointerDelta[/Mouse/delta]'
   - m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 2019441081}
-        m_TargetAssemblyTypeName: BuilderInputHandler, Assembly-CSharp
+      - m_Target: {fileID: 2019441082}
+        m_TargetAssemblyTypeName: BuilderDesktopInputHandler, Assembly-CSharp
         m_MethodName: OnZoom
         m_Mode: 0
         m_Arguments:
@@ -4161,8 +4139,8 @@ MonoBehaviour:
     m_ActionName: 'Builder/Zoom[/Mouse/scroll/y]'
   - m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 2019441081}
-        m_TargetAssemblyTypeName: BuilderInputHandler, Assembly-CSharp
+      - m_Target: {fileID: 2019441082}
+        m_TargetAssemblyTypeName: BuilderDesktopInputHandler, Assembly-CSharp
         m_MethodName: OnDelete
         m_Mode: 0
         m_Arguments:
@@ -4177,8 +4155,8 @@ MonoBehaviour:
     m_ActionName: Builder/Delete
   - m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 2019441081}
-        m_TargetAssemblyTypeName: BuilderInputHandler, Assembly-CSharp
+      - m_Target: {fileID: 2019441082}
+        m_TargetAssemblyTypeName: BuilderDesktopInputHandler, Assembly-CSharp
         m_MethodName: OnSelectSlot
         m_Mode: 0
         m_Arguments:
@@ -4193,8 +4171,8 @@ MonoBehaviour:
     m_ActionName: 'Builder/SelectSlot[/Keyboard/1,/Keyboard/2,/Keyboard/3,/Keyboard/4,/Keyboard/5,/Keyboard/6,/Keyboard/7,/Keyboard/8,/Keyboard/9,/Keyboard/0]'
   - m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 2019441081}
-        m_TargetAssemblyTypeName: BuilderInputHandler, Assembly-CSharp
+      - m_Target: {fileID: 2019441082}
+        m_TargetAssemblyTypeName: BuilderDesktopInputHandler, Assembly-CSharp
         m_MethodName: OnMoveCamera
         m_Mode: 0
         m_Arguments:
@@ -4209,8 +4187,8 @@ MonoBehaviour:
     m_ActionName: 'Builder/Move[/Keyboard/w,/Keyboard/s,/Keyboard/a,/Keyboard/d]'
   - m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 2019441081}
-        m_TargetAssemblyTypeName: BuilderInputHandler, Assembly-CSharp
+      - m_Target: {fileID: 2019441082}
+        m_TargetAssemblyTypeName: BuilderDesktopInputHandler, Assembly-CSharp
         m_MethodName: OnSwitchTool
         m_Mode: 0
         m_Arguments:
@@ -4225,8 +4203,8 @@ MonoBehaviour:
     m_ActionName: 'Builder/SwitchTool[/Keyboard/tab]'
   - m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 2019441081}
-        m_TargetAssemblyTypeName: BuilderInputHandler, Assembly-CSharp
+      - m_Target: {fileID: 2019441082}
+        m_TargetAssemblyTypeName: BuilderDesktopInputHandler, Assembly-CSharp
         m_MethodName: OnSecondary
         m_Mode: 0
         m_Arguments:
@@ -4241,8 +4219,8 @@ MonoBehaviour:
     m_ActionName: Builder/Secondary
   - m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 2019441081}
-        m_TargetAssemblyTypeName: BuilderInputHandler, Assembly-CSharp
+      - m_Target: {fileID: 2019441082}
+        m_TargetAssemblyTypeName: BuilderDesktopInputHandler, Assembly-CSharp
         m_MethodName: OnSwitchLayer
         m_Mode: 0
         m_Arguments:
@@ -4255,12 +4233,32 @@ MonoBehaviour:
         m_CallState: 2
     m_ActionId: 3e96f915-2754-4068-928d-9abf91e7cd74
     m_ActionName: 'Builder/SwitchLayer[/Keyboard/capsLock]'
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 2019441082}
+        m_TargetAssemblyTypeName: BuilderDesktopInputHandler, Assembly-CSharp
+        m_MethodName: OnCommand
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: 4256d7ca-7744-4675-930f-0beb5418687d
+    m_ActionName: 'Builder/Command[/Keyboard/ctrl]'
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 44368398-d7f7-4de2-84a1-ff7dbd778bfb
+    m_ActionName: 'Builder/Save[/Keyboard/s]'
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: 
   m_DefaultActionMap: Builder
   m_SplitScreenIndex: -1
   m_Camera: {fileID: 47208768}
---- !u!114 &2019441081
+--- !u!114 &2019441082
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -4269,18 +4267,49 @@ MonoBehaviour:
   m_GameObject: {fileID: 2019441078}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cdcde9cd96eeb724c932eaeea1f50c1c, type: 3}
+  m_Script: {fileID: 11500000, guid: dc6da5864beea6c498fccce8346e41a8, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: Assembly-CSharp::BuilderDesktopInputHandler
   cam: {fileID: 47208768}
   mapEditorManager: {fileID: 1740556538}
   tileEditor: {fileID: 141539469}
   entityEditor: {fileID: 142968689}
   cameraController: {fileID: 35717380}
-  holdThreshold: 0.3
+--- !u!114 &2019441083
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2019441078}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b9b12dfe390b15046b402889de58c6bb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BuilderMobileInputHandler
+  cam: {fileID: 47208768}
+  mapEditorManager: {fileID: 1740556538}
+  tileEditor: {fileID: 141539469}
+  entityEditor: {fileID: 142968689}
+  cameraController: {fileID: 35717380}
+  holdThreshold: 0.2
   mobileZoomSpeed: 0.2
   ripplePrefab: {fileID: 1892960647589689741, guid: 51dd3f7d8c055874f8c7e169f28ed26a, type: 3}
   uiCanvas: {fileID: 1617474117}
+--- !u!114 &2019441084
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2019441078}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3a50ac67dd7d945458b64af117e1246c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BuilderInputSelector
+  desktopInputHandler: {fileID: 2019441082}
+  mobileInputHandler: {fileID: 2019441083}
 --- !u!1 &2057802365
 GameObject:
   m_ObjectHideFlags: 0
