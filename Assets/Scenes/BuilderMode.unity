@@ -4275,6 +4275,7 @@ MonoBehaviour:
   tileEditor: {fileID: 141539469}
   entityEditor: {fileID: 142968689}
   cameraController: {fileID: 35717380}
+  desktopZoomSpeed: 3
 --- !u!114 &2019441083
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4296,6 +4297,7 @@ MonoBehaviour:
   mobileZoomSpeed: 0.2
   ripplePrefab: {fileID: 1892960647589689741, guid: 51dd3f7d8c055874f8c7e169f28ed26a, type: 3}
   uiCanvas: {fileID: 1617474117}
+  epsilon: 0.5
 --- !u!114 &2019441084
 MonoBehaviour:
   m_ObjectHideFlags: 0

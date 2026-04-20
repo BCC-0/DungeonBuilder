@@ -78,10 +78,7 @@ public class BuilderMobileInputHandler : MonoBehaviour
 
     private void HandleNoTouch()
     {
-
-        if (this.isTouching &&
-            !this.isTouchPanningOverride &&
-            this.touchHoldTimer < this.holdThreshold)
+        if (this.isTouching && !this.isTouchPanningOverride && this.touchHoldTimer < this.holdThreshold)
         {
             if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
             {
@@ -91,6 +88,17 @@ public class BuilderMobileInputHandler : MonoBehaviour
             else
             {
                 this.entityEditor.OnPrimaryDown();
+                this.entityEditor.OnPrimaryUp();
+            }
+        }
+        else if (this.isTouching)
+        {
+            if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
+            {
+                this.tileEditor.OnPrimaryUp();
+            }
+            else
+            {
                 this.entityEditor.OnPrimaryUp();
             }
         }
@@ -157,6 +165,8 @@ public class BuilderMobileInputHandler : MonoBehaviour
         float moveDelta = Vector2.Distance(screenPos, this.touchStartPosition);
         bool fingerIsStill = moveDelta < Screen.dpi * 0.05f;
 
+        this.HandleRipple(screenPos, id, fingerIsStill);
+
         if (!fingerIsStill && !this.isTouchPanningOverride)
         {
             if (this.mapEditorManager.CurrentTool != EditorTool.Drag)
@@ -171,8 +181,6 @@ public class BuilderMobileInputHandler : MonoBehaviour
                 }
             }
         }
-
-        this.HandleRipple(screenPos, id, fingerIsStill);
 
         if (this.mapEditorManager.CurrentTool == EditorTool.Drag || this.isTouchPanningOverride)
         {
@@ -216,19 +224,21 @@ public class BuilderMobileInputHandler : MonoBehaviour
             this.rippleCoroutine == null &&
             !this.touchesOverUI[id])
         {
+            this.isTouchPanningOverride = true;
+
+            if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
+            {
+                this.tileEditor.OnPrimaryUp();
+            }
+            else
+            {
+                this.entityEditor.OnPrimaryUp();
+            }
+
             this.rippleCoroutine = this.StartCoroutine(this.PlayRipple(screenPos, () =>
             {
-                this.isTouchPanningOverride = true;
-
-                if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
-                {
-                    this.tileEditor.OnPrimaryUp();
-                }
-                else
-                {
-                    this.entityEditor.OnPrimaryUp();
-                }
-
+                // no longer needed for logic, just keep for feedback if you want
+                Handheld.Vibrate();
                 this.rippleCoroutine = null;
             }));
         }
