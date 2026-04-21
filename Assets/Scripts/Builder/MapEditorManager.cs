@@ -57,12 +57,10 @@ public class MapEditorManager : MonoBehaviour
 
     private SaveableEntity selectedEntity;
     private List<SaveableEntity> selectedEntities = new List<SaveableEntity>();
+    private PlaytestManager playtestManager;
 
     [SerializeField]
     private GameObject[] toolOutline;
-
-    [SerializeField]
-    private string mapName;
 
     private bool canSwitch = true;
 
@@ -165,7 +163,7 @@ public class MapEditorManager : MonoBehaviour
     public void SaveMap()
     {
         // TODO: Should add username to path before releasing.
-        SaveManager.SaveBuilderMap(this.mapName);
+        SaveManager.SaveBuilderMap(this.playtestManager.MapName);
     }
 
     /// <summary>
@@ -197,8 +195,10 @@ public class MapEditorManager : MonoBehaviour
 
     private void Start()
     {
+        this.playtestManager = FindAnyObjectByType<PlaytestManager>();
+
         // After awake, to give the registry time to register all objects.
-        SaveManager.LoadBuilderMap(this.mapName);
+        SaveManager.LoadBuilderMap(this.playtestManager.MapName);
     }
 
     private void SelectTool(EditorTool selectedTool, int selectedIndex)
