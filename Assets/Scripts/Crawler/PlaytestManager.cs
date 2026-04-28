@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.Tilemaps;
 
 /// <summary>
 /// The Builder can create a PlaytestManager for testing the built map.
@@ -11,6 +12,8 @@ public class PlaytestManager : MonoBehaviour
 {
     [SerializeField]
     private string mapName;
+
+    private BuilderState storedBuilderState;
 
     /// <summary>
     /// Gets or sets the map name we are in.
@@ -42,14 +45,80 @@ public class PlaytestManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Returns the player back to the builder mode.
+    /// </summary>
+    public void StopPlaytest()
+    {
+        SceneManager.LoadScene("BuilderMode");
+
+        // TODO: RestoreBuilder() should be called once the builder scene finishes loading
+    }
+
+    /// <summary>
+    /// Restarts the map in the crawler mode from the beginning.
+    /// </summary>
+    public void RestartPlaytest()
+    {
+        SceneManager.LoadScene("CrawlerMode");
+        SaveManager.LoadMap(this.mapName);
+    }
+
+    /// <summary>
+    /// Returns the player back to the builder mode with the given camera position.
+    /// </summary>
+    public void EditHere()
+    {
+        this.storedBuilderState.CameraPosition = Camera.main.transform.position;
+        SceneManager.LoadScene("BuilderMode");
+
+        // TODO: RestoreBuilder() should be called once the builder scene finishes loading
+    }
+
     private void StoreBuilder()
     {
-        // TODO: Store builder metadata.
+        var cam = Camera.main;
+        this.storedBuilderState = new BuilderState
+        {
+            CameraPosition = cam.transform.position,
+            CameraSize = cam.orthographicSize,
+            SelectedTile = FindAnyObjectByType<TileEditorController>()?.SelectedTile,
+            SelectedPrefab = FindAnyObjectByType<EntityEditorController>()?.SelectedPrefab,
+            ActiveLayer = MapEditorManager.Instance.CurrentLayer,
+            ActiveTool = MapEditorManager.Instance.CurrentTool,
+        };
     }
 
     private void RestoreBuilder()
     {
-        // TODO: Restore builder metadata.
+        var cam = Camera.main;
+        cam.transform.position = this.storedBuilderState.CameraPosition;
+        cam.orthographicSize = this.storedBuilderState.CameraSize;
+
+        var tileEditor = FindAnyObjectByType<TileEditorController>();
+        if (tileEditor != null)
+        {
+            tileEditor.SelectedTile = this.storedBuilderState.SelectedTile;
+        }
+
+        var entityEditor = FindAnyObjectByType<EntityEditorController>();
+        if (entityEditor != null)
+        {
+            entityEditor.SelectedPrefab = this.storedBuilderState.SelectedPrefab;
+        }
+
+        if (MapEditorManager.Instance.CurrentLayer != this.storedBuilderState.ActiveLayer)
+        {
+            MapEditorManager.Instance.ToggleLayer();
+        }
+
+        switch (this.storedBuilderState.ActiveTool)
+        {
+            case EditorTool.Drag: MapEditorManager.Instance.SelectDrag(); break;
+            case EditorTool.Brush: MapEditorManager.Instance.SelectBrush(); break;
+            case EditorTool.Eraser: MapEditorManager.Instance.SelectEraser(); break;
+            case EditorTool.Selection: MapEditorManager.Instance.SelectSelection(); break;
+        }
     }
 
     private void StartCrawler()
@@ -65,7 +134,25 @@ public class PlaytestManager : MonoBehaviour
     {
         List<string> errors = new List<string>();
 
-        // TODO: Add all errors to the list here.
+        int playerCount = 0;
+        foreach (var entity in BuilderRegistry.GetAll())
+        {
+            if (entity.PrefabID == "Player")
+            {
+                playerCount++;
+            }
+        }
+
+        if (playerCount == 0)
+        {
+            errors.Add("Map must contain exactly one player spawn point. Currently there are none.");
+        }
+        else if (playerCount > 1)
+        {
+            errors.Add($"Map must contain exactly one player spawn point. Currently there are {playerCount}.");
+        }
+
+        // TODO: Call more check methods for checking if the map is legal.
         if (errors.Count > 0)
         {
             throw new PlaytestException(errors);
@@ -75,5 +162,15 @@ public class PlaytestManager : MonoBehaviour
     private void Start()
     {
         DontDestroyOnLoad(this);
+    }
+
+    private struct BuilderState
+    {
+        public Vector3 CameraPosition;
+        public float CameraSize;
+        public TileBase SelectedTile;
+        public GameObject SelectedPrefab;
+        public EditLayer ActiveLayer;
+        public EditorTool ActiveTool;
     }
 }
