@@ -1,4 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.Tilemaps;
@@ -50,18 +53,7 @@ public class PlaytestManager : MonoBehaviour
     /// </summary>
     public void StopPlaytest()
     {
-        SceneManager.LoadScene("BuilderMode");
-
-        // TODO: RestoreBuilder() should be called once the builder scene finishes loading
-    }
-
-    /// <summary>
-    /// Restarts the map in the crawler mode from the beginning.
-    /// </summary>
-    public void RestartPlaytest()
-    {
-        SceneManager.LoadScene("CrawlerMode");
-        SaveManager.LoadMap(this.mapName);
+        this.StartCoroutine(this.LoadBuilderAsync());
     }
 
     /// <summary>
@@ -70,9 +62,19 @@ public class PlaytestManager : MonoBehaviour
     public void EditHere()
     {
         this.storedBuilderState.CameraPosition = Camera.main.transform.position;
-        SceneManager.LoadScene("BuilderMode");
+        this.StartCoroutine(this.LoadBuilderAsync());
 
         // TODO: RestoreBuilder() should be called once the builder scene finishes loading
+    }
+
+    /// <summary>
+    /// Starts the crawler with the currently loaded map.
+    /// </summary>
+    public void StartCrawler()
+    {
+        this.StartCoroutine(this.LoadCrawlerAsync());
+
+        // TODO: Add a loading scene screen here.
     }
 
     private void StoreBuilder()
@@ -121,13 +123,32 @@ public class PlaytestManager : MonoBehaviour
         }
     }
 
-    private void StartCrawler()
+    private IEnumerator LoadCrawlerAsync()
     {
-        SceneManager.LoadScene("CrawlerMode");
+        AsyncOperation op = SceneManager.LoadSceneAsync("CrawlerMode");
+
+        while (!op.isDone)
+        {
+            yield return null;
+        }
 
         SaveManager.LoadMap(this.mapName);
+    }
 
-        // TODO: Set play test buttons in crawler.
+    private IEnumerator LoadBuilderAsync()
+    {
+        AsyncOperation op = SceneManager.LoadSceneAsync("BuilderMode");
+
+        while (!op.isDone)
+        {
+            yield return null;
+        }
+
+        // Wait extra frame for setup.
+        yield return null;
+
+        // Loading is already done by MapEditorManager.
+        this.RestoreBuilder();
     }
 
     private void VerifyMap()
@@ -137,7 +158,7 @@ public class PlaytestManager : MonoBehaviour
         int playerCount = 0;
         foreach (var entity in BuilderRegistry.GetAll())
         {
-            if (entity.PrefabID == "Player")
+            if (entity.CompareTag("PlayerEntity"))
             {
                 playerCount++;
             }

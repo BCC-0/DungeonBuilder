@@ -26,7 +26,7 @@ public class PlaytestHUD : MonoBehaviour
     {
         if (this.playtester != null)
         {
-            this.playtester.RestartPlaytest();
+            this.playtester.StartCrawler();
         }
     }
 

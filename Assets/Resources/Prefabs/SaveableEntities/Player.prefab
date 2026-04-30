@@ -10,11 +10,11 @@ GameObject:
   m_Component:
   - component: {fileID: 4225679191793765080}
   - component: {fileID: 3064584090858952109}
-  - component: {fileID: 8704239365106173982}
   - component: {fileID: 1119842860272496509}
+  - component: {fileID: -8889998346192871416}
   m_Layer: 0
-  m_Name: DebugTriangle
-  m_TagString: Untagged
+  m_Name: Player
+  m_TagString: PlayerEntity
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -83,7 +83,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 1
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: a064f84865e43be45b3920b7333df6ca, type: 3}
+  m_Sprite: {fileID: -4954512182048078592, guid: 6080d2720bd457540955c3b61d68b51c, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -93,19 +93,6 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 1
---- !u!114 &8704239365106173982
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6128487705197769401}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7d08685b29f8d9b448b588d994714e7c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Debug_SaveableEntity
-  uniqueID: Debug1
 --- !u!114 &1119842860272496509
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -118,4 +105,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f162a1fe513da454ba930aa444eaf1a9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PrefabIdentity
-  prefabID: DebugTriangle
+  prefabID: Player
+--- !u!114 &-8889998346192871416
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6128487705197769401}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2ae5a3e3081c6845a7b2be00c76e62c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CrawlerPlayerData
+  uniqueID: Player
+  maxHealth: 100
+  currentHealth: 100
+  moveSpeed: 5
+  inventory: []
+  inventoryCanvas: {fileID: 0}
+  inventoryDescriptionText: {fileID: 0}
+  inventoryWeaponsUI: {fileID: 0}
+  inventoryToolsUI: {fileID: 0}
+  equippedWeapon: {fileID: 0}
+  equippedTool: {fileID: 0}
