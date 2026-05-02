@@ -15,6 +15,14 @@ public static class SaveManager
         new Dictionary<string, SaveableEntity>();
 
     /// <summary>
+    /// Clears the registry.
+    /// </summary>
+    public static void ClearRegistry()
+    {
+        saveables.Clear();
+    }
+
+    /// <summary>
     /// Registers an entity for saving and loading.
     /// </summary>
     /// <param name="entity">The entity to be registered.</param>
@@ -51,16 +59,21 @@ public static class SaveManager
         using BinaryWriter writer = new BinaryWriter(stream);
 
         writer.Write(SaveVersion);
-        writer.Write(saveables.Count);
 
-        foreach (var entity in saveables.Values)
+        var runtimeEntities = saveables.Values
+            .Where(e => !(e is BuilderEntity))
+            .ToList();
+
+        writer.Write(runtimeEntities.Count);
+
+        foreach (var entity in runtimeEntities)
         {
             writer.Write(entity.GetUniqueID());
             writer.Write(entity.GetPrefabID());
             entity.Write(writer);
         }
 
-        Debug.Log($"Saved {saveables.Count} entities (player mode).");
+        Debug.Log($"Saved {runtimeEntities.Count} runtime entities.");
     }
 
     /// <summary>
@@ -69,7 +82,8 @@ public static class SaveManager
     /// <param name="path">The path to load from. Format: /[username]/[mapName]</param>
     public static void LoadMap(string path)
     {
-        // First initialize the registry if it hasn't been yet.
+        ClearRegistry();
+
         if (!SaveRegistry.IsInitialized)
         {
             SaveRegistry.InitializeRegistryFromResources();
@@ -83,6 +97,7 @@ public static class SaveManager
         }
 
         Transform entityParent = GameObject.FindWithTag("Entity parent").transform;
+        Debug.Log(entityParent.name);
 
         using FileStream stream = File.Open(path, FileMode.Open);
         using BinaryReader reader = new BinaryReader(stream);
@@ -90,29 +105,41 @@ public static class SaveManager
         int version = reader.ReadInt32();
         int count = reader.ReadInt32();
 
-        // Don't clear, otherwise we remove the tilemap.
-        // saveables.Clear();
         for (int i = 0; i < count; i++)
         {
             string id = reader.ReadString();
-
             string prefabID = reader.ReadString();
 
-            // The Tilemap already exists in the scene.
-            SaveableEntity existingSceneEntity = SaveManager.GetEntityByID(id);
+            SaveableTilemap tilemap = GameObject.FindWithTag("TilemapEntity")?.GetComponent<SaveableTilemap>();
 
-            if (existingSceneEntity != null && existingSceneEntity is SaveableTilemap)
+            if (tilemap != null && tilemap.GetUniqueID() == id)
             {
-                existingSceneEntity.Read(reader);
+                tilemap.Read(reader);
                 continue;
             }
 
             GameObject prefab = SaveRegistry.GetPrefab(prefabID);
             if (prefab != null)
             {
-                GameObject obj = GameObject.Instantiate(prefab);
+                bool isPlayer = prefab.CompareTag("PlayerEntity");
+                GameObject obj;
+
+                if (isPlayer)
+                {
+                    obj = GameObject.FindWithTag("PlayerEntity");
+                    if (obj == null)
+                    {
+                        Debug.LogWarning($"Player not found in scene.");
+                        continue;
+                    }
+                }
+                else
+                {
+                    obj = GameObject.Instantiate(prefab);
+                    obj.transform.SetParent(entityParent);
+                }
+
                 SaveableEntity entity = obj.GetComponent<SaveableEntity>();
-                obj.transform.SetParent(entityParent);
                 if (entity == null)
                 {
                     Debug.LogWarning($"Prefab {prefabID} does not contain a SaveableEntity component.");
@@ -153,15 +180,49 @@ public static class SaveManager
 
         foreach (var tilemap in tilemaps)
         {
-            writer.Write(tilemap.GetUniqueID());
-            writer.Write(tilemap.GetPrefabID());
+            string id = tilemap.GetUniqueID();
+            string prefabID = tilemap.GetPrefabID();
+
+            if (string.IsNullOrEmpty(id))
+            {
+                Debug.LogError($"Tilemap has EMPTY ID: {tilemap.name}");
+                continue;
+            }
+
+            if (string.IsNullOrEmpty(prefabID))
+            {
+                Debug.LogError($"Tilemap has EMPTY PrefabID: {tilemap.name}");
+                continue;
+            }
+
+            Debug.Log($"Saving Tilemap | ID: {id} | Prefab: {prefabID}");
+
+            writer.Write(id);
+            writer.Write(prefabID);
             tilemap.Write(writer);
         }
 
         foreach (var builder in builders)
         {
-            writer.Write(builder.GetUniqueID());
-            writer.Write(builder.PrefabID);
+            string id = builder.GetUniqueID();
+            string prefabID = builder.PrefabID;
+
+            if (string.IsNullOrEmpty(id))
+            {
+                Debug.LogError($"Builder entity has EMPTY ID: {builder.name}");
+                continue;
+            }
+
+            if (string.IsNullOrEmpty(prefabID))
+            {
+                Debug.LogError($"Builder entity has EMPTY PrefabID: {builder.name}");
+                continue;
+            }
+
+            Debug.Log($"Saving Builder | ID: {id} | Prefab: {prefabID}");
+
+            writer.Write(id);
+            writer.Write(prefabID);
             builder.Write(writer);
         }
 
@@ -204,6 +265,18 @@ public static class SaveManager
         {
             string id = reader.ReadString();
             string prefabID = version >= 2 ? reader.ReadString() : "DefaultPrefab";
+
+            if (string.IsNullOrEmpty(id))
+            {
+                Debug.LogError("Builder load: EMPTY ID — skipping entity.");
+                continue;
+            }
+
+            if (string.IsNullOrEmpty(prefabID))
+            {
+                Debug.LogError($"Builder load: EMPTY prefabID for entity {id} — skipping.");
+                continue;
+            }
 
             SaveableEntity existingSceneEntity = SaveManager.GetEntityByID(id);
             if (existingSceneEntity != null && existingSceneEntity is SaveableTilemap)

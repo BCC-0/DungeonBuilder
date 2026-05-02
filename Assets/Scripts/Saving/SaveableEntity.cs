@@ -28,7 +28,7 @@ public abstract class SaveableEntity : MonoBehaviour
     public string GetPrefabID()
     {
         PrefabIdentity identity = this.GetComponent<PrefabIdentity>();
-        return identity != null ? identity.PrefabID : null;
+        return identity != null ? identity.PrefabID : string.Empty;
     }
 
     /// <summary>
@@ -128,7 +128,10 @@ public abstract class SaveableEntity : MonoBehaviour
             this.uniqueID = Guid.NewGuid().ToString();
         }
 
-        SaveManager.Register(this);
+        if (!(this is BuilderEntity))
+        {
+            SaveManager.Register(this);
+        }
     }
 
     private FieldInfo[] GetSaveFields()

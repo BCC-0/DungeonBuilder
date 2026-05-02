@@ -11,9 +11,13 @@ public class PrefabIdentity : MonoBehaviour
     private string prefabID;
 
     /// <summary>
-    /// Gets the prefab ID for this prefab.
+    /// Gets or sets the prefab ID for this prefab.
     /// </summary>
-    public string PrefabID => this.prefabID;
+    public string PrefabID
+    {
+        get => this.prefabID;
+        set => this.prefabID = value;
+    }
 
 #if UNITY_EDITOR
     private void Reset()

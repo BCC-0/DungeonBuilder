@@ -226,10 +226,15 @@ public class CrawlerPlayerData : SaveableEntity
     {
         this.currentHealth = this.maxHealth;
 
-        // Close inventory if it is opened.
+        // Close inventory if it is opened. Useful for debugging/working on inventory UI.
         if (this.inventoryCanvas.activeSelf)
         {
             this.OpenInventory();
         }
+    }
+
+    private void OnDisable()
+    {
+        Time.timeScale = 1f;
     }
 }

@@ -6,6 +6,8 @@ TagManager:
   tags:
   - Item
   - Entity parent
+  - PlayerEntity
+  - TilemapEntity
   layers:
   - Default
   - TransparentFX

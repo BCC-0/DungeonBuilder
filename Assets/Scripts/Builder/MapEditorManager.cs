@@ -61,10 +61,9 @@ public class MapEditorManager : MonoBehaviour
     [SerializeField]
     private GameObject[] toolOutline;
 
-    [SerializeField]
-    private string mapName;
-
     private bool canSwitch = true;
+
+    private string mapName;
 
     /// <summary>
     /// Gets the instance of the MapEditorManager.
@@ -74,6 +73,11 @@ public class MapEditorManager : MonoBehaviour
         get => instance;
         private set => instance = value;
     }
+
+    /// <summary>
+    /// Gets or sets the map name we are editing.
+    /// </summary>
+    public string MapName { get => this.mapName; set => this.mapName = value; }
 
     /// <summary>
     /// Gets or sets the current tool.
@@ -112,6 +116,30 @@ public class MapEditorManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Sets the layer to either the fore or background.
+    /// </summary>
+    /// <param name="layer">Which layer to set to.</param>
+    public void SetLayer(EditLayer layer)
+    {
+        this.currentLayer = layer;
+
+        this.StartCoroutine(this.WaitForSwitch());
+        Debug.Log("Selected " + this.CurrentLayer);
+
+        float targetAlpha = this.CurrentLayer == EditLayer.Foreground ? 1f : 0.2f;
+
+        foreach (var entity in FindObjectsByType<SaveableEntity>())
+        {
+            SpriteRenderer sr = entity.GetComponent<SpriteRenderer>();
+            if (sr != null)
+            {
+                sr.DOKill();
+                sr.DOFade(targetAlpha, 0.25f);
+            }
+        }
+    }
+
+    /// <summary>
     /// Switched the editing layer between fore- and background.
     /// </summary>
     public void ToggleLayer()
@@ -121,28 +149,11 @@ public class MapEditorManager : MonoBehaviour
             return;
         }
 
-        this.CurrentLayer = this.CurrentLayer == EditLayer.Background
+        EditLayer newLayer = this.CurrentLayer == EditLayer.Background
             ? EditLayer.Foreground
             : EditLayer.Background;
 
-        this.StartCoroutine(this.WaitForSwitch());
-
-        Debug.Log("Selected " + this.CurrentLayer);
-
-        // Determine target alpha
-        float targetAlpha = this.CurrentLayer == EditLayer.Foreground ? 1f : 0.2f;
-
-        foreach (var entity in FindObjectsByType<SaveableEntity>())
-        {
-            SpriteRenderer sr = entity.GetComponent<SpriteRenderer>();
-            if (sr != null)
-            {
-                // Kill any existing tween on the color to avoid conflicts
-                sr.DOKill();
-
-                sr.DOFade(targetAlpha, 0.25f);
-            }
-        }
+        this.SetLayer(newLayer);
     }
 
     /// <summary>
@@ -192,13 +203,6 @@ public class MapEditorManager : MonoBehaviour
     {
         Instance = this;
         this.SelectDrag();
-        this.ToggleLayer();
-    }
-
-    private void Start()
-    {
-        // After awake, to give the registry time to register all objects.
-        SaveManager.LoadBuilderMap(this.mapName);
     }
 
     private void SelectTool(EditorTool selectedTool, int selectedIndex)
