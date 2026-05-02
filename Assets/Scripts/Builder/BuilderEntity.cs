@@ -22,8 +22,6 @@ public class BuilderEntity : SaveableEntity
     /// <param name="prefabID">The ID for the prefab we stimulate.</param>
     public void Initialize(string prefabID)
     {
-        Debug.Log($"Initializing BuilderEntity with prefab {prefabID} at {this.transform.position}");
-
         this.PrefabID = prefabID;
 
         // Store prefab ID in identity component

@@ -14,8 +14,6 @@ public class BuilderMobileInputHandler : MonoBehaviour
     [SerializeField]
     private Camera cam;
     [SerializeField]
-    private MapEditorManager mapEditorManager;
-    [SerializeField]
     private TileEditorController tileEditor;
     [SerializeField]
     private EntityEditorController entityEditor;
@@ -80,7 +78,7 @@ public class BuilderMobileInputHandler : MonoBehaviour
     {
         if (this.isTouching && !this.isTouchPanningOverride && this.touchHoldTimer < this.holdThreshold)
         {
-            if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
+            if (MapEditorManager.Instance.CurrentLayer == EditLayer.Background)
             {
                 this.tileEditor.OnPrimaryDown();
                 this.tileEditor.OnPrimaryUp();
@@ -93,7 +91,7 @@ public class BuilderMobileInputHandler : MonoBehaviour
         }
         else if (this.isTouching)
         {
-            if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
+            if (MapEditorManager.Instance.CurrentLayer == EditLayer.Background)
             {
                 this.tileEditor.OnPrimaryUp();
             }
@@ -150,7 +148,7 @@ public class BuilderMobileInputHandler : MonoBehaviour
             this.isTouchPanningOverride = false;
             this.touchStartPosition = screenPos;
 
-            if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
+            if (MapEditorManager.Instance.CurrentLayer == EditLayer.Background)
             {
                 this.tileEditor.OnPointerMoved(worldPos);
             }
@@ -169,9 +167,9 @@ public class BuilderMobileInputHandler : MonoBehaviour
 
         if (!fingerIsStill && !this.isTouchPanningOverride)
         {
-            if (this.mapEditorManager.CurrentTool != EditorTool.Drag)
+            if (MapEditorManager.Instance.CurrentTool != EditorTool.Drag)
             {
-                if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
+                if (MapEditorManager.Instance.CurrentLayer == EditLayer.Background)
                 {
                     this.tileEditor.OnPrimaryDown();
                 }
@@ -182,13 +180,13 @@ public class BuilderMobileInputHandler : MonoBehaviour
             }
         }
 
-        if (this.mapEditorManager.CurrentTool == EditorTool.Drag || this.isTouchPanningOverride)
+        if (MapEditorManager.Instance.CurrentTool == EditorTool.Drag || this.isTouchPanningOverride)
         {
             this.cameraController.Pan(screenPos);
         }
         else
         {
-            if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
+            if (MapEditorManager.Instance.CurrentLayer == EditLayer.Background)
             {
                 this.tileEditor.OnPointerMoved(worldPos);
             }
@@ -218,7 +216,7 @@ public class BuilderMobileInputHandler : MonoBehaviour
     private void HandleRipple(Vector2 screenPos, int id, bool fingerIsStill)
     {
         if (!this.isTouchPanningOverride &&
-            this.mapEditorManager.CurrentTool != EditorTool.Drag &&
+            MapEditorManager.Instance.CurrentTool != EditorTool.Drag &&
             fingerIsStill &&
             this.touchHoldTimer >= this.holdThreshold &&
             this.rippleCoroutine == null &&
@@ -226,7 +224,7 @@ public class BuilderMobileInputHandler : MonoBehaviour
         {
             this.isTouchPanningOverride = true;
 
-            if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
+            if (MapEditorManager.Instance.CurrentLayer == EditLayer.Background)
             {
                 this.tileEditor.OnPrimaryUp();
             }

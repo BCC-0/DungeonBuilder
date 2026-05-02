@@ -2,19 +2,16 @@
 using UnityEngine.Tilemaps;
 
 /// <summary>
-/// Controls tile placement and removal in the map editor background layer,
-/// fully integrated with SaveableTilemap for persistence.
+/// Controls tile placement and removal in the map editor background layer.
+/// Works with SaveableTilemap for persistence.
 /// </summary>
-public class TileEditorController : MonoBehaviour
+public class TileEditorController : EditorControllerBase
 {
     [SerializeField]
     private SaveableTilemap saveableTilemap;
+
     [SerializeField]
     private TileBase selectedTile;
-
-    private Vector3 currentPos;
-    private bool primaryHolding;
-    private bool secondaryHolding;
 
     /// <summary>
     /// Gets or sets the currently selected tile for painting.
@@ -26,71 +23,27 @@ public class TileEditorController : MonoBehaviour
     }
 
     /// <summary>
-    /// Updates the pointer world position.
+    /// Executes tile editing logic based on the active tool.
     /// </summary>
-    /// <param name="worldPos">The position of the pointer.</param>
-    public void OnPointerMoved(Vector3 worldPos)
+    /// <param name="tool">The current editor tool.</param>
+    protected override void OnApplyTool(EditorTool tool)
     {
-        this.currentPos = worldPos;
-    }
-
-    /// <summary>
-    /// Called on primary button pressed when in the background layer.
-    /// Places or erases tiles depending on the current tool.
-    /// </summary>
-    public void OnPrimaryDown()
-    {
-        this.primaryHolding = true;
-        this.ApplyTool();
-    }
-
-    /// <summary>
-    /// Stops dragging tool if it was.
-    /// </summary>
-    public void OnPrimaryUp() => this.primaryHolding = false;
-
-    /// <summary>
-    /// Called on secondary button pressed when in the background layer.
-    /// Erases tiles depending on the current tool.
-    /// </summary>
-    public void OnSecondaryDown()
-    {
-        this.secondaryHolding = true;
-        this.ApplyTool();
-    }
-
-    /// <summary>
-    /// Stops dragging tool if it was.
-    /// </summary>
-    public void OnSecondaryUp() => this.secondaryHolding = false;
-
-    private void Update()
-    {
-        if (this.primaryHolding || this.secondaryHolding)
-        {
-            this.ApplyTool();
-        }
-    }
-
-    private void ApplyTool()
-    {
-        if (this.saveableTilemap == null || (this.selectedTile == null && this.primaryHolding))
+        if (this.saveableTilemap == null || (this.selectedTile == null && this.PrimaryHolding))
         {
             return;
         }
 
-        Vector3Int cellPos = this.saveableTilemap.Tilemap.WorldToCell(this.currentPos);
-        EditorTool tool = MapEditorManager.Instance.CurrentTool;
+        Vector3Int cellPos = this.saveableTilemap.Tilemap.WorldToCell(this.CurrentPos);
 
         switch (tool)
         {
             case EditorTool.Brush:
-                if (this.secondaryHolding)
+                if (this.SecondaryHolding)
                 {
                     // Erase tile
                     this.saveableTilemap.SetTile(cellPos.x, cellPos.y, tileID: null);
                 }
-                else if (this.primaryHolding)
+                else if (this.PrimaryHolding)
                 {
                     // Place tile
                     string tileID = this.saveableTilemap.TileLibrary.GetIDForTile(this.selectedTile);
@@ -100,7 +53,7 @@ public class TileEditorController : MonoBehaviour
                 break;
 
             case EditorTool.Eraser:
-                if (this.primaryHolding || this.secondaryHolding)
+                if (this.PrimaryHolding || this.SecondaryHolding)
                 {
                     this.saveableTilemap.SetTile(cellPos.x, cellPos.y, tileID: null);
                 }

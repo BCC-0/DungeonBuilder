@@ -13,6 +13,8 @@ using UnityEngine.Tilemaps;
 /// </summary>
 public class PlaytestManager : MonoBehaviour
 {
+    private static PlaytestManager instance;
+
     [SerializeField]
     private string mapName;
 
@@ -20,6 +22,15 @@ public class PlaytestManager : MonoBehaviour
 
     private TileEditorController tileEditorController;
     private EntityEditorController entityEditorController;
+
+    /// <summary>
+    /// Gets the instance of the PlaytestManager.
+    /// </summary>
+    public static PlaytestManager Instance
+    {
+        get => instance;
+        private set => instance = value;
+    }
 
     /// <summary>
     /// Gets or sets the map name we are in.
@@ -66,8 +77,6 @@ public class PlaytestManager : MonoBehaviour
     {
         this.storedBuilderState.CameraPosition = Camera.main.transform.position;
         this.StartCoroutine(this.LoadBuilderAsync());
-
-        // TODO: RestoreBuilder() should be called once the builder scene finishes loading
     }
 
     /// <summary>
@@ -115,8 +124,6 @@ public class PlaytestManager : MonoBehaviour
             this.entityEditorController.SelectedPrefab = this.storedBuilderState.SelectedPrefab;
         }
 
-        MapEditorManager.Instance.SetLayer(this.storedBuilderState.ActiveLayer);
-
         switch (this.storedBuilderState.ActiveTool)
         {
             case EditorTool.Drag: MapEditorManager.Instance.SelectDrag(); break;
@@ -147,11 +154,14 @@ public class PlaytestManager : MonoBehaviour
             yield return null;
         }
 
-        // Wait extra frame for setup.
         yield return null;
 
-        // Loading is already done by MapEditorManager.
         this.RestoreBuilder();
+
+        yield return null;
+
+        Debug.Log(this.storedBuilderState.ActiveLayer);
+        MapEditorManager.Instance.SetLayer(this.storedBuilderState.ActiveLayer);
     }
 
     private void VerifyMap()
@@ -181,6 +191,18 @@ public class PlaytestManager : MonoBehaviour
         {
             throw new PlaytestException(errors);
         }
+    }
+
+    private void Awake()
+    {
+        if (instance != null)
+        {
+            // There is already a playtest manager.
+            Destroy(this.gameObject);
+            return;
+        }
+
+        instance = this;
     }
 
     private void Start()

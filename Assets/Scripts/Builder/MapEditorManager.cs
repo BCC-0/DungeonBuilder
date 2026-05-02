@@ -124,7 +124,6 @@ public class MapEditorManager : MonoBehaviour
         this.currentLayer = layer;
 
         this.StartCoroutine(this.WaitForSwitch());
-        Debug.Log("Selected " + this.CurrentLayer);
 
         float targetAlpha = this.CurrentLayer == EditLayer.Foreground ? 1f : 0.2f;
 
@@ -203,6 +202,7 @@ public class MapEditorManager : MonoBehaviour
     {
         Instance = this;
         this.SelectDrag();
+        this.SetLayer(EditLayer.Foreground);
     }
 
     private void SelectTool(EditorTool selectedTool, int selectedIndex)

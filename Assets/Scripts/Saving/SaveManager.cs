@@ -219,8 +219,6 @@ public static class SaveManager
                 continue;
             }
 
-            Debug.Log($"Saving Builder | ID: {id} | Prefab: {prefabID}");
-
             writer.Write(id);
             writer.Write(prefabID);
             builder.Write(writer);

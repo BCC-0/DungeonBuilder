@@ -12,8 +12,6 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     [SerializeField]
     private Camera cam;
     [SerializeField]
-    private MapEditorManager mapEditorManager;
-    [SerializeField]
     private TileEditorController tileEditor;
     [SerializeField]
     private EntityEditorController entityEditor;
@@ -62,7 +60,7 @@ public class BuilderDesktopInputHandler : MonoBehaviour
         if (ctx.started)
         {
             this.isPrimaryHeld = true;
-            if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
+            if (MapEditorManager.Instance.CurrentLayer == EditLayer.Background)
             {
                 this.tileEditor.OnPrimaryDown();
             }
@@ -74,7 +72,7 @@ public class BuilderDesktopInputHandler : MonoBehaviour
         else if (ctx.canceled)
         {
             this.isPrimaryHeld = false;
-            if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
+            if (MapEditorManager.Instance.CurrentLayer == EditLayer.Background)
             {
                 this.tileEditor.OnPrimaryUp();
             }
@@ -83,7 +81,7 @@ public class BuilderDesktopInputHandler : MonoBehaviour
                 this.entityEditor.OnPrimaryUp();
             }
 
-            if (this.mapEditorManager.CurrentTool == EditorTool.Drag)
+            if (MapEditorManager.Instance.CurrentTool == EditorTool.Drag)
             {
                 this.cameraController.EndPan();
             }
@@ -105,7 +103,7 @@ public class BuilderDesktopInputHandler : MonoBehaviour
 
         if (ctx.started)
         {
-            if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
+            if (MapEditorManager.Instance.CurrentLayer == EditLayer.Background)
             {
                 this.tileEditor.OnSecondaryDown();
             }
@@ -116,7 +114,7 @@ public class BuilderDesktopInputHandler : MonoBehaviour
         }
         else if (ctx.canceled)
         {
-            if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
+            if (MapEditorManager.Instance.CurrentLayer == EditLayer.Background)
             {
                 this.tileEditor.OnSecondaryUp();
             }
@@ -217,7 +215,7 @@ public class BuilderDesktopInputHandler : MonoBehaviour
             return;
         }
 
-        this.mapEditorManager.SelectNextTool();
+        MapEditorManager.Instance.SelectNextTool();
     }
 
     /// <summary>
@@ -231,7 +229,7 @@ public class BuilderDesktopInputHandler : MonoBehaviour
             return;
         }
 
-        this.mapEditorManager.ToggleLayer();
+        MapEditorManager.Instance.ToggleLayer();
     }
 
     /// <summary>
@@ -272,7 +270,7 @@ public class BuilderDesktopInputHandler : MonoBehaviour
 
     private void HandleCameraPan()
     {
-        if (this.isMiddleMouseHeld || (this.isPrimaryHeld && this.mapEditorManager.CurrentTool == EditorTool.Drag))
+        if (this.isMiddleMouseHeld || (this.isPrimaryHeld && MapEditorManager.Instance.CurrentTool == EditorTool.Drag))
         {
             Vector2 pointerPos = Mouse.current.position.ReadValue();
             this.cameraController.Pan(pointerPos);
