@@ -18,6 +18,9 @@ public class PlaytestManager : MonoBehaviour
 
     private BuilderState storedBuilderState;
 
+    private TileEditorController tileEditorController;
+    private EntityEditorController entityEditorController;
+
     /// <summary>
     /// Gets or sets the map name we are in.
     /// </summary>
@@ -93,26 +96,26 @@ public class PlaytestManager : MonoBehaviour
 
     private void RestoreBuilder()
     {
-        var cam = Camera.main;
+        // Restore the map name in the map editor.
+        MapEditorManager.Instance.MapName = this.mapName;
+
+        SaveManager.LoadBuilderMap(this.mapName);
+
+        Camera cam = Camera.main;
         cam.transform.position = this.storedBuilderState.CameraPosition;
         cam.orthographicSize = this.storedBuilderState.CameraSize;
 
-        var tileEditor = FindAnyObjectByType<TileEditorController>();
-        if (tileEditor != null)
+        if (this.tileEditorController != null && this.storedBuilderState.SelectedTile != null)
         {
-            tileEditor.SelectedTile = this.storedBuilderState.SelectedTile;
+            this.tileEditorController.SelectedTile = this.storedBuilderState.SelectedTile;
         }
 
-        var entityEditor = FindAnyObjectByType<EntityEditorController>();
-        if (entityEditor != null)
+        if (this.entityEditorController != null && this.storedBuilderState.SelectedPrefab != null)
         {
-            entityEditor.SelectedPrefab = this.storedBuilderState.SelectedPrefab;
+            this.entityEditorController.SelectedPrefab = this.storedBuilderState.SelectedPrefab;
         }
 
-        if (MapEditorManager.Instance.CurrentLayer != this.storedBuilderState.ActiveLayer)
-        {
-            MapEditorManager.Instance.ToggleLayer();
-        }
+        MapEditorManager.Instance.SetLayer(this.storedBuilderState.ActiveLayer);
 
         switch (this.storedBuilderState.ActiveTool)
         {
@@ -183,6 +186,19 @@ public class PlaytestManager : MonoBehaviour
     private void Start()
     {
         DontDestroyOnLoad(this);
+
+        this.tileEditorController = FindAnyObjectByType<TileEditorController>();
+        this.entityEditorController = FindAnyObjectByType<EntityEditorController>();
+
+        this.storedBuilderState = new BuilderState
+        {
+            CameraPosition = new Vector3(0, 0, -10),
+            CameraSize = 5f,
+            ActiveLayer = EditLayer.Foreground,
+            ActiveTool = EditorTool.Drag,
+        };
+
+        this.RestoreBuilder();
     }
 
     private struct BuilderState
