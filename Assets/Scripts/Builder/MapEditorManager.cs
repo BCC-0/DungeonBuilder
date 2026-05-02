@@ -52,18 +52,25 @@ public enum EditLayer
 public class MapEditorManager : MonoBehaviour
 {
     private static MapEditorManager instance;
+
+    private EditorControllerBase tileController;
+    private EditorControllerBase entityController;
+
     private EditorTool currentTool;
     private EditLayer currentLayer;
 
-    private SaveableEntity selectedEntity;
+    private List<Vector3Int> selectedTiles = new List<Vector3Int>();
     private List<SaveableEntity> selectedEntities = new List<SaveableEntity>();
 
     [SerializeField]
     private GameObject[] toolOutline;
 
+    private EditorControllerBase activeController;
+
     private bool canSwitch = true;
 
     private string mapName;
+
 
     /// <summary>
     /// Gets the instance of the MapEditorManager.
@@ -73,6 +80,11 @@ public class MapEditorManager : MonoBehaviour
         get => instance;
         private set => instance = value;
     }
+
+    /// <summary>
+    /// Gets the active controller.
+    /// </summary>
+    public EditorControllerBase ActiveController => this.activeController;
 
     /// <summary>
     /// Gets or sets the map name we are editing.
@@ -98,12 +110,12 @@ public class MapEditorManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Gets or sets the selected entity.
+    /// Gets or sets the currently selected tiles.
     /// </summary>
-    public SaveableEntity SelectedEntity
+    public List<Vector3Int> SelectedTiles
     {
-        get => this.selectedEntity;
-        set => this.selectedEntity = value;
+        get => this.selectedTiles;
+        set => this.selectedTiles = value;
     }
 
     /// <summary>
@@ -123,11 +135,16 @@ public class MapEditorManager : MonoBehaviour
     {
         this.currentLayer = layer;
 
+        this.activeController =
+            layer == EditLayer.Background
+                ? this.tileController
+                : this.entityController;
+
         this.StartCoroutine(this.WaitForSwitch());
 
-        float targetAlpha = this.CurrentLayer == EditLayer.Foreground ? 1f : 0.2f;
+        float targetAlpha = layer == EditLayer.Foreground ? 1f : 0.2f;
 
-        foreach (var entity in FindObjectsByType<SaveableEntity>())
+        foreach (SaveableEntity entity in FindObjectsByType<SaveableEntity>())
         {
             SpriteRenderer sr = entity.GetComponent<SpriteRenderer>();
             if (sr != null)
@@ -201,6 +218,8 @@ public class MapEditorManager : MonoBehaviour
     private void Awake()
     {
         Instance = this;
+        this.tileController = FindAnyObjectByType<TileEditorController>();
+        this.entityController = FindAnyObjectByType<EntityEditorController>();
         this.SelectDrag();
         this.SetLayer(EditLayer.Foreground);
     }
@@ -209,9 +228,12 @@ public class MapEditorManager : MonoBehaviour
     {
         this.CurrentTool = selectedTool;
 
-        for (int i = 0; i < 4; i++)
+        this.tileController.SetTool(selectedTool);
+        this.entityController.SetTool(selectedTool);
+
+        for (int i = 0; i < this.toolOutline.Length; i++)
         {
-            this.toolOutline[i].SetActive(i == selectedIndex ? true : false);
+            this.toolOutline[i].SetActive(i == selectedIndex);
         }
     }
 

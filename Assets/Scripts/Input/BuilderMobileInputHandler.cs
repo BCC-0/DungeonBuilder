@@ -14,10 +14,6 @@ public class BuilderMobileInputHandler : MonoBehaviour
     [SerializeField]
     private Camera cam;
     [SerializeField]
-    private TileEditorController tileEditor;
-    [SerializeField]
-    private EntityEditorController entityEditor;
-    [SerializeField]
     private CameraController cameraController;
 
     [SerializeField]
@@ -37,6 +33,8 @@ public class BuilderMobileInputHandler : MonoBehaviour
     private Coroutine rippleCoroutine;
     private Sequence currentRippleSequence;
     private Dictionary<int, bool> touchesOverUI = new ();
+
+    private EditorControllerBase ActiveController => MapEditorManager.Instance.ActiveController;
 
     private void Update()
     {
@@ -78,27 +76,12 @@ public class BuilderMobileInputHandler : MonoBehaviour
     {
         if (this.isTouching && !this.isTouchPanningOverride && this.touchHoldTimer < this.holdThreshold)
         {
-            if (MapEditorManager.Instance.CurrentLayer == EditLayer.Background)
-            {
-                this.tileEditor.OnPrimaryDown();
-                this.tileEditor.OnPrimaryUp();
-            }
-            else
-            {
-                this.entityEditor.OnPrimaryDown();
-                this.entityEditor.OnPrimaryUp();
-            }
+            this.ActiveController.OnPrimaryDown();
+            this.ActiveController.OnPrimaryUp();
         }
         else if (this.isTouching)
         {
-            if (MapEditorManager.Instance.CurrentLayer == EditLayer.Background)
-            {
-                this.tileEditor.OnPrimaryUp();
-            }
-            else
-            {
-                this.entityEditor.OnPrimaryUp();
-            }
+            this.ActiveController.OnPrimaryUp();
         }
 
         this.isTouching = false;
@@ -148,14 +131,7 @@ public class BuilderMobileInputHandler : MonoBehaviour
             this.isTouchPanningOverride = false;
             this.touchStartPosition = screenPos;
 
-            if (MapEditorManager.Instance.CurrentLayer == EditLayer.Background)
-            {
-                this.tileEditor.OnPointerMoved(worldPos);
-            }
-            else
-            {
-                this.entityEditor.OnPointerMoved(worldPos);
-            }
+            this.ActiveController.OnPointerMoved(worldPos);
         }
 
         this.touchHoldTimer += Time.deltaTime;
@@ -169,14 +145,7 @@ public class BuilderMobileInputHandler : MonoBehaviour
         {
             if (MapEditorManager.Instance.CurrentTool != EditorTool.Drag)
             {
-                if (MapEditorManager.Instance.CurrentLayer == EditLayer.Background)
-                {
-                    this.tileEditor.OnPrimaryDown();
-                }
-                else
-                {
-                    this.entityEditor.OnPrimaryDown();
-                }
+                this.ActiveController.OnPrimaryDown();
             }
         }
 
@@ -186,14 +155,7 @@ public class BuilderMobileInputHandler : MonoBehaviour
         }
         else
         {
-            if (MapEditorManager.Instance.CurrentLayer == EditLayer.Background)
-            {
-                this.tileEditor.OnPointerMoved(worldPos);
-            }
-            else
-            {
-                this.entityEditor.OnPointerMoved(worldPos);
-            }
+            this.ActiveController.OnPointerMoved(worldPos);
         }
     }
 
@@ -224,14 +186,7 @@ public class BuilderMobileInputHandler : MonoBehaviour
         {
             this.isTouchPanningOverride = true;
 
-            if (MapEditorManager.Instance.CurrentLayer == EditLayer.Background)
-            {
-                this.tileEditor.OnPrimaryUp();
-            }
-            else
-            {
-                this.entityEditor.OnPrimaryUp();
-            }
+            this.ActiveController.OnPrimaryUp();
 
             this.rippleCoroutine = this.StartCoroutine(this.PlayRipple(screenPos, () =>
             {

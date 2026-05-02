@@ -1,8 +1,9 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
 
 /// <summary>
-/// Controls entity placement, movement, and deletion in the map editor foreground layer.
-/// Works with Unity Events, no subscriptions required.
+/// Controls entity placement, movement, and deletion in the foreground layer.
 /// </summary>
 public class EntityEditorController : EditorControllerBase
 {
@@ -12,7 +13,7 @@ public class EntityEditorController : EditorControllerBase
     private Transform entityParent;
 
     /// <summary>
-    /// Gets or sets the currently selected prefab for placing entities.
+    /// Gets or sets the currently selected prefab for placement.
     /// </summary>
     public GameObject SelectedPrefab
     {
@@ -23,45 +24,81 @@ public class EntityEditorController : EditorControllerBase
     /// <summary>
     /// Deletes all selected entities.
     /// </summary>
-    public void OnDelete()
+    public override void OnDelete()
     {
         Debug.Log("Deleting entities");
-
-        // TODO: implement bulk deletion logic
     }
 
     /// <summary>
-    /// Executes entity editing logic based on the active tool.
+    /// Executes entity editing logic based on the resolved editor action.
     /// </summary>
-    /// <param name="tool">The current editor tool.</param>
+    /// <param name="tool">The active editor tool.</param>
     protected override void OnApplyTool(EditorTool tool)
     {
-        switch (tool)
-        {
-            case EditorTool.Brush:
-                if (this.PrimaryHolding)
-                {
-                    this.TryPlace();
-                }
-                else if (this.SecondaryHolding)
-                {
-                    this.TryErase();
-                }
+        EditorAction action = this.GetAction(tool);
 
+        switch (action)
+        {
+            case EditorAction.Paint:
+                this.TryPlace();
                 break;
 
-            case EditorTool.Eraser:
-                if (this.PrimaryHolding || this.SecondaryHolding)
-                {
-                    this.TryErase();
-                }
-
+            case EditorAction.Erase:
+                this.TryErase();
                 break;
         }
     }
 
+
     /// <summary>
-    /// Finds the entity parent container in the scene.
+    /// Called when the player clicks to select.
+    /// </summary>
+    /// <param name="position">The position that was clicked.</param>
+    protected override void OnClickSelect(Vector3 position)
+    {
+        float radius = 0.5f;
+
+        var closest = FindObjectsByType<SaveableEntity>()
+            .OrderBy(e => Vector3.Distance(e.transform.position, position))
+            .FirstOrDefault();
+
+        if (closest != null &&
+            Vector3.Distance(closest.transform.position, position) < radius)
+        {
+            MapEditorManager.Instance.SelectedEntities =
+                new List<SaveableEntity> { closest };
+        }
+        else
+        {
+            MapEditorManager.Instance.SelectedEntities.Clear();
+        }
+    }
+
+    /// <summary>
+    /// Called when the player drags to select.
+    /// </summary>
+    /// <param name="start">The start position of the drag selection.</param>
+    /// <param name="end">The end position of the drag selection.</param>
+    protected override void OnBoxSelect(Vector3 start, Vector3 end)
+    {
+        Rect rect = this.GetWorldRect(start, end);
+
+        var selected = new List<SaveableEntity>();
+
+        foreach (var entity in FindObjectsByType<SaveableEntity>())
+        {
+            if (rect.Contains(entity.transform.position))
+            {
+                selected.Add(entity);
+            }
+        }
+
+        MapEditorManager.Instance.SelectedEntities = selected;
+    }
+
+
+    /// <summary>
+    /// Initializes the entity parent container.
     /// </summary>
     private void Start()
     {
@@ -69,7 +106,7 @@ public class EntityEditorController : EditorControllerBase
     }
 
     /// <summary>
-    /// Attempts to place a new entity at the current pointer position.
+    /// Attempts to place a new entity at the pointer position.
     /// </summary>
     private void TryPlace()
     {
