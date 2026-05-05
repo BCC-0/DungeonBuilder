@@ -555,6 +555,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0c064a593e7c56b4bb40280b5f73041f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  selectionUI: {fileID: 1329899499}
   saveableTilemap: {fileID: 547713615080710944}
   selectedTile: {fileID: 11400000, guid: 2068027c2e560e044aaa52ff00bfef10, type: 2}
 --- !u!1 &142968687
@@ -601,6 +602,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4c7c8b5258132b8419d2b58ecd24217f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  selectionUI: {fileID: 1329899499}
   selectedPrefab: {fileID: 6128487705197769401, guid: 9d34a5c01e75c7840b92a09682cc3ab2, type: 3}
 --- !u!1 &235420613
 GameObject:
@@ -3535,6 +3537,74 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1324592134}
   m_CullTransparentMesh: 1
+--- !u!1 &1329899496
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1329899498}
+  - component: {fileID: 1329899497}
+  - component: {fileID: 1329899499}
+  m_Layer: 5
+  m_Name: SelectionDocument
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1329899497
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1329899496}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 19102, guid: 0000000000000000e000000000000000, type: 0}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.UIElements.UIDocument
+  m_PanelSettings: {fileID: 11400000, guid: cd4cc7536141d6c41aca16e3fa326cde, type: 2}
+  m_ParentUI: {fileID: 0}
+  sourceAsset: {fileID: 0}
+  m_SortingOrder: 0
+  m_Position: 0
+  m_WorldSpaceSizeMode: 0
+  m_WorldSpaceWidth: 1920
+  m_WorldSpaceHeight: 1080
+  m_PivotReferenceSize: 0
+  m_Pivot: 0
+  m_WorldSpaceCollider: {fileID: 0}
+--- !u!4 &1329899498
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1329899496}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1329899499
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1329899496}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3807f7bf068218f4d9b819d7064864a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SelectionOverlayUI
 --- !u!1 &1345163013
 GameObject:
   m_ObjectHideFlags: 0
@@ -5364,9 +5434,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BuilderDesktopInputHandler
   cam: {fileID: 47208768}
-  mapEditorManager: {fileID: 1740556538}
-  tileEditor: {fileID: 141539469}
-  entityEditor: {fileID: 142968689}
   cameraController: {fileID: 35717380}
   desktopZoomSpeed: 3
 --- !u!114 &2019441083
@@ -5382,9 +5449,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BuilderMobileInputHandler
   cam: {fileID: 47208768}
-  mapEditorManager: {fileID: 1740556538}
-  tileEditor: {fileID: 141539469}
-  entityEditor: {fileID: 142968689}
   cameraController: {fileID: 35717380}
   holdThreshold: 0.2
   mobileZoomSpeed: 0.2
@@ -6298,3 +6362,4 @@ SceneRoots:
   - {fileID: 1012167127}
   - {fileID: 1274393240}
   - {fileID: 1595653545}
+  - {fileID: 1329899498}

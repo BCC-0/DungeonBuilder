@@ -7,9 +7,10 @@ using UnityEngine;
 /// </summary>
 public abstract class EditorControllerBase : MonoBehaviour
 {
-    private const float DRAG_THRESHOLD = 0.1f;
+    private float dragThreshold = 0.1f;
 
-    private Texture2D whiteTexture;
+    [SerializeField]
+    private SelectionOverlayUI selectionUI;
     private Camera cam;
 
     private Vector3 currentPos;
@@ -180,11 +181,14 @@ public abstract class EditorControllerBase : MonoBehaviour
         {
             this.dragEnd = this.CurrentPos;
 
-            if (!this.hasDragged &&
-                Vector3.Distance(this.dragStart, this.dragEnd) > DRAG_THRESHOLD)
-            {
-                this.hasDragged = true;
-            }
+            this.selectionUI.SetScreenRect(
+                this.cam.WorldToScreenPoint(this.dragStart),
+                this.cam.WorldToScreenPoint(this.dragEnd));
+            this.selectionUI.SetVisible(true);
+        }
+        else
+        {
+            this.selectionUI.SetVisible(false);
         }
 
         if (this.primaryHolding || this.secondaryHolding)
@@ -225,7 +229,9 @@ public abstract class EditorControllerBase : MonoBehaviour
             _ => EditorAction.None
         };
     }
-
+    /// <summary> 
+    /// 
+    /// Gets the world rectangle of a selection drag. /// </summary> /// <param name="a">Position 1.</param> /// <param name="b">Position 2.</param> /// <returns>The rectangle of the drag.</returns> protected Rect GetWorldRect(Vector3 a, Vector3 b) { Vector2 min = Vector2.Min(a, b); Vector2 max = Vector2.Max(a, b); return new Rect(min, max - min); }
     /// <summary>
     /// Called when the player clicks to select.
     /// </summary>
@@ -233,138 +239,9 @@ public abstract class EditorControllerBase : MonoBehaviour
     protected abstract void OnClickSelect(Vector3 position);
 
     /// <summary>
-    /// Gets the world rectangle of a selection drag.
-    /// </summary>
-    /// <param name="a">Position 1.</param>
-    /// <param name="b">Position 2.</param>
-    /// <returns>The rectangle of the drag.</returns>
-    protected Rect GetWorldRect(Vector3 a, Vector3 b)
-    {
-        Vector2 min = Vector2.Min(a, b);
-        Vector2 max = Vector2.Max(a, b);
-
-        return new Rect(min, max - min);
-    }
-
-    /// <summary>
     /// Called when the player drags to select.
     /// </summary>
     /// <param name="start">The start position of the drag selection.</param>
     /// <param name="end">The end position of the drag selection.</param>
     protected abstract void OnBoxSelect(Vector3 start, Vector3 end);
-
-    private void OnGUI()
-    {
-        if (this.CurrentTool != EditorTool.Selection || !this.isDragging)
-        {
-            return;
-        }
-
-        Rect rect = this.GetScreenRect(this.dragStart, this.dragEnd);
-
-        this.DrawScreenRect(rect, new Color(0f, 0.5f, 1f, 0.15f));
-        this.DrawScreenRectBorder(rect, 2f, Color.cyan);
-    }
-
-    private Rect GetScreenRect(Vector3 worldA, Vector3 worldB)
-    {
-        Vector2 a = this.cam.WorldToScreenPoint(worldA);
-        Vector2 b = this.cam.WorldToScreenPoint(worldB);
-
-        a.y = Screen.height - a.y;
-        b.y = Screen.height - b.y;
-
-        Vector2 min = Vector2.Min(a, b);
-        Vector2 max = Vector2.Max(a, b);
-
-        return new Rect(min, max - min);
-    }
-
-    private void DrawScreenRect(Rect rect, Color color)
-    {
-        if (this.whiteTexture == null)
-        {
-            this.whiteTexture = Texture2D.whiteTexture;
-        }
-
-        GUI.color = color;
-        GUI.DrawTexture(rect, this.whiteTexture);
-        GUI.color = Color.white;
-    }
-
-    private void DrawScreenRectBorder(Rect rect, float thickness, Color color, float gap = 6f)
-    {
-        // Top
-        this.DrawDashedLine(
-            new Vector2(rect.xMin, rect.yMin),
-            new Vector2(rect.xMax, rect.yMin),
-            thickness,
-            gap,
-            color);
-
-        // Bottom
-        this.DrawDashedLine(
-            new Vector2(rect.xMin, rect.yMax),
-            new Vector2(rect.xMax, rect.yMax),
-            thickness,
-            gap,
-            color);
-
-        // Left
-        this.DrawDashedLine(
-            new Vector2(rect.xMin, rect.yMin),
-            new Vector2(rect.xMin, rect.yMax),
-            thickness,
-            gap,
-            color);
-
-        // Right
-        this.DrawDashedLine(
-            new Vector2(rect.xMax, rect.yMin),
-            new Vector2(rect.xMax, rect.yMax),
-            thickness,
-            gap,
-            color);
-    }
-
-    private void DrawDashedLine(Vector2 start, Vector2 end, float thickness, float gap, Color color)
-    {
-        float distance = Vector2.Distance(start, end);
-        Vector2 direction = (end - start).normalized;
-
-        float step = gap + thickness;
-
-        for (float i = 0; i < distance; i += step)
-        {
-            Vector2 segmentStart = start + (direction * i);
-            Vector2 segmentEnd = start + (direction * Mathf.Min(i + thickness, distance));
-
-            Rect segment = this.GetRectFromPoints(segmentStart, segmentEnd, thickness);
-            this.DrawScreenRect(segment, color);
-        }
-    }
-
-    private Rect GetRectFromPoints(Vector2 a, Vector2 b, float thickness)
-    {
-        Vector2 delta = b - a;
-        float length = delta.magnitude;
-
-        if (length < 0.001f)
-        {
-            return new Rect(a.x, a.y, thickness, thickness);
-        }
-
-        Vector2 dir = delta / length;
-        Vector2 perp = new Vector2(-dir.y, dir.x) * thickness * 0.5f;
-
-        Vector2 p1 = a + perp;
-        Vector2 p2 = a - perp;
-
-        Vector2 p3 = b + perp;
-
-        Vector2 min = Vector2.Min(p1, Vector2.Min(p2, p3));
-        Vector2 max = Vector2.Max(p1, Vector2.Max(p2, p3));
-
-        return new Rect(min, max - min);
-    }
 }

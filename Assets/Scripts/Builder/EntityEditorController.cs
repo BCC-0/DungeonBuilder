@@ -90,12 +90,12 @@ public class EntityEditorController : EditorControllerBase
             if (rect.Contains(entity.transform.position))
             {
                 selected.Add(entity);
+                Debug.Log("Selected " + entity.name);
             }
         }
 
         MapEditorManager.Instance.SelectedEntities = selected;
     }
-
 
     /// <summary>
     /// Initializes the entity parent container.
