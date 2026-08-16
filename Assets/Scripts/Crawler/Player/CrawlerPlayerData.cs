@@ -122,8 +122,8 @@ public class CrawlerPlayerData : SaveableEntity
             this.inventoryDescriptionText.text = tool.Description;
         }
 
-        var uibuttons = FindObjectsByType<ItemButtonUI>();
-        foreach (var btn in uibuttons)
+        ItemButtonUI[] uibuttons = FindObjectsByType<ItemButtonUI>();
+        foreach (ItemButtonUI btn in uibuttons)
         {
             if ((btn.ItemType == ItemType.Weapon && item is Weapon) ||
                 (btn.ItemType == ItemType.Tool && item is Tool))

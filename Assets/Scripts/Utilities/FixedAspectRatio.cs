@@ -63,8 +63,6 @@ public class FixedAspectRatio : MonoBehaviour
         {
             float widthScale = this.viewportRect.width;
             float heightScale = this.viewportRect.height;
-
-            // Might need to adjust UI elements manually here
         }
     }
 

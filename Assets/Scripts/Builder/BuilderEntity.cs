@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using System.Reflection;
 using UnityEngine;
 
@@ -40,33 +38,33 @@ public class BuilderEntity : SaveableEntity
 
         this.gameObject.tag = prefab.tag;
 
-        var source = prefab.GetComponent<SaveableEntity>();
+        SaveableEntity source = prefab.GetComponent<SaveableEntity>();
         if (source != null)
         {
-            var sourceFields = source.GetType().GetFields(
+            FieldInfo[] sourceFields = source.GetType().GetFields(
                 BindingFlags.Instance |
                 BindingFlags.Public |
                 BindingFlags.NonPublic);
 
-            var targetFields = this.GetType().GetFields(
+            FieldInfo[] targetFields = this.GetType().GetFields(
                 BindingFlags.Instance |
                 BindingFlags.Public |
                 BindingFlags.NonPublic);
 
             Dictionary<string, FieldInfo> targetMap = new ();
-            foreach (var f in targetFields)
+            foreach (FieldInfo f in targetFields)
             {
                 targetMap[f.Name] = f;
             }
 
-            foreach (var field in sourceFields)
+            foreach (FieldInfo field in sourceFields)
             {
                 if (!Attribute.IsDefined(field, typeof(SaveFieldAttribute)))
                 {
                     continue;
                 }
 
-                if (targetMap.TryGetValue(field.Name, out var targetField))
+                if (targetMap.TryGetValue(field.Name, out FieldInfo targetField))
                 {
                     object value = field.GetValue(source);
 
@@ -102,7 +100,18 @@ public class BuilderEntity : SaveableEntity
             Debug.Log($"BuilderEntity is invisible: {prefabID} at {this.transform.position}");
         }
 
-        foreach (var mb in this.GetComponents<MonoBehaviour>())
+        Transform selectionOutline = prefab.transform.Find("SelectionOutline");
+
+        if (selectionOutline != null)
+        {
+            GameObject outline = Instantiate(
+                selectionOutline.gameObject,
+                this.transform);
+
+            outline.name = selectionOutline.name;
+        }
+
+        foreach (MonoBehaviour mb in this.GetComponents<MonoBehaviour>())
         {
             if (mb != this && !(mb is SaveableEntity))
             {
@@ -120,7 +129,7 @@ public class BuilderEntity : SaveableEntity
         BuilderRegistry.Register(this);
 
         // Disable all other behaviours to make it lightweight
-        foreach (var mb in this.GetComponents<MonoBehaviour>())
+        foreach (MonoBehaviour mb in this.GetComponents<MonoBehaviour>())
         {
             if (mb != this)
             {

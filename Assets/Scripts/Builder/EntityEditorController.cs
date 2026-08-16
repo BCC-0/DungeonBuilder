@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
 /// Controls entity placement, movement, and deletion in the foreground layer.
@@ -49,54 +47,6 @@ public class EntityEditorController : EditorControllerBase
         }
     }
 
-
-    /// <summary>
-    /// Called when the player clicks to select.
-    /// </summary>
-    /// <param name="position">The position that was clicked.</param>
-    protected override void OnClickSelect(Vector3 position)
-    {
-        float radius = 0.5f;
-
-        var closest = FindObjectsByType<SaveableEntity>()
-            .OrderBy(e => Vector3.Distance(e.transform.position, position))
-            .FirstOrDefault();
-
-        if (closest != null &&
-            Vector3.Distance(closest.transform.position, position) < radius)
-        {
-            MapEditorManager.Instance.SelectedEntities =
-                new List<SaveableEntity> { closest };
-        }
-        else
-        {
-            MapEditorManager.Instance.SelectedEntities.Clear();
-        }
-    }
-
-    /// <summary>
-    /// Called when the player drags to select.
-    /// </summary>
-    /// <param name="start">The start position of the drag selection.</param>
-    /// <param name="end">The end position of the drag selection.</param>
-    protected override void OnBoxSelect(Vector3 start, Vector3 end)
-    {
-        Rect rect = this.GetWorldRect(start, end);
-
-        var selected = new List<SaveableEntity>();
-
-        foreach (var entity in FindObjectsByType<SaveableEntity>())
-        {
-            if (rect.Contains(entity.transform.position))
-            {
-                selected.Add(entity);
-                Debug.Log("Selected " + entity.name);
-            }
-        }
-
-        MapEditorManager.Instance.SelectedEntities = selected;
-    }
-
     /// <summary>
     /// Initializes the entity parent container.
     /// </summary>
@@ -120,7 +70,7 @@ public class EntityEditorController : EditorControllerBase
             Mathf.Floor(this.CurrentPos.y) + 0.5f,
             0f);
 
-        foreach (var buildEntity in BuilderRegistry.GetAll())
+        foreach (BuilderEntity buildEntity in BuilderRegistry.GetAll())
         {
             if (Vector3.Distance(buildEntity.transform.position, snappedPos) < 0.1f)
             {
@@ -134,11 +84,11 @@ public class EntityEditorController : EditorControllerBase
             return;
         }
 
-        GameObject go = new GameObject("BuilderEntity");
+        GameObject go = new GameObject(identity.PrefabID);
         go.transform.position = snappedPos;
         go.transform.SetParent(this.entityParent);
 
-        var builder = go.AddComponent<BuilderEntity>();
+        BuilderEntity builder = go.AddComponent<BuilderEntity>();
         builder.Initialize(identity.PrefabID);
     }
 
@@ -147,7 +97,7 @@ public class EntityEditorController : EditorControllerBase
     /// </summary>
     private void TryErase()
     {
-        foreach (var builder in BuilderRegistry.GetAll())
+        foreach (BuilderEntity builder in BuilderRegistry.GetAll())
         {
             if (Vector3.Distance(builder.transform.position, this.CurrentPos) < 0.5f)
             {

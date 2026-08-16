@@ -23,7 +23,7 @@ public static class SaveRegistry
     /// <returns>The prefab.</returns>
     public static GameObject GetPrefab(string id)
     {
-        prefabs.TryGetValue(id, out var prefab);
+        prefabs.TryGetValue(id, out GameObject prefab);
         return prefab;
     }
 
@@ -36,9 +36,9 @@ public static class SaveRegistry
         prefabs.Clear();
         GameObject[] allPrefabs = Resources.LoadAll<GameObject>("Prefabs/SaveableEntities");
 
-        foreach (var prefab in allPrefabs)
+        foreach (GameObject prefab in allPrefabs)
         {
-            var identity = prefab.GetComponent<PrefabIdentity>();
+            PrefabIdentity identity = prefab.GetComponent<PrefabIdentity>();
 
             if (identity == null)
             {

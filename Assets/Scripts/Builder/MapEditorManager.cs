@@ -133,12 +133,22 @@ public class MapEditorManager : MonoBehaviour
     /// <param name="layer">Which layer to set to.</param>
     public void SetLayer(EditLayer layer)
     {
+        EditorControllerBase previousController = this.activeController;
+
         this.currentLayer = layer;
 
         this.activeController =
             layer == EditLayer.Background
                 ? this.tileController
                 : this.entityController;
+
+        // Selection is per-layer (a controller is either entity-only or
+        // tile-only), so leaving a layer with an active selection should
+        // clear it rather than leaving it stale/invisible in the background.
+        if (previousController != null && previousController != this.activeController)
+        {
+            previousController.ClearSelection();
+        }
 
         this.StartCoroutine(this.WaitForSwitch());
 

@@ -41,7 +41,7 @@ public static class SaveManager
     /// <returns>The found SaveableEntity.</returns>
     public static SaveableEntity GetEntityByID(string id)
     {
-        saveables.TryGetValue(id, out var entity);
+        saveables.TryGetValue(id, out SaveableEntity entity);
         return entity;
     }
 
@@ -60,13 +60,13 @@ public static class SaveManager
 
         writer.Write(SaveVersion);
 
-        var runtimeEntities = saveables.Values
+        List<SaveableEntity> runtimeEntities = saveables.Values
             .Where(e => !(e is BuilderEntity))
             .ToList();
 
         writer.Write(runtimeEntities.Count);
 
-        foreach (var entity in runtimeEntities)
+        foreach (SaveableEntity entity in runtimeEntities)
         {
             writer.Write(entity.GetUniqueID());
             writer.Write(entity.GetPrefabID());
@@ -169,8 +169,8 @@ public static class SaveManager
     public static void SaveBuilderMap(string path)
     {
         path = Application.persistentDataPath + "/" + path;
-        var builders = BuilderRegistry.GetAll();
-        var tilemaps = saveables.Values.OfType<SaveableTilemap>().ToList();
+        List<BuilderEntity> builders = BuilderRegistry.GetAll();
+        List<SaveableTilemap> tilemaps = saveables.Values.OfType<SaveableTilemap>().ToList();
 
         using FileStream stream = File.Create(path);
         using BinaryWriter writer = new BinaryWriter(stream);
@@ -178,7 +178,7 @@ public static class SaveManager
         writer.Write(SaveVersion);
         writer.Write(builders.Count + tilemaps.Count);
 
-        foreach (var tilemap in tilemaps)
+        foreach (SaveableTilemap tilemap in tilemaps)
         {
             string id = tilemap.GetUniqueID();
             string prefabID = tilemap.GetPrefabID();
@@ -202,7 +202,7 @@ public static class SaveManager
             tilemap.Write(writer);
         }
 
-        foreach (var builder in builders)
+        foreach (BuilderEntity builder in builders)
         {
             string id = builder.GetUniqueID();
             string prefabID = builder.PrefabID;
@@ -248,7 +248,7 @@ public static class SaveManager
         }
 
         // Clear existing builder entities
-        foreach (var b in BuilderRegistry.GetAll())
+        foreach (BuilderEntity b in BuilderRegistry.GetAll())
         {
             Object.DestroyImmediate(b.gameObject);
         }
@@ -283,9 +283,9 @@ public static class SaveManager
                 continue;
             }
 
-            GameObject go = new GameObject("BuilderEntity");
+            GameObject go = new GameObject(prefabID);
             go.transform.SetParent(entityParent);
-            var builder = go.AddComponent<BuilderEntity>();
+            BuilderEntity builder = go.AddComponent<BuilderEntity>();
 
             BuilderRegistry.Unregister(builder);
 

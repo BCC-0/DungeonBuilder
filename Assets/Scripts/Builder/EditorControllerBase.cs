@@ -1,27 +1,34 @@
-﻿using UnityEditor.Actions;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// Base class for all editor controllers (tiles and entities).
 /// Handles shared input state, pointer tracking, and tool execution flow.
+/// Selection (click/drag/box-select) is delegated to <see cref="SelectionManager"/>,
+/// and visual feedback for the current selection is delegated to
+/// <see cref="SelectionVisualizer"/>.
 /// </summary>
 public abstract class EditorControllerBase : MonoBehaviour
 {
-    private float dragThreshold = 0.1f;
-
+    /// <summary>
+    /// Shared tilemap reference used by tools that paint/erase tiles.
+    /// (Selection now reads its own tilemap reference via <see cref="SelectionManager"/>;
+    /// point both at the same <see cref="SaveableTilemap"/> in the Inspector.)
+    /// </summary>
     [SerializeField]
-    private SelectionOverlayUI selectionUI;
-    private Camera cam;
+    private SaveableTilemap saveableTilemap;
+
+    /// <summary>
+    /// Handles all click/drag/box-selection logic and owns the current selection state.
+    /// Assign an <see cref="EntitySelectionManager"/> or <see cref="TileSelectionManager"/>
+    /// here, depending on which layer this controller belongs to.
+    /// </summary>
+    [SerializeField]
+    private SelectionManagerBase selectionManager;
 
     private Vector3 currentPos;
     private bool primaryHolding;
     private bool secondaryHolding;
-
-    private bool isDragging;
-    private bool hasDragged;
-
-    private Vector3 dragStart;
-    private Vector3 dragEnd;
 
     /// <summary>
     /// The different possible actions when editing entities/tiles.
@@ -45,19 +52,14 @@ public abstract class EditorControllerBase : MonoBehaviour
     }
 
     /// <summary>
-    /// Gets a value indicating whether the player is currently dragging.
+    /// Gets the shared tilemap used for tile painting.
     /// </summary>
-    protected bool IsDragging => this.isDragging;
+    protected SaveableTilemap SaveableTilemap => this.saveableTilemap;
 
     /// <summary>
-    /// Gets the start position of the selection drag.
+    /// Gets the selection manager handling click/drag/box selection.
     /// </summary>
-    protected Vector3 DragStart => this.dragStart;
-
-    /// <summary>
-    /// Gets the end position of the selection drag.
-    /// </summary>
-    protected Vector3 DragEnd => this.dragEnd;
+    protected SelectionManagerBase SelectionManager => this.selectionManager;
 
     /// <summary>
     /// Gets the current world position of the pointer.
@@ -104,10 +106,7 @@ public abstract class EditorControllerBase : MonoBehaviour
     {
         if (this.CurrentTool == EditorTool.Selection)
         {
-            this.isDragging = true;
-            this.hasDragged = false;
-            this.dragStart = this.CurrentPos;
-            this.dragEnd = this.CurrentPos;
+            this.selectionManager.BeginDrag(this.CurrentPos);
             return;
         }
 
@@ -122,17 +121,7 @@ public abstract class EditorControllerBase : MonoBehaviour
     {
         if (this.CurrentTool == EditorTool.Selection)
         {
-            this.isDragging = false;
-
-            if (this.hasDragged)
-            {
-                this.OnBoxSelect(this.dragStart, this.dragEnd);
-            }
-            else
-            {
-                this.OnClickSelect(this.CurrentPos);
-            }
-
+            this.selectionManager.EndDrag();
             return;
         }
 
@@ -161,7 +150,17 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// </summary>
     public virtual void OnDelete()
     {
-        // TODO: Add implementations.
+        this.selectionManager.DeleteSelected();
+    }
+
+    /// <summary>
+    /// Clears any current selection made by this controller. Used, for example,
+    /// when switching away from this controller's layer so a stale selection
+    /// doesn't linger.
+    /// </summary>
+    public void ClearSelection()
+    {
+        this.selectionManager.ClearSelection();
     }
 
     /// <summary>
@@ -169,26 +168,39 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// </summary>
     protected virtual void Awake()
     {
-        this.cam = Camera.main;
     }
 
     /// <summary>
-    /// Unity update loop. Applies tool continuously while input is held.
+    /// Unity update loop. Applies tool continuously while input is held,
+    /// and drives the active selection drag (if any).
     /// </summary>
     protected virtual void Update()
     {
-        if (this.CurrentTool == EditorTool.Selection && this.isDragging)
-        {
-            this.dragEnd = this.CurrentPos;
+        Mouse mouse = Mouse.current;
 
-            this.selectionUI.SetScreenRect(
-                this.cam.WorldToScreenPoint(this.dragStart),
-                this.cam.WorldToScreenPoint(this.dragEnd));
-            this.selectionUI.SetVisible(true);
-        }
-        else
+        if (mouse != null)
         {
-            this.selectionUI.SetVisible(false);
+            if (this.CurrentTool == EditorTool.Selection &&
+                this.selectionManager.IsDragging &&
+                !mouse.leftButton.isPressed)
+            {
+                this.OnPrimaryUp();
+            }
+
+            if (this.primaryHolding && !mouse.leftButton.isPressed)
+            {
+                this.primaryHolding = false;
+            }
+
+            if (this.secondaryHolding && !mouse.rightButton.isPressed)
+            {
+                this.secondaryHolding = false;
+            }
+        }
+
+        if (this.CurrentTool == EditorTool.Selection && this.selectionManager.IsDragging)
+        {
+            this.selectionManager.UpdateDrag(this.CurrentPos);
         }
 
         if (this.primaryHolding || this.secondaryHolding)
@@ -229,19 +241,4 @@ public abstract class EditorControllerBase : MonoBehaviour
             _ => EditorAction.None
         };
     }
-    /// <summary> 
-    /// 
-    /// Gets the world rectangle of a selection drag. /// </summary> /// <param name="a">Position 1.</param> /// <param name="b">Position 2.</param> /// <returns>The rectangle of the drag.</returns> protected Rect GetWorldRect(Vector3 a, Vector3 b) { Vector2 min = Vector2.Min(a, b); Vector2 max = Vector2.Max(a, b); return new Rect(min, max - min); }
-    /// <summary>
-    /// Called when the player clicks to select.
-    /// </summary>
-    /// <param name="position">The position that was clicked.</param>
-    protected abstract void OnClickSelect(Vector3 position);
-
-    /// <summary>
-    /// Called when the player drags to select.
-    /// </summary>
-    /// <param name="start">The start position of the drag selection.</param>
-    /// <param name="end">The end position of the drag selection.</param>
-    protected abstract void OnBoxSelect(Vector3 start, Vector3 end);
 }

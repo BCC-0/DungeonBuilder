@@ -48,7 +48,7 @@ public static class BuilderRegistry
     /// <returns>Returns the BuilderEntity.</returns>
     public static BuilderEntity GetByID(string id)
     {
-        Builders.TryGetValue(id, out var entity);
+        Builders.TryGetValue(id, out BuilderEntity entity);
         return entity;
     }
 

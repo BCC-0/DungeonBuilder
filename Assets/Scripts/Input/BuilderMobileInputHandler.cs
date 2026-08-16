@@ -48,8 +48,8 @@ public class BuilderMobileInputHandler : MonoBehaviour
             return;
         }
 
-        var touches = Touchscreen.current.touches;
-        var activeTouches = touches.Where(t => t.isInProgress).ToArray();
+        UnityEngine.InputSystem.Utilities.ReadOnlyArray<UnityEngine.InputSystem.Controls.TouchControl> touches = Touchscreen.current.touches;
+        UnityEngine.InputSystem.Controls.TouchControl[] activeTouches = touches.Where(t => t.isInProgress).ToArray();
 
         if (activeTouches.Length == 0)
         {
@@ -97,7 +97,7 @@ public class BuilderMobileInputHandler : MonoBehaviour
         }
 
         // Clean up touches over UI
-        foreach (var touch in Touchscreen.current.touches)
+        foreach (UnityEngine.InputSystem.Controls.TouchControl touch in Touchscreen.current.touches)
         {
             int id = touch.touchId.ReadValue();
             if (!touch.isInProgress && this.touchesOverUI.ContainsKey(id))
@@ -191,7 +191,7 @@ public class BuilderMobileInputHandler : MonoBehaviour
             this.rippleCoroutine = this.StartCoroutine(this.PlayRipple(screenPos, () =>
             {
                 // no longer needed for logic, just keep for feedback if you want
-                Handheld.Vibrate();
+                // Handheld.Vibrate();
                 this.rippleCoroutine = null;
             }));
         }
@@ -226,7 +226,6 @@ public class BuilderMobileInputHandler : MonoBehaviour
             {
                 dragActivated = true;
                 onComplete?.Invoke();
-                Handheld.Vibrate();
             }
         });
 

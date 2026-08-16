@@ -91,7 +91,7 @@ public class PlaytestManager : MonoBehaviour
 
     private void StoreBuilder()
     {
-        var cam = Camera.main;
+        Camera cam = Camera.main;
         this.storedBuilderState = new BuilderState
         {
             CameraPosition = cam.transform.position,
@@ -169,7 +169,7 @@ public class PlaytestManager : MonoBehaviour
         List<string> errors = new List<string>();
 
         int playerCount = 0;
-        foreach (var entity in BuilderRegistry.GetAll())
+        foreach (BuilderEntity entity in BuilderRegistry.GetAll())
         {
             if (entity.CompareTag("PlayerEntity"))
             {

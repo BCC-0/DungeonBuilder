@@ -42,7 +42,7 @@ public class TileLibrary : ScriptableObject
             this.Initialize();
         }
 
-        this.tileMap.TryGetValue(tileID, out var entry);
+        this.tileMap.TryGetValue(tileID, out TileEntry entry);
         return entry?.Tile;
     }
 
@@ -58,7 +58,7 @@ public class TileLibrary : ScriptableObject
             this.Initialize();
         }
 
-        this.tileMap.TryGetValue(tileID, out var entry);
+        this.tileMap.TryGetValue(tileID, out TileEntry entry);
         return entry?.BehaviorTypeName;
     }
 
@@ -74,7 +74,7 @@ public class TileLibrary : ScriptableObject
             this.Initialize();
         }
 
-        foreach (var entry in this.tileMap.Values)
+        foreach (TileEntry entry in this.tileMap.Values)
         {
             if (entry.Tile == tile)
             {
