@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Tilemaps;
 
 /// <summary>
 /// Selection manager for entity-only editor layers. No tilemap awareness
@@ -14,9 +15,8 @@ public class EntitySelectionManager : SelectionManagerBase
     private const float EntitySelectRadius = 0.5f;
 
     /// <summary>
-    /// Optional visualizer that outlines the current entity selection.
+    /// Visualizer that outlines the current entity selection.
     /// </summary>
-    [SerializeField]
     private EntitySelectionVisualizer selectionVisualizer;
 
     /// <inheritdoc/>
@@ -28,7 +28,11 @@ public class EntitySelectionManager : SelectionManagerBase
     /// <inheritdoc/>
     public override void DeleteSelected()
     {
-        // TODO: Add actual deletion of selected entities from the scene.
+        foreach (SaveableEntity entity in MapEditorManager.Instance.SelectedEntities)
+        {
+            Destroy(entity.gameObject);
+        }
+
         this.ClearSelection();
     }
 
@@ -36,14 +40,14 @@ public class EntitySelectionManager : SelectionManagerBase
     /// Selects the closest entity within range of the click, if any.
     /// </summary>
     /// <param name="position">The position that was clicked.</param>
-    protected override void OnClickSelect(Vector3 position)
+    protected override void OnClickSelect(Vector2 position)
     {
         SaveableEntity closestEntity = FindObjectsByType<SaveableEntity>()
-            .OrderBy(e => Vector3.Distance(e.transform.position, position))
+            .OrderBy(e => Vector2.Distance(e.transform.position, position))
             .FirstOrDefault();
 
         if (closestEntity != null &&
-            Vector3.Distance(closestEntity.transform.position, position) <= EntitySelectRadius)
+            Vector2.Distance(closestEntity.transform.position, position) <= EntitySelectRadius)
         {
             this.SetSelection(new List<SaveableEntity> { closestEntity });
         }
@@ -60,24 +64,31 @@ public class EntitySelectionManager : SelectionManagerBase
     protected override void OnBoxSelect(Rect rect)
     {
         List<SaveableEntity> selected = FindObjectsByType<SaveableEntity>()
-            .Where(e => rect.Contains(e.transform.position))
+            .Where(e =>
+                e.GetComponent<Tilemap>() == null &&
+                rect.Contains(e.transform.position))
             .ToList();
 
         this.SetSelection(selected);
     }
 
     /// <summary>
+    /// Finds the correct visualizer.
+    /// </summary>
+    protected override void Awake()
+    {
+        this.selectionVisualizer = FindAnyObjectByType<EntitySelectionVisualizer>();
+        base.Awake();
+    }
+
+    /// <summary>
     /// Writes the given selection to <see cref="MapEditorManager"/> and refreshes
-    /// the visualizer, if one is assigned.
+    /// the visualizer.
     /// </summary>
     /// <param name="entities">The entities to select.</param>
     private void SetSelection(List<SaveableEntity> entities)
     {
         MapEditorManager.Instance.SelectedEntities = entities;
-
-        if (this.selectionVisualizer != null)
-        {
-            this.selectionVisualizer.Refresh();
-        }
+        this.selectionVisualizer.Refresh();
     }
 }

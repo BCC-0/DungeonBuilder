@@ -1138,7 +1138,6 @@ MonoBehaviour:
   selectionBox: {fileID: 1727406745}
   selectionBoxParent: {fileID: 1617474114}
   saveableTilemap: {fileID: 547713615080710944}
-  selectionOverlay: {fileID: 322721818}
 --- !u!114 &322721818
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3334,7 +3333,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EntitySelectionManager
   selectionBox: {fileID: 1727406745}
   selectionBoxParent: {fileID: 1617474114}
-  selectionVisualizer: {fileID: 1175398114}
 --- !u!1 &1190416919
 GameObject:
   m_ObjectHideFlags: 0
@@ -6472,6 +6470,22 @@ MonoBehaviour:
       m_Calls: []
     m_ActionId: 44368398-d7f7-4de2-84a1-ff7dbd778bfb
     m_ActionName: 'Builder/Save[/Keyboard/s]'
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 8d896a06-9b2c-4323-aa50-4be185689d7e
+    m_ActionName: 'Builder/MoveSelection[/Keyboard/f]'
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 59b349f0-d05a-4747-b3f8-014fa192bbeb
+    m_ActionName: 'Builder/RotateSelection[/Keyboard/r]'
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: c01a3670-8dac-4b37-8d89-945ded6fee2e
+    m_ActionName: 'Builder/OpenInventory[/Keyboard/e]'
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: c68e4405-4555-46d1-9204-79d1d4e926d2
+    m_ActionName: 'Builder/EditSelection[/Keyboard/space]'
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: 
   m_DefaultActionMap: Builder

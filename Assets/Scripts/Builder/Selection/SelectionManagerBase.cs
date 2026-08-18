@@ -1,11 +1,7 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
-/// Shared drag mechanics for selection managers. A controller is always either
-/// entity-only or tile-only, so the concrete click/box-select logic lives in
-/// <see cref="EntitySelectionManager"/> / <see cref="TileSelectionManager"/> —
-/// this base class only owns the parts that are identical either way: tracking
-/// the drag gesture and driving the on-screen selection box.
+/// Shared drag mechanics for selection managers.
 /// </summary>
 public abstract class SelectionManagerBase : MonoBehaviour
 {
@@ -41,18 +37,10 @@ public abstract class SelectionManagerBase : MonoBehaviour
     public bool IsDragging => this.isDragging;
 
     /// <summary>
-    /// Finds the camera used to convert world positions to UI positions.
-    /// </summary>
-    protected virtual void Awake()
-    {
-        this.cam = Camera.main;
-    }
-
-    /// <summary>
     /// Begins a selection drag at the given world position.
     /// </summary>
     /// <param name="worldPos">The pointer's world position at drag start.</param>
-    public void BeginDrag(Vector3 worldPos)
+    public void BeginDrag(Vector2 worldPos)
     {
         this.isDragging = true;
         this.hasDragged = false;
@@ -67,7 +55,7 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// Call every frame while <see cref="IsDragging"/> is true.
     /// </summary>
     /// <param name="worldPos">The pointer's current world position.</param>
-    public void UpdateDrag(Vector3 worldPos)
+    public void UpdateDrag(Vector2 worldPos)
     {
         if (!this.isDragging)
         {
@@ -124,7 +112,7 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// depending on the concrete manager).
     /// </summary>
     /// <param name="position">The position that was clicked.</param>
-    protected abstract void OnClickSelect(Vector3 position);
+    protected abstract void OnClickSelect(Vector2 position);
 
     /// <summary>
     /// Selects everything within the dragged rectangle (entities or tiles,
@@ -134,12 +122,20 @@ public abstract class SelectionManagerBase : MonoBehaviour
     protected abstract void OnBoxSelect(Rect rect);
 
     /// <summary>
+    /// Finds the camera used to convert world positions to UI positions.
+    /// </summary>
+    protected virtual void Awake()
+    {
+        this.cam = Camera.main;
+    }
+
+    /// <summary>
     /// Gets the world rectangle of a selection drag.
     /// </summary>
     /// <param name="a">Position 1.</param>
     /// <param name="b">Position 2.</param>
     /// <returns>The rectangle of the drag.</returns>
-    private Rect GetWorldRect(Vector3 a, Vector3 b)
+    private Rect GetWorldRect(Vector2 a, Vector2 b)
     {
         Vector2 min = Vector2.Min(a, b);
         Vector2 max = Vector2.Max(a, b);

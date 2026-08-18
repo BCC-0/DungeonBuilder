@@ -59,7 +59,7 @@ public class MapEditorManager : MonoBehaviour
     private EditorTool currentTool;
     private EditLayer currentLayer;
 
-    private List<Vector3Int> selectedTiles = new List<Vector3Int>();
+    private List<Vector2Int> selectedTiles = new List<Vector2Int>();
     private List<SaveableEntity> selectedEntities = new List<SaveableEntity>();
 
     [SerializeField]
@@ -70,7 +70,6 @@ public class MapEditorManager : MonoBehaviour
     private bool canSwitch = true;
 
     private string mapName;
-
 
     /// <summary>
     /// Gets the instance of the MapEditorManager.
@@ -112,7 +111,7 @@ public class MapEditorManager : MonoBehaviour
     /// <summary>
     /// Gets or sets the currently selected tiles.
     /// </summary>
-    public List<Vector3Int> SelectedTiles
+    public List<Vector2Int> SelectedTiles
     {
         get => this.selectedTiles;
         set => this.selectedTiles = value;

@@ -20,14 +20,6 @@ public class EntityEditorController : EditorControllerBase
     }
 
     /// <summary>
-    /// Deletes all selected entities.
-    /// </summary>
-    public override void OnDelete()
-    {
-        Debug.Log("Deleting entities");
-    }
-
-    /// <summary>
     /// Executes entity editing logic based on the resolved editor action.
     /// </summary>
     /// <param name="tool">The active editor tool.</param>

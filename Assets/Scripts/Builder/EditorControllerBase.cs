@@ -64,7 +64,7 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// <summary>
     /// Gets the current world position of the pointer.
     /// </summary>
-    protected Vector3 CurrentPos => this.currentPos;
+    protected Vector2 CurrentPos => this.currentPos;
 
     /// <summary>
     /// Gets a value indicating whether the primary input is held.
@@ -148,7 +148,7 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// <summary>
     /// Deletes all selected entities or tiles.
     /// </summary>
-    public virtual void OnDelete()
+    public void OnDelete()
     {
         this.selectionManager.DeleteSelected();
     }
@@ -161,13 +161,6 @@ public abstract class EditorControllerBase : MonoBehaviour
     public void ClearSelection()
     {
         this.selectionManager.ClearSelection();
-    }
-
-    /// <summary>
-    /// Finds the camera.
-    /// </summary>
-    protected virtual void Awake()
-    {
     }
 
     /// <summary>

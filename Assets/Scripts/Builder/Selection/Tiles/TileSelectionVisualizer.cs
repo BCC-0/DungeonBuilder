@@ -10,7 +10,7 @@ using UnityEngine.Tilemaps;
 /// </summary>
 public class TileSelectionVisualizer : MonoBehaviour
 {
-    private readonly HashSet<Vector3Int> selectedCells = new ();
+    private readonly HashSet<Vector2Int> selectedCells = new ();
 
     [Header("Overlay Tilemaps")]
     [SerializeField]
@@ -42,16 +42,16 @@ public class TileSelectionVisualizer : MonoBehaviour
     /// Rebuilds the selection outline for the supplied cells.
     /// </summary>
     /// <param name="cells">The currently selected tiles.</param>
-    public void Refresh(List<Vector3Int> cells)
+    public void Refresh(List<Vector2Int> cells)
     {
         this.Clear();
 
-        foreach (Vector3Int cell in cells)
+        foreach (Vector2Int cell in cells)
         {
             this.selectedCells.Add(cell);
         }
 
-        foreach (Vector3Int cell in this.selectedCells)
+        foreach (Vector2Int cell in this.selectedCells)
         {
             this.UpdateCell(cell);
         }
@@ -74,31 +74,31 @@ public class TileSelectionVisualizer : MonoBehaviour
     /// Determines which sides of a cell are exposed and renders the
     /// corresponding outline segments.
     /// </summary>
-    private void UpdateCell(Vector3Int cell)
+    private void UpdateCell(Vector2Int cell)
     {
-        Vector3Int above = cell + Vector3Int.up;
-        Vector3Int below = cell + Vector3Int.down;
-        Vector3Int left = cell + Vector3Int.left;
-        Vector3Int right = cell + Vector3Int.right;
+        Vector2Int above = cell + Vector2Int.up;
+        Vector2Int below = cell + Vector2Int.down;
+        Vector2Int left = cell + Vector2Int.left;
+        Vector2Int right = cell + Vector2Int.right;
 
         if (!this.selectedCells.Contains(above))
         {
-            this.topOverlay.SetTile(cell, this.topTile);
+            this.topOverlay.SetTile(new (cell.x, cell.y, 0), this.topTile);
         }
 
         if (!this.selectedCells.Contains(below))
         {
-            this.bottomOverlay.SetTile(cell, this.bottomTile);
+            this.bottomOverlay.SetTile(new (cell.x, cell.y, 0), this.bottomTile);
         }
 
         if (!this.selectedCells.Contains(left))
         {
-            this.leftOverlay.SetTile(cell, this.leftTile);
+            this.leftOverlay.SetTile(new (cell.x, cell.y, 0), this.leftTile);
         }
 
         if (!this.selectedCells.Contains(right))
         {
-            this.rightOverlay.SetTile(cell, this.rightTile);
+            this.rightOverlay.SetTile(new (cell.x, cell.y, 0), this.rightTile);
         }
     }
 }
