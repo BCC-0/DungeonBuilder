@@ -33,6 +33,7 @@ public class BuilderMobileInputHandler : MonoBehaviour
     private Coroutine rippleCoroutine;
     private Sequence currentRippleSequence;
     private Dictionary<int, bool> touchesOverUI = new ();
+    private bool isSelectionStarted;
 
     private EditorControllerBase ActiveController => MapEditorManager.Instance.ActiveController;
 
@@ -89,6 +90,7 @@ public class BuilderMobileInputHandler : MonoBehaviour
         this.lastPinchDistance = 0;
         this.isTouchPanningOverride = false;
         this.cameraController.EndPan();
+        this.isSelectionStarted = false;
 
         if (this.rippleCoroutine != null)
         {
@@ -143,9 +145,15 @@ public class BuilderMobileInputHandler : MonoBehaviour
 
         if (!fingerIsStill && !this.isTouchPanningOverride)
         {
-            if (MapEditorManager.Instance.CurrentTool != EditorTool.Drag)
+            if (MapEditorManager.Instance.CurrentTool != EditorTool.Drag &&
+                !(MapEditorManager.Instance.CurrentTool == EditorTool.Selection && this.isSelectionStarted))
             {
                 this.ActiveController.OnPrimaryDown();
+
+                if (MapEditorManager.Instance.CurrentTool == EditorTool.Selection)
+                {
+                    this.isSelectionStarted = true;
+                }
             }
         }
 
@@ -187,6 +195,7 @@ public class BuilderMobileInputHandler : MonoBehaviour
             this.isTouchPanningOverride = true;
 
             this.ActiveController.OnPrimaryUp();
+            this.isSelectionStarted = false;
 
             this.rippleCoroutine = this.StartCoroutine(this.PlayRipple(screenPos, () =>
             {
@@ -224,6 +233,7 @@ public class BuilderMobileInputHandler : MonoBehaviour
         {
             if (!dragActivated && this.currentRippleSequence.Elapsed() >= dragStartTime)
             {
+                this.isSelectionStarted = false;
                 dragActivated = true;
                 onComplete?.Invoke();
             }

@@ -23,7 +23,7 @@ public class SelectionBox : MonoBehaviour
         {
             image.enabled = true;
         }
-
+        Debug.Log("Started selection");
         this.SetPosition(startPos, startPos);
     }
 
@@ -35,6 +35,7 @@ public class SelectionBox : MonoBehaviour
     /// <param name="currentPos">The current UI-space position of the drag's active corner.</param>
     public void SetPosition(Vector2 startPos, Vector2 currentPos)
     {
+        Debug.Log("Set position:" + currentPos);
         Vector2 min = Vector2.Min(startPos, currentPos);
         Vector2 max = Vector2.Max(startPos, currentPos);
         this.rectTransform.anchoredPosition = min;
@@ -46,6 +47,7 @@ public class SelectionBox : MonoBehaviour
     /// </summary>
     public void StopSelection()
     {
+        Debug.Log("Stopped selection");
         foreach (Image image in this.images) { image.enabled = false; }
     }
 

@@ -104,8 +104,11 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// </summary>
     public virtual void OnPrimaryDown()
     {
+        Debug.Log($"PRIMARY DOWN: {this.CurrentTool}, pos={this.CurrentPos}");
+
         if (this.CurrentTool == EditorTool.Selection)
         {
+            Debug.Log("BEGIN DRAG");
             this.selectionManager.BeginDrag(this.CurrentPos);
             return;
         }
@@ -200,6 +203,7 @@ public abstract class EditorControllerBase : MonoBehaviour
 
         if (this.CurrentTool == EditorTool.Selection && this.selectionManager.IsDragging)
         {
+            Debug.Log($"UPDATE DRAG: {this.CurrentPos}");
             this.selectionManager.UpdateDrag(this.CurrentPos);
         }
 

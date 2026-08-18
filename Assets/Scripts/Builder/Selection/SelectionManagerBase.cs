@@ -41,14 +41,6 @@ public abstract class SelectionManagerBase : MonoBehaviour
     public bool IsDragging => this.isDragging;
 
     /// <summary>
-    /// Finds the camera used to convert world positions to UI positions.
-    /// </summary>
-    protected virtual void Awake()
-    {
-        this.cam = Camera.main;
-    }
-
-    /// <summary>
     /// Begins a selection drag at the given world position.
     /// </summary>
     /// <param name="worldPos">The pointer's world position at drag start.</param>
@@ -120,6 +112,14 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// Deletes all currently selected items.
     /// </summary>
     public abstract void DeleteSelected();
+
+    /// <summary>
+    /// Finds the camera used to convert world positions to UI positions.
+    /// </summary>
+    protected virtual void Awake()
+    {
+        this.cam = Camera.main;
+    }
 
     /// <summary>
     /// Selects whatever is at the clicked world position (entity or tile,
