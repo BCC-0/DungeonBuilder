@@ -9,9 +9,9 @@ public class SelectionBox : MonoBehaviour
 {
     [SerializeField]
     private Image[] images;
+
     [SerializeField]
     private RectTransform rectTransform;
-    private Vector2 startPosition;
 
     /// <summary>
     /// Visualizes the selection box starting at the given position.
@@ -24,18 +24,19 @@ public class SelectionBox : MonoBehaviour
             image.enabled = true;
         }
 
-        this.startPosition = startPos;
+        this.SetPosition(startPos, startPos);
     }
 
     /// <summary>
-    /// Sizes the selection box with the current drag position.
+    /// Sizes the selection box between two UI-space points, recomputed every
+    /// frame from world space so the box tracks correctly even if the camera moves.
     /// </summary>
-    /// <param name="currentPos">The current drag position.</param>
-    public void SetPosition(Vector2 currentPos)
+    /// <param name="startPos">The current UI-space position of the drag's start corner.</param>
+    /// <param name="currentPos">The current UI-space position of the drag's active corner.</param>
+    public void SetPosition(Vector2 startPos, Vector2 currentPos)
     {
-        Vector2 min = Vector2.Min(this.startPosition, currentPos);
-        Vector2 max = Vector2.Max(this.startPosition, currentPos);
-
+        Vector2 min = Vector2.Min(startPos, currentPos);
+        Vector2 max = Vector2.Max(startPos, currentPos);
         this.rectTransform.anchoredPosition = min;
         this.rectTransform.sizeDelta = max - min;
     }

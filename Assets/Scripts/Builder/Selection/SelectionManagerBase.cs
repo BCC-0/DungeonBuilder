@@ -67,7 +67,7 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// Call every frame while <see cref="IsDragging"/> is true.
     /// </summary>
     /// <param name="worldPos">The pointer's current world position.</param>
-    public void UpdateDrag(Vector3 worldPos)
+    public void UpdateDrag(Vector2 worldPos)
     {
         if (!this.isDragging)
         {
@@ -82,7 +82,9 @@ public abstract class SelectionManagerBase : MonoBehaviour
             this.hasDragged = true;
         }
 
-        this.selectionBox.SetPosition(this.WorldToLocalUiPoint(this.dragEnd));
+        this.selectionBox.SetPosition(
+            this.WorldToLocalUiPoint(this.dragStart),
+            this.WorldToLocalUiPoint(this.dragEnd));
     }
 
     /// <summary>
