@@ -19,6 +19,26 @@ public class EntitySelectionManager : SelectionManagerBase
     /// </summary>
     private EntitySelectionVisualizer selectionVisualizer;
 
+    /// <summary>
+    /// Cell positions of the selected entities when movement started.
+    /// </summary>
+    private Dictionary<SaveableEntity, Vector3Int> moveStartCells = new ();
+
+    /// <summary>
+    /// Cell positions of the selected entities when movement is continued on mobile.
+    /// </summary>
+    private Dictionary<SaveableEntity, Vector3Int> extraMoveStartCells = new ();
+
+    /// <summary>
+    /// Cell under the pointer when movement started.
+    /// </summary>
+    private Vector3Int moveStartPointerCell;
+
+    /// <summary>
+    /// Prevents confirming immediately on the same frame movement starts.
+    /// </summary>
+    private bool startedMovingThisFrame;
+
     /// <inheritdoc/>
     public override void ClearSelection()
     {
@@ -34,6 +54,186 @@ public class EntitySelectionManager : SelectionManagerBase
         }
 
         this.ClearSelection();
+    }
+
+    /// <inheritdoc/>
+    public override void MoveSelected()
+    {
+        if (this.IsMovingSelected)
+        {
+            return;
+        }
+
+        this.startedMovingThisFrame = true;
+
+        List<SaveableEntity> selectedEntities = MapEditorManager.Instance.SelectedEntities;
+
+        if (selectedEntities == null || selectedEntities.Count == 0)
+        {
+            return;
+        }
+
+        this.IsMovingSelected = true;
+        this.moveStartCells.Clear();
+
+        this.moveStartPointerCell = this.Grid.WorldToCell(this.CurrentPos);
+
+        foreach (SaveableEntity entity in selectedEntities)
+        {
+            Vector3Int cell = this.Grid.WorldToCell(entity.transform.position);
+            this.moveStartCells[entity] = cell;
+        }
+
+        this.extraMoveStartCells = new Dictionary<SaveableEntity, Vector3Int>(this.moveStartCells);
+        //this.PrintDict(this.moveStartCells);
+        this.DisableSelectionButtons();
+        this.EnableMoveButtons(this.GetBoundingRect(selectedEntities.Select(e => (Vector2)e.transform.position)));
+    }
+
+    /// <summary>
+    /// Updates the preview position of the selected entities based on the pointer position.
+    /// </summary>
+    public void Update()
+    {
+        if (!this.IsMovingSelected)
+        {
+            return;
+        }
+
+        if (this.startedMovingThisFrame)
+        {
+            this.startedMovingThisFrame = false;
+            return;
+        }
+
+        Vector3Int currentPointerCell =
+            this.Grid.WorldToCell(this.CurrentPos);
+
+        Vector3Int cellDelta =
+            currentPointerCell - this.moveStartPointerCell;
+
+        foreach (KeyValuePair<SaveableEntity, Vector3Int> entry in this.extraMoveStartCells)
+        {
+            SaveableEntity entity = entry.Key;
+
+            if (entity == null)
+            {
+                continue;
+            }
+
+            Vector3Int previewCell = entry.Value + cellDelta;
+
+            entity.transform.position =
+                this.Grid.GetCellCenterWorld(previewCell);
+        }
+
+        this.selectionVisualizer.Refresh();
+    }
+
+    /// <inheritdoc/>
+    public override void ConfirmMovingSelected()
+    {
+        if (this.startedMovingThisFrame)
+        {
+            this.startedMovingThisFrame = false;
+            return;
+        }
+
+        if (!this.IsMovingSelected)
+        {
+            return;
+        }
+
+        List<SaveableEntity> selectedEntities =
+            MapEditorManager.Instance.SelectedEntities;
+
+        HashSet<SaveableEntity> movingEntities =
+            new HashSet<SaveableEntity>(selectedEntities);
+
+        foreach (KeyValuePair<SaveableEntity, Vector3Int> entry in this.extraMoveStartCells)
+        {
+            SaveableEntity entity = entry.Key;
+
+            if (entity == null)
+            {
+                continue;
+            }
+
+            Vector3Int finalCell =
+                this.Grid.WorldToCell(entity.transform.position);
+
+            SaveableEntity entityAtDestination =
+                FindObjectsByType<SaveableEntity>()
+                    .FirstOrDefault(other =>
+                        other != entity &&
+                        !movingEntities.Contains(other) &&
+                        this.Grid.WorldToCell(other.transform.position) == finalCell);
+
+            if (entityAtDestination != null)
+            {
+                Destroy(entityAtDestination.gameObject);
+            }
+        }
+
+        this.IsMovingSelected = false;
+        this.moveStartCells.Clear();
+        this.extraMoveStartCells.Clear();
+
+        this.DisableMoveButtons();
+        this.ClearSelection();
+    }
+
+    /// <inheritdoc/>
+    public override void CancelMovingSelected()
+    {
+        if (!this.IsMovingSelected)
+        {
+            return;
+        }
+
+        foreach (KeyValuePair<SaveableEntity, Vector3Int> entry in this.moveStartCells)
+        {
+            SaveableEntity entity = entry.Key;
+
+            if (entity == null)
+            {
+                continue;
+            }
+
+            entity.transform.position = this.Grid.GetCellCenterWorld(entry.Value);
+        }
+
+        this.IsMovingSelected = false;
+        this.moveStartCells.Clear();
+
+        this.DisableMoveButtons();
+        this.ClearSelection();
+    }
+
+    /// <inheritdoc/>
+    protected override void ContinueMove(Vector2 worldPos)
+    {
+        if (!this.IsMovingSelected)
+        {
+            return;
+        }
+
+        this.moveStartPointerCell =
+            this.Grid.WorldToCell(worldPos);
+
+        foreach (SaveableEntity entity in this.extraMoveStartCells.Keys.ToList())
+        {
+            if (entity == null)
+            {
+                continue;
+            }
+
+            this.extraMoveStartCells[entity] =
+                this.Grid.WorldToCell(entity.transform.position);
+        }
+
+        this.CurrentPos = worldPos;
+        this.startedMovingThisFrame = true;
     }
 
     /// <summary>
@@ -90,5 +290,26 @@ public class EntitySelectionManager : SelectionManagerBase
     {
         MapEditorManager.Instance.SelectedEntities = entities;
         this.selectionVisualizer.Refresh();
+
+        if (entities == null || entities.Count == 0)
+        {
+            this.DisableSelectionButtons();
+        }
+        else
+        {
+            this.EnableSelectionButtons(this.GetBoundingRect(entities.Select(e => (Vector2)e.transform.position)));
+        }
+    }
+
+    private void PrintDict(Dictionary<SaveableEntity, Vector3Int> dict)
+    {
+        string s = "Dictionary:\n";
+
+        foreach (var pair in dict)
+        {
+            s += $"{pair.Key} -> {pair.Value}\n";
+        }
+
+        Debug.Log(s);
     }
 }

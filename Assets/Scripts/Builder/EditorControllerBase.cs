@@ -14,7 +14,7 @@ public abstract class EditorControllerBase : MonoBehaviour
     private SaveableTilemap saveableTilemap;
 
     private SelectionManagerBase selectionManager;
-    private Vector3 currentPos;
+    private Vector2 currentPos;
     private bool primaryHolding;
     private bool secondaryHolding;
 
@@ -136,9 +136,33 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// <summary>
     /// Deletes all selected entities or tiles.
     /// </summary>
-    public void OnDelete()
+    public void OnDeleteSelection()
     {
         this.selectionManager.DeleteSelected();
+    }
+
+    /// <summary>
+    /// Starts moving the selection.
+    /// </summary>
+    public void OnMoveSelection()
+    {
+        this.selectionManager.MoveSelected();
+    }
+
+    /// <summary>
+    /// Confirms moving the items to the current shown position.
+    /// </summary>
+    public void OnConfirmMove()
+    {
+        this.selectionManager.ConfirmMovingSelected();
+    }
+
+    /// <summary>
+    /// Cancels moving the items and returns them to their last position.
+    /// </summary>
+    public void OnCancelMove()
+    {
+        this.selectionManager.CancelMovingSelected();
     }
 
     /// <summary>
@@ -149,53 +173,6 @@ public abstract class EditorControllerBase : MonoBehaviour
     public void ClearSelection()
     {
         this.selectionManager.ClearSelection();
-    }
-
-    /// <summary>
-    /// Applies tool continuously while input is held,
-    /// </summary>
-    protected virtual void Awake()
-    {
-    }
-
-    /// <summary>
-    /// Applies tool continuously while input is held,
-    /// and drives the active selection drag (if any).
-    /// </summary>
-    protected virtual void Update()
-    {
-        Mouse mouse = Mouse.current;
-
-        if (mouse != null)
-        {
-            if (BuilderInputSelector.Instance.IsUsingDesktop &&
-                this.CurrentTool == EditorTool.Selection &&
-                this.selectionManager.IsDragging &&
-                !mouse.leftButton.isPressed)
-            {
-                this.OnPrimaryUp();
-            }
-
-            if (this.primaryHolding && !mouse.leftButton.isPressed)
-            {
-                this.primaryHolding = false;
-            }
-
-            if (this.secondaryHolding && !mouse.rightButton.isPressed)
-            {
-                this.secondaryHolding = false;
-            }
-        }
-
-        if (this.CurrentTool == EditorTool.Selection && this.selectionManager.IsDragging)
-        {
-            this.selectionManager.UpdateDrag(this.CurrentPos);
-        }
-
-        if (this.primaryHolding || this.secondaryHolding)
-        {
-            this.ApplyTool();
-        }
     }
 
     /// <summary>
@@ -229,5 +206,47 @@ public abstract class EditorControllerBase : MonoBehaviour
 
             _ => EditorAction.None
         };
+    }
+
+    /// <summary>
+    /// Applies tool continuously while input is held,
+    /// and drives the active selection drag (if any).
+    /// </summary>
+    private void Update()
+    {
+        this.selectionManager.CurrentPos = this.currentPos;
+
+        Mouse mouse = Mouse.current;
+
+        if (mouse != null)
+        {
+            if (BuilderInputSelector.Instance.IsUsingDesktop &&
+                this.CurrentTool == EditorTool.Selection &&
+                this.selectionManager.IsDragging &&
+                !mouse.leftButton.isPressed)
+            {
+                this.OnPrimaryUp();
+            }
+
+            if (this.primaryHolding && !mouse.leftButton.isPressed)
+            {
+                this.primaryHolding = false;
+            }
+
+            if (this.secondaryHolding && !mouse.rightButton.isPressed)
+            {
+                this.secondaryHolding = false;
+            }
+        }
+
+        if (this.CurrentTool == EditorTool.Selection && this.selectionManager.IsDragging)
+        {
+            this.selectionManager.UpdateDrag(this.CurrentPos);
+        }
+
+        if (this.primaryHolding || this.secondaryHolding)
+        {
+            this.ApplyTool();
+        }
     }
 }

@@ -627,6 +627,24 @@
                     "initialStateCheck": false
                 },
                 {
+                    "name": "ConfirmMoveSelection",
+                    "type": "Button",
+                    "id": "013a2d86-47f4-4736-ad78-629214133d7b",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "CancelMoveSelection",
+                    "type": "Button",
+                    "id": "ef6202b8-4987-4e31-b34c-bd518b65fb99",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
                     "name": "RotateSelection",
                     "type": "Button",
                     "id": "59b349f0-d05a-4747-b3f8-014fa192bbeb",
@@ -1004,6 +1022,50 @@
                     "processors": "",
                     "groups": "",
                     "action": "EditSelection",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "12ae3d76-fabc-4d92-8c13-48cb5e32f6ee",
+                    "path": "<Keyboard>/enter",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "ConfirmMoveSelection",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "747e1d56-b382-485c-862a-2ddd5c345706",
+                    "path": "<Keyboard>/f",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "ConfirmMoveSelection",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "f619f05a-3725-49c6-ab57-62087cf21f82",
+                    "path": "<Mouse>/leftButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "ConfirmMoveSelection",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "ee682589-4bcd-4eb8-a3e9-d0e803efbcd7",
+                    "path": "<Keyboard>/escape",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "CancelMoveSelection",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

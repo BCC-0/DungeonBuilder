@@ -126,6 +126,16 @@ public class BuilderMobileInputHandler : MonoBehaviour
             return;
         }
 
+        // Update world pos first, then call the primary down method.
+        if (MapEditorManager.Instance.CurrentTool == EditorTool.Drag || this.isTouchPanningOverride)
+        {
+            this.cameraController.Pan(screenPos);
+        }
+        else
+        {
+            this.ActiveController.OnPointerMoved(worldPos);
+        }
+
         if (!this.isTouching)
         {
             this.isTouching = true;
@@ -155,15 +165,6 @@ public class BuilderMobileInputHandler : MonoBehaviour
                     this.isSelectionStarted = true;
                 }
             }
-        }
-
-        if (MapEditorManager.Instance.CurrentTool == EditorTool.Drag || this.isTouchPanningOverride)
-        {
-            this.cameraController.Pan(screenPos);
-        }
-        else
-        {
-            this.ActiveController.OnPointerMoved(worldPos);
         }
     }
 

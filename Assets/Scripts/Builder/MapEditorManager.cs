@@ -224,6 +224,34 @@ public class MapEditorManager : MonoBehaviour
     /// </summary>
     public void SelectSelection() => this.SelectTool(EditorTool.Selection, 3);
 
+    /// <summary>
+    /// Deletes the currently selected items.
+    /// </summary>
+    public void OnDeleteSelection() => this.ActiveController.OnDeleteSelection();
+
+    /// <summary>
+    /// Moves the currently selected items.
+    /// </summary>
+    public void OnMoveSelection() => this.ActiveController.OnMoveSelection();
+
+    /// <summary>
+    /// Confirms the move action.
+    /// </summary>
+    public void OnConfirmMove() => this.ActiveController.OnConfirmMove();
+
+    /// <summary>
+    /// Cancels the move action.
+    /// </summary>
+    public void OnCancelMove() => this.ActiveController.OnCancelMove();
+
+    /// <summary>
+    /// Rotates the currently selected items.
+    /// </summary>
+    public void OnRotateSelection()
+    {
+        Debug.Log("Rotate");
+    }
+
     private void Awake()
     {
         Instance = this;

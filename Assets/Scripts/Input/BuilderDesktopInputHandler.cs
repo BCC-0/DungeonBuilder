@@ -95,15 +95,50 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     }
 
     /// <summary>
-    /// Called when the delete key or button is pressed.
-    /// Deletes the currently selected entity/entities.
+    /// Deletes the currently selected objects.
     /// </summary>
     /// <param name="ctx">The input context.</param>
     public void OnDelete(InputAction.CallbackContext ctx)
     {
         if (ctx.started)
         {
-            this.ActiveController.OnDelete();
+            this.ActiveController.OnDeleteSelection();
+        }
+    }
+
+    /// <summary>
+    /// Starts moving the currently selected objects.
+    /// </summary>
+    /// <param name="ctx">The input context.</param>
+    public void OnMove(InputAction.CallbackContext ctx)
+    {
+        if (ctx.started)
+        {
+            this.ActiveController.OnMoveSelection();
+        }
+    }
+
+    /// <summary>
+    /// Confirms the current position while moving items.
+    /// </summary>
+    /// <param name="ctx">The input context.</param>
+    public void OnConfirmMove(InputAction.CallbackContext ctx)
+    {
+        if (ctx.started)
+        {
+            this.ActiveController.OnConfirmMove();
+        }
+    }
+
+    /// <summary>
+    /// Cancels the move action and places the objects back.
+    /// </summary>
+    /// <param name="ctx">The input context.</param>
+    public void OnCancelMove(InputAction.CallbackContext ctx)
+    {
+        if (ctx.started)
+        {
+            this.ActiveController.OnCancelMove();
         }
     }
 
