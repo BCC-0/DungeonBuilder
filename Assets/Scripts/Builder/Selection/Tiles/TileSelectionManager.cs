@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -14,7 +14,7 @@ public class TileSelectionManager : SelectionManagerBase
     private SaveableTilemap saveableTilemap;
 
     /// <summary>
-    /// Optional visualizer that highlights the current tile selection.
+    /// Visualizer that highlights the current tile selection.
     /// </summary>
     private TileSelectionVisualizer selectionVisualizer;
 

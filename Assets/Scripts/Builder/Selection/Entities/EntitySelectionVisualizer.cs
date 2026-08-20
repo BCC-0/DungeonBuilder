@@ -1,15 +1,9 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
 /// Applies outline visuals to the currently selected entities.
 /// </summary>
-/// <remarks>
-/// Assumes each selectable <see cref="SaveableEntity"/> has (or can have) some
-/// outline behaviour attached — e.g. a shader/line-renderer-based "Outline"
-/// component that can be toggled on/off. Swap <see cref="SetEntityOutline"/>
-/// out for whatever your actual outline implementation looks like.
-/// </remarks>
 public class EntitySelectionVisualizer : MonoBehaviour
 {
     private readonly List<SaveableEntity> highlightedEntities = new List<SaveableEntity>();

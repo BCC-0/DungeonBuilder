@@ -70,7 +70,9 @@ public abstract class SelectionManagerBase : MonoBehaviour
             this.hasDragged = true;
         }
 
-        this.selectionBox.SetPosition(this.WorldToLocalUiPoint(this.dragEnd));
+        this.selectionBox.SetPosition(
+            this.WorldToLocalUiPoint(this.dragStart),
+            this.WorldToLocalUiPoint(this.dragEnd));
     }
 
     /// <summary>
@@ -106,6 +108,14 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// Deletes all currently selected items.
     /// </summary>
     public abstract void DeleteSelected();
+
+    /// <summary>
+    /// Finds the camera used to convert world positions to UI positions.
+    /// </summary>
+    protected virtual void Awake()
+    {
+        this.cam = Camera.main;
+    }
 
     /// <summary>
     /// Selects whatever is at the clicked world position (entity or tile,

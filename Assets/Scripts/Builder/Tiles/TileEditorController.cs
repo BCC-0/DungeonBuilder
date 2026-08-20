@@ -49,4 +49,12 @@ public class TileEditorController : EditorControllerBase
                 break;
         }
     }
+
+    /// <summary>
+    /// Sets the correct selection manager.
+    /// </summary>
+    private void Start()
+    {
+        this.SelectionManager = FindAnyObjectByType<TileSelectionManager>();
+    }
 }
