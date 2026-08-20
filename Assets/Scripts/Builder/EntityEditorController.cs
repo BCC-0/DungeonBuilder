@@ -1,20 +1,17 @@
 ﻿using UnityEngine;
 
 /// <summary>
-/// Controls entity placement, movement, and deletion in the map editor foreground layer.
-/// Works with Unity Events, no subscriptions required.
+/// Controls entity placement, movement, and deletion in the foreground layer.
 /// </summary>
-public class EntityEditorController : MonoBehaviour
+public class EntityEditorController : EditorControllerBase
 {
     [SerializeField]
     private GameObject selectedPrefab;
-    private Vector3 currentPos;
-    private bool primaryHolding;
-    private bool secondaryHolding;
+
     private Transform entityParent;
 
     /// <summary>
-    /// Gets or sets the currently selected prefab for painting entities.
+    /// Gets or sets the currently selected prefab for placement.
     /// </summary>
     public GameObject SelectedPrefab
     {
@@ -23,88 +20,45 @@ public class EntityEditorController : MonoBehaviour
     }
 
     /// <summary>
-    /// Updates the current pointer position (screen-to-world) for placing entities.
-    /// </summary>
-    /// <param name="worldPos">The world position of the pointer.</param>
-    public void OnPointerMoved(Vector3 worldPos)
-    {
-        this.currentPos = worldPos;
-    }
-
-    /// <summary>
-    /// Called on primary button pressed when in the background layer.
-    /// Places or erases tiles depending on the current tool.
-    /// </summary>
-    public void OnPrimaryDown()
-    {
-        this.primaryHolding = true;
-        this.ApplyTool();
-    }
-
-    /// <summary>
-    /// Stops dragging tool if it was.
-    /// </summary>
-    public void OnPrimaryUp()
-    {
-        this.primaryHolding = false;
-    }
-
-    /// <summary>
-    /// Called on secondary button pressed when in the background layer.
-    /// Erases entities depending on the current tool.
-    /// </summary>
-    public void OnSecondaryDown()
-    {
-        this.secondaryHolding = true;
-        this.ApplyTool();
-    }
-
-    /// <summary>
-    /// Stops dragging tool if it was.
-    /// </summary>
-    public void OnSecondaryUp()
-    {
-        this.secondaryHolding = false;
-    }
-
-    /// <summary>
     /// Deletes all selected entities.
     /// </summary>
-    public void OnDelete()
+    public override void OnDelete()
     {
         Debug.Log("Deleting entities");
-
-        // TODO
     }
 
-    private void ApplyTool()
+    /// <summary>
+    /// Executes entity editing logic based on the resolved editor action.
+    /// </summary>
+    /// <param name="tool">The active editor tool.</param>
+    protected override void OnApplyTool(EditorTool tool)
     {
-        EditorTool tool = MapEditorManager.Instance.CurrentTool;
+        EditorAction action = this.GetAction(tool);
 
-        switch (tool)
+        switch (action)
         {
-            case EditorTool.Brush:
-                if (this.primaryHolding)
-                {
-                    this.TryPlace();
-                }
-                else if (this.secondaryHolding)
-                {
-                    this.TryErase();
-                }
-
+            case EditorAction.Paint:
+                this.TryPlace();
                 break;
 
-            case EditorTool.Eraser:
-                if (this.primaryHolding || this.secondaryHolding)
-                {
-                    this.TryErase();
-                }
-
+            case EditorAction.Erase:
+                this.TryErase();
                 break;
         }
     }
 
+    /// <summary>
+    /// Initializes the entity parent container and sets the correct selection manager.
+    /// </summary>
+    private void Start()
+    {
+        this.entityParent = GameObject.FindWithTag("Entity parent").transform;
+        this.SelectionManager = FindAnyObjectByType<EntitySelectionManager>();
+    }
+
+    /// <summary>
+    /// Attempts to place a new entity at the pointer position.
+    /// </summary>
     private void TryPlace()
     {
         if (this.selectedPrefab == null)
@@ -113,11 +67,11 @@ public class EntityEditorController : MonoBehaviour
         }
 
         Vector3 snappedPos = new Vector3(
-            Mathf.Floor(this.currentPos.x) + 0.5f,
-            Mathf.Floor(this.currentPos.y) + 0.5f,
+            Mathf.Floor(this.CurrentPos.x) + 0.5f,
+            Mathf.Floor(this.CurrentPos.y) + 0.5f,
             0f);
 
-        foreach (var buildEntity in BuilderRegistry.GetAll())
+        foreach (BuilderEntity buildEntity in BuilderRegistry.GetAll())
         {
             if (Vector3.Distance(buildEntity.transform.position, snappedPos) < 0.1f)
             {
@@ -131,35 +85,26 @@ public class EntityEditorController : MonoBehaviour
             return;
         }
 
-        GameObject go = new GameObject("BuilderEntity");
+        GameObject go = new GameObject(identity.PrefabID);
         go.transform.position = snappedPos;
         go.transform.SetParent(this.entityParent);
-        var builder = go.AddComponent<BuilderEntity>();
+
+        BuilderEntity builder = go.AddComponent<BuilderEntity>();
         builder.Initialize(identity.PrefabID);
     }
 
+    /// <summary>
+    /// Attempts to erase an entity near the pointer position.
+    /// </summary>
     private void TryErase()
     {
-        foreach (var builder in BuilderRegistry.GetAll())
+        foreach (BuilderEntity builder in BuilderRegistry.GetAll())
         {
-            if (Vector3.Distance(builder.transform.position, this.currentPos) < 0.5f)
+            if (Vector3.Distance(builder.transform.position, this.CurrentPos) < 0.5f)
             {
                 Destroy(builder.gameObject);
                 return;
             }
         }
-    }
-
-    private void Update()
-    {
-        if (this.primaryHolding || this.secondaryHolding)
-        {
-            this.ApplyTool();
-        }
-    }
-
-    private void Start()
-    {
-        this.entityParent = GameObject.FindWithTag("Entity parent").transform;
     }
 }

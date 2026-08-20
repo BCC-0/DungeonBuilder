@@ -52,10 +52,10 @@ public abstract class SaveableEntity : MonoBehaviour
         writer.Write(this.transform.localScale.z);
 
         // --- Save Fields ---
-        var fields = this.GetSaveFields();
+        FieldInfo[] fields = this.GetSaveFields();
         writer.Write(fields.Length);
 
-        foreach (var field in fields)
+        foreach (FieldInfo field in fields)
         {
             object value = field.GetValue(this);
             writer.Write(field.Name);
@@ -94,10 +94,10 @@ public abstract class SaveableEntity : MonoBehaviour
         // --- Load Fields ---
         int fieldCount = reader.ReadInt32();
 
-        var fields = this.GetSaveFields();
+        FieldInfo[] fields = this.GetSaveFields();
         Dictionary<string, FieldInfo> fieldMap = new ();
 
-        foreach (var f in fields)
+        foreach (FieldInfo f in fields)
         {
             fieldMap[f.Name] = f;
         }
@@ -106,7 +106,7 @@ public abstract class SaveableEntity : MonoBehaviour
         {
             string fieldName = reader.ReadString();
 
-            if (fieldMap.TryGetValue(fieldName, out var field))
+            if (fieldMap.TryGetValue(fieldName, out FieldInfo field))
             {
                 object value = this.ReadValue(reader, field.FieldType);
                 field.SetValue(this, value);
@@ -136,14 +136,14 @@ public abstract class SaveableEntity : MonoBehaviour
 
     private FieldInfo[] GetSaveFields()
     {
-        var allFields = this.GetType().GetFields(
+        FieldInfo[] allFields = this.GetType().GetFields(
             BindingFlags.Instance |
             BindingFlags.Public |
             BindingFlags.NonPublic);
 
         List<FieldInfo> saveFields = new ();
 
-        foreach (var field in allFields)
+        foreach (FieldInfo field in allFields)
         {
             if (Attribute.IsDefined(field, typeof(SaveFieldAttribute)))
             {

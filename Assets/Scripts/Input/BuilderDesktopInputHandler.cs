@@ -12,12 +12,6 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     [SerializeField]
     private Camera cam;
     [SerializeField]
-    private MapEditorManager mapEditorManager;
-    [SerializeField]
-    private TileEditorController tileEditor;
-    [SerializeField]
-    private EntityEditorController entityEditor;
-    [SerializeField]
     private CameraController cameraController;
     [SerializeField]
     private float desktopZoomSpeed = 0.2f;
@@ -25,6 +19,8 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     private bool isPrimaryHeld;
     private bool isMiddleMouseHeld;
     private bool command;
+
+    private EditorControllerBase ActiveController => MapEditorManager.Instance.ActiveController;
 
     /// <summary>
     /// Called when the pointer is moved.
@@ -42,8 +38,7 @@ public class BuilderDesktopInputHandler : MonoBehaviour
         Vector3 world = this.cam.ScreenToWorldPoint(screen);
         world.z = 0;
 
-        this.tileEditor.OnPointerMoved(world);
-        this.entityEditor.OnPointerMoved(world);
+        this.ActiveController.OnPointerMoved(world);
     }
 
     /// <summary>
@@ -62,28 +57,14 @@ public class BuilderDesktopInputHandler : MonoBehaviour
         if (ctx.started)
         {
             this.isPrimaryHeld = true;
-            if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
-            {
-                this.tileEditor.OnPrimaryDown();
-            }
-            else
-            {
-                this.entityEditor.OnPrimaryDown();
-            }
+            this.ActiveController.OnPrimaryDown();
         }
         else if (ctx.canceled)
         {
             this.isPrimaryHeld = false;
-            if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
-            {
-                this.tileEditor.OnPrimaryUp();
-            }
-            else
-            {
-                this.entityEditor.OnPrimaryUp();
-            }
+            this.ActiveController.OnPrimaryUp();
 
-            if (this.mapEditorManager.CurrentTool == EditorTool.Drag)
+            if (MapEditorManager.Instance.CurrentTool == EditorTool.Drag)
             {
                 this.cameraController.EndPan();
             }
@@ -105,25 +86,11 @@ public class BuilderDesktopInputHandler : MonoBehaviour
 
         if (ctx.started)
         {
-            if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
-            {
-                this.tileEditor.OnSecondaryDown();
-            }
-            else
-            {
-                this.entityEditor.OnSecondaryDown();
-            }
+            this.ActiveController.OnSecondaryDown();
         }
         else if (ctx.canceled)
         {
-            if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
-            {
-                this.tileEditor.OnSecondaryUp();
-            }
-            else
-            {
-                this.entityEditor.OnSecondaryUp();
-            }
+            this.ActiveController.OnSecondaryUp();
         }
     }
 
@@ -136,7 +103,7 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     {
         if (ctx.started)
         {
-            this.entityEditor.OnDelete();
+            this.ActiveController.OnDelete();
         }
     }
 
@@ -217,7 +184,7 @@ public class BuilderDesktopInputHandler : MonoBehaviour
             return;
         }
 
-        this.mapEditorManager.SelectNextTool();
+        MapEditorManager.Instance.SelectNextTool();
     }
 
     /// <summary>
@@ -231,7 +198,7 @@ public class BuilderDesktopInputHandler : MonoBehaviour
             return;
         }
 
-        this.mapEditorManager.ToggleLayer();
+        MapEditorManager.Instance.ToggleLayer();
     }
 
     /// <summary>
@@ -266,13 +233,12 @@ public class BuilderDesktopInputHandler : MonoBehaviour
         Vector2 pointerPos = Mouse.current.position.ReadValue();
         Vector3 worldPos = this.cam.ScreenToWorldPoint(pointerPos);
         worldPos.z = 0;
-        this.tileEditor.OnPointerMoved(worldPos);
-        this.entityEditor.OnPointerMoved(worldPos);
+        this.ActiveController.OnPointerMoved(worldPos);
     }
 
     private void HandleCameraPan()
     {
-        if (this.isMiddleMouseHeld || (this.isPrimaryHeld && this.mapEditorManager.CurrentTool == EditorTool.Drag))
+        if (this.isMiddleMouseHeld || (this.isPrimaryHeld && MapEditorManager.Instance.CurrentTool == EditorTool.Drag))
         {
             Vector2 pointerPos = Mouse.current.position.ReadValue();
             this.cameraController.Pan(pointerPos);

@@ -136,11 +136,11 @@ public abstract class Item : ScriptableObject
         sb.AppendLine(this.GetDisplayInfo()); // existing name/description
 
         // Include all [RuntimeEditable] fields
-        var type = this.GetType();
+        Type type = this.GetType();
         while (type != null && type != typeof(ScriptableObject))
         {
             FieldInfo[] fields = type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
-            foreach (var field in fields)
+            foreach (FieldInfo field in fields)
             {
                 // Only include fields marked as RuntimeEditable
                 if (field.GetCustomAttribute<RuntimeEditableAttribute>() != null)

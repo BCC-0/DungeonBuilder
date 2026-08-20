@@ -7,6 +7,8 @@ using UnityEngine.InputSystem;
 /// </summary>
 public class BuilderInputSelector : MonoBehaviour
 {
+    private static BuilderInputSelector instance;
+
     [SerializeField]
     private BuilderDesktopInputHandler desktopInputHandler;
     [SerializeField]
@@ -21,10 +23,24 @@ public class BuilderInputSelector : MonoBehaviour
         Mobile,
     }
 
+    /// <summary>
+    /// Gets the instance of the BuilderInputSelector.
+    /// </summary>
+    public static BuilderInputSelector Instance
+    {
+        get => instance;
+        private set => instance = value;
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether we are using desktop input currently.
+    /// </summary>
+    public bool IsUsingDesktop => this.desktopInputHandler.enabled;
 
     private void Awake()
     {
         // Start with both disabled
+        Instance = this;
         this.desktopInputHandler.enabled = false;
         this.mobileInputHandler.enabled = false;
     }

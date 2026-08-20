@@ -179,7 +179,7 @@ public class SaveableTilemap : SaveableEntity
 
         // Remove existing collider if it exists
         Vector2Int key = new Vector2Int(tile.X, tile.Y);
-        if (this.collisionObjects.TryGetValue(key, out var existing))
+        if (this.collisionObjects.TryGetValue(key, out GameObject existing))
         {
             Destroy(existing);
             this.collisionObjects.Remove(key);

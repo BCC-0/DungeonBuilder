@@ -14,12 +14,6 @@ public class BuilderMobileInputHandler : MonoBehaviour
     [SerializeField]
     private Camera cam;
     [SerializeField]
-    private MapEditorManager mapEditorManager;
-    [SerializeField]
-    private TileEditorController tileEditor;
-    [SerializeField]
-    private EntityEditorController entityEditor;
-    [SerializeField]
     private CameraController cameraController;
 
     [SerializeField]
@@ -39,6 +33,9 @@ public class BuilderMobileInputHandler : MonoBehaviour
     private Coroutine rippleCoroutine;
     private Sequence currentRippleSequence;
     private Dictionary<int, bool> touchesOverUI = new ();
+    private bool isSelectionStarted;
+
+    private EditorControllerBase ActiveController => MapEditorManager.Instance.ActiveController;
 
     private void Update()
     {
@@ -52,8 +49,8 @@ public class BuilderMobileInputHandler : MonoBehaviour
             return;
         }
 
-        var touches = Touchscreen.current.touches;
-        var activeTouches = touches.Where(t => t.isInProgress).ToArray();
+        UnityEngine.InputSystem.Utilities.ReadOnlyArray<UnityEngine.InputSystem.Controls.TouchControl> touches = Touchscreen.current.touches;
+        UnityEngine.InputSystem.Controls.TouchControl[] activeTouches = touches.Where(t => t.isInProgress).ToArray();
 
         if (activeTouches.Length == 0)
         {
@@ -80,27 +77,12 @@ public class BuilderMobileInputHandler : MonoBehaviour
     {
         if (this.isTouching && !this.isTouchPanningOverride && this.touchHoldTimer < this.holdThreshold)
         {
-            if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
-            {
-                this.tileEditor.OnPrimaryDown();
-                this.tileEditor.OnPrimaryUp();
-            }
-            else
-            {
-                this.entityEditor.OnPrimaryDown();
-                this.entityEditor.OnPrimaryUp();
-            }
+            this.ActiveController.OnPrimaryDown();
+            this.ActiveController.OnPrimaryUp();
         }
         else if (this.isTouching)
         {
-            if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
-            {
-                this.tileEditor.OnPrimaryUp();
-            }
-            else
-            {
-                this.entityEditor.OnPrimaryUp();
-            }
+            this.ActiveController.OnPrimaryUp();
         }
 
         this.isTouching = false;
@@ -108,6 +90,7 @@ public class BuilderMobileInputHandler : MonoBehaviour
         this.lastPinchDistance = 0;
         this.isTouchPanningOverride = false;
         this.cameraController.EndPan();
+        this.isSelectionStarted = false;
 
         if (this.rippleCoroutine != null)
         {
@@ -116,7 +99,7 @@ public class BuilderMobileInputHandler : MonoBehaviour
         }
 
         // Clean up touches over UI
-        foreach (var touch in Touchscreen.current.touches)
+        foreach (UnityEngine.InputSystem.Controls.TouchControl touch in Touchscreen.current.touches)
         {
             int id = touch.touchId.ReadValue();
             if (!touch.isInProgress && this.touchesOverUI.ContainsKey(id))
@@ -150,14 +133,7 @@ public class BuilderMobileInputHandler : MonoBehaviour
             this.isTouchPanningOverride = false;
             this.touchStartPosition = screenPos;
 
-            if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
-            {
-                this.tileEditor.OnPointerMoved(worldPos);
-            }
-            else
-            {
-                this.entityEditor.OnPointerMoved(worldPos);
-            }
+            this.ActiveController.OnPointerMoved(worldPos);
         }
 
         this.touchHoldTimer += Time.deltaTime;
@@ -169,33 +145,25 @@ public class BuilderMobileInputHandler : MonoBehaviour
 
         if (!fingerIsStill && !this.isTouchPanningOverride)
         {
-            if (this.mapEditorManager.CurrentTool != EditorTool.Drag)
+            if (MapEditorManager.Instance.CurrentTool != EditorTool.Drag &&
+                !(MapEditorManager.Instance.CurrentTool == EditorTool.Selection && this.isSelectionStarted))
             {
-                if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
+                this.ActiveController.OnPrimaryDown();
+
+                if (MapEditorManager.Instance.CurrentTool == EditorTool.Selection)
                 {
-                    this.tileEditor.OnPrimaryDown();
-                }
-                else
-                {
-                    this.entityEditor.OnPrimaryDown();
+                    this.isSelectionStarted = true;
                 }
             }
         }
 
-        if (this.mapEditorManager.CurrentTool == EditorTool.Drag || this.isTouchPanningOverride)
+        if (MapEditorManager.Instance.CurrentTool == EditorTool.Drag || this.isTouchPanningOverride)
         {
             this.cameraController.Pan(screenPos);
         }
         else
         {
-            if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
-            {
-                this.tileEditor.OnPointerMoved(worldPos);
-            }
-            else
-            {
-                this.entityEditor.OnPointerMoved(worldPos);
-            }
+            this.ActiveController.OnPointerMoved(worldPos);
         }
     }
 
@@ -218,7 +186,7 @@ public class BuilderMobileInputHandler : MonoBehaviour
     private void HandleRipple(Vector2 screenPos, int id, bool fingerIsStill)
     {
         if (!this.isTouchPanningOverride &&
-            this.mapEditorManager.CurrentTool != EditorTool.Drag &&
+            MapEditorManager.Instance.CurrentTool != EditorTool.Drag &&
             fingerIsStill &&
             this.touchHoldTimer >= this.holdThreshold &&
             this.rippleCoroutine == null &&
@@ -226,19 +194,13 @@ public class BuilderMobileInputHandler : MonoBehaviour
         {
             this.isTouchPanningOverride = true;
 
-            if (this.mapEditorManager.CurrentLayer == EditLayer.Background)
-            {
-                this.tileEditor.OnPrimaryUp();
-            }
-            else
-            {
-                this.entityEditor.OnPrimaryUp();
-            }
+            // this.ActiveController.OnPrimaryUp();
+            // this.isSelectionStarted = false;
 
             this.rippleCoroutine = this.StartCoroutine(this.PlayRipple(screenPos, () =>
             {
                 // no longer needed for logic, just keep for feedback if you want
-                Handheld.Vibrate();
+                // Handheld.Vibrate();
                 this.rippleCoroutine = null;
             }));
         }
@@ -271,9 +233,9 @@ public class BuilderMobileInputHandler : MonoBehaviour
         {
             if (!dragActivated && this.currentRippleSequence.Elapsed() >= dragStartTime)
             {
+                this.isSelectionStarted = false;
                 dragActivated = true;
                 onComplete?.Invoke();
-                Handheld.Vibrate();
             }
         });
 

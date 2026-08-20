@@ -29,7 +29,7 @@ public class InventoryUI : MonoBehaviour
         HashSet<Item> currentItems = new HashSet<Item>(items);
 
         List<Item> toRemove = new List<Item>();
-        foreach (var kvp in this.itemButtons)
+        foreach (KeyValuePair<Item, ItemButtonUI> kvp in this.itemButtons)
         {
             if (!currentItems.Contains(kvp.Key))
             {
@@ -38,7 +38,7 @@ public class InventoryUI : MonoBehaviour
             }
         }
 
-        foreach (var item in toRemove)
+        foreach (Item item in toRemove)
         {
             this.itemButtons.Remove(item);
         }
