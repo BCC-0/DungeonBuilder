@@ -132,14 +132,6 @@ public abstract class SelectionManagerBase : MonoBehaviour
     protected abstract void OnBoxSelect(Rect rect);
 
     /// <summary>
-    /// Finds the camera used to convert world positions to UI positions.
-    /// </summary>
-    protected virtual void Awake()
-    {
-        this.cam = Camera.main;
-    }
-
-    /// <summary>
     /// Gets the world rectangle of a selection drag.
     /// </summary>
     /// <param name="a">Position 1.</param>

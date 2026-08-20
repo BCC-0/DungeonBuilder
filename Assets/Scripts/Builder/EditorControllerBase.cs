@@ -159,10 +159,10 @@ public abstract class EditorControllerBase : MonoBehaviour
     }
 
     /// <summary>
-    /// Unity update loop. Applies tool continuously while input is held,
+    /// Applies tool continuously while input is held,
     /// and drives the active selection drag (if any).
-            if (BuilderInputSelector.Instance.IsUsingDesktop &&
-                this.CurrentTool == EditorTool.Selection &&
+    /// </summary>
+    protected virtual void Update()
     {
         Mouse mouse = Mouse.current;
 

@@ -47,7 +47,7 @@ public class EntitySelectionManager : SelectionManagerBase
             .FirstOrDefault();
 
         if (closestEntity != null &&
-            Vector2.Distance(closestEntity.transform.position, position) <= EntitySelectRadius)
+            Vector2.Distance(closestEntity.transform.position, position) <= this.entitySelectRadius)
         {
             this.SetSelection(new List<SaveableEntity> { closestEntity });
         }
