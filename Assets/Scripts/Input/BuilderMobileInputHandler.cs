@@ -194,8 +194,8 @@ public class BuilderMobileInputHandler : MonoBehaviour
         {
             this.isTouchPanningOverride = true;
 
-            this.ActiveController.OnPrimaryUp();
-            this.isSelectionStarted = false;
+            // this.ActiveController.OnPrimaryUp();
+            // this.isSelectionStarted = false;
 
             this.rippleCoroutine = this.StartCoroutine(this.PlayRipple(screenPos, () =>
             {

@@ -4,28 +4,16 @@ using UnityEngine.InputSystem;
 /// <summary>
 /// Base class for all editor controllers (tiles and entities).
 /// Handles shared input state, pointer tracking, and tool execution flow.
-/// Selection (click/drag/box-select) is delegated to <see cref="SelectionManager"/>,
-/// and visual feedback for the current selection is delegated to
-/// <see cref="SelectionVisualizer"/>.
 /// </summary>
 public abstract class EditorControllerBase : MonoBehaviour
 {
     /// <summary>
-    /// Shared tilemap reference used by tools that paint/erase tiles.
-    /// (Selection now reads its own tilemap reference via <see cref="SelectionManager"/>;
-    /// point both at the same <see cref="SaveableTilemap"/> in the Inspector.)
+    /// The tilemap we can edit tiles on.
     /// </summary>
     [SerializeField]
     private SaveableTilemap saveableTilemap;
 
-    /// <summary>
-    /// Handles all click/drag/box-selection logic and owns the current selection state.
-    /// Assign an <see cref="EntitySelectionManager"/> or <see cref="TileSelectionManager"/>
-    /// here, depending on which layer this controller belongs to.
-    /// </summary>
-    [SerializeField]
     private SelectionManagerBase selectionManager;
-
     private Vector3 currentPos;
     private bool primaryHolding;
     private bool secondaryHolding;
@@ -57,9 +45,9 @@ public abstract class EditorControllerBase : MonoBehaviour
     protected SaveableTilemap SaveableTilemap => this.saveableTilemap;
 
     /// <summary>
-    /// Gets the selection manager handling click/drag/box selection.
+    /// Gets or sets the selection manager handling click/drag/box selection.
     /// </summary>
-    protected SelectionManagerBase SelectionManager => this.selectionManager;
+    protected SelectionManagerBase SelectionManager { get => this.selectionManager; set => this.selectionManager = value; }
 
     /// <summary>
     /// Gets the current world position of the pointer.
@@ -104,11 +92,8 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// </summary>
     public virtual void OnPrimaryDown()
     {
-        Debug.Log($"PRIMARY DOWN: {this.CurrentTool}, pos={this.CurrentPos}");
-
         if (this.CurrentTool == EditorTool.Selection)
         {
-            Debug.Log("BEGIN DRAG");
             this.selectionManager.BeginDrag(this.CurrentPos);
             return;
         }
@@ -167,14 +152,7 @@ public abstract class EditorControllerBase : MonoBehaviour
     }
 
     /// <summary>
-    /// Finds the camera.
-    /// </summary>
-    protected virtual void Awake()
-    {
-    }
-
-    /// <summary>
-    /// Unity update loop. Applies tool continuously while input is held,
+    /// Applies tool continuously while input is held,
     /// and drives the active selection drag (if any).
     /// </summary>
     protected virtual void Update()
@@ -183,7 +161,8 @@ public abstract class EditorControllerBase : MonoBehaviour
 
         if (mouse != null)
         {
-            if (this.CurrentTool == EditorTool.Selection &&
+            if (BuilderInputSelector.Instance.IsUsingDesktop &&
+                this.CurrentTool == EditorTool.Selection &&
                 this.selectionManager.IsDragging &&
                 !mouse.leftButton.isPressed)
             {
@@ -203,7 +182,6 @@ public abstract class EditorControllerBase : MonoBehaviour
 
         if (this.CurrentTool == EditorTool.Selection && this.selectionManager.IsDragging)
         {
-            Debug.Log($"UPDATE DRAG: {this.CurrentPos}");
             this.selectionManager.UpdateDrag(this.CurrentPos);
         }
 

@@ -14,17 +14,17 @@ public class SelectionBox : MonoBehaviour
     private RectTransform rectTransform;
 
     /// <summary>
-    /// Visualizes the selection box starting at the given position.
+    /// Visualizes the selection box starting at the given position in world space.
     /// </summary>
-    /// <param name="startPos">The position to start dragging at.</param>
-    public void StartSelection(Vector2 startPos)
+    /// <param name="startWorldPos">The position to start dragging at.</param>
+    public void StartSelection(Vector2 startWorldPos)
     {
         foreach (Image image in this.images)
         {
             image.enabled = true;
         }
-        Debug.Log("Started selection");
-        this.SetPosition(startPos, startPos);
+
+        this.SetPosition(startWorldPos, startWorldPos);
     }
 
     /// <summary>
@@ -35,7 +35,6 @@ public class SelectionBox : MonoBehaviour
     /// <param name="currentPos">The current UI-space position of the drag's active corner.</param>
     public void SetPosition(Vector2 startPos, Vector2 currentPos)
     {
-        Debug.Log("Set position:" + currentPos);
         Vector2 min = Vector2.Min(startPos, currentPos);
         Vector2 max = Vector2.Max(startPos, currentPos);
         this.rectTransform.anchoredPosition = min;
@@ -47,7 +46,6 @@ public class SelectionBox : MonoBehaviour
     /// </summary>
     public void StopSelection()
     {
-        Debug.Log("Stopped selection");
         foreach (Image image in this.images) { image.enabled = false; }
     }
 

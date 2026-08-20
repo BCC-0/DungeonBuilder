@@ -48,11 +48,12 @@ public class EntityEditorController : EditorControllerBase
     }
 
     /// <summary>
-    /// Initializes the entity parent container.
+    /// Initializes the entity parent container and sets the correct selection manager.
     /// </summary>
     private void Start()
     {
         this.entityParent = GameObject.FindWithTag("Entity parent").transform;
+        this.SelectionManager = FindAnyObjectByType<EntitySelectionManager>();
     }
 
     /// <summary>

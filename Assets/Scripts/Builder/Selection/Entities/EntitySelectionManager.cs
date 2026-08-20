@@ -1,20 +1,20 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
 /// <summary>
-/// Selection manager for entity-only editor layers. No tilemap awareness
-/// needed — everything here only deals with <see cref="SaveableEntity"/>.
+/// Selection manager for entities.
 /// </summary>
 public class EntitySelectionManager : SelectionManagerBase
 {
     /// <summary>
     /// Max distance from a click position for an entity to be considered "under" it.
     /// </summary>
-    private const float EntitySelectRadius = 0.5f;
+    [SerializeField]
+    private float entitySelectRadius = 0.5f;
 
     /// <summary>
-    /// Optional visualizer that outlines the current entity selection.
+    /// Visualizer that outlines the current entity selection.
     /// </summary>
     [SerializeField]
     private EntitySelectionVisualizer selectionVisualizer;
@@ -43,7 +43,7 @@ public class EntitySelectionManager : SelectionManagerBase
             .FirstOrDefault();
 
         if (closestEntity != null &&
-            Vector3.Distance(closestEntity.transform.position, position) <= EntitySelectRadius)
+            Vector3.Distance(closestEntity.transform.position, position) <= entitySelectRadius)
         {
             this.SetSelection(new List<SaveableEntity> { closestEntity });
         }

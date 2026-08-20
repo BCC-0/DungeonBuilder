@@ -71,7 +71,6 @@ public class MapEditorManager : MonoBehaviour
 
     private string mapName;
 
-
     /// <summary>
     /// Gets the instance of the MapEditorManager.
     /// </summary>
