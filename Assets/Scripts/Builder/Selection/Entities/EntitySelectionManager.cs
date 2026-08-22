@@ -40,12 +40,6 @@ public class EntitySelectionManager : SelectionManagerBase
     private bool startedMovingThisFrame;
 
     /// <inheritdoc/>
-    public override void ClearSelection()
-    {
-        this.SetSelection(new List<SaveableEntity>());
-    }
-
-    /// <inheritdoc/>
     public override void DeleteSelected()
     {
         foreach (SaveableEntity entity in MapEditorManager.Instance.SelectedEntities)
@@ -210,6 +204,12 @@ public class EntitySelectionManager : SelectionManagerBase
     }
 
     /// <inheritdoc/>
+    protected override void ClearSelection()
+    {
+        this.SetSelection(new List<SaveableEntity>());
+    }
+
+    /// <inheritdoc/>
     protected override void ContinueMove(Vector2 worldPos)
     {
         if (!this.IsMovementMode)
@@ -232,6 +232,17 @@ public class EntitySelectionManager : SelectionManagerBase
         this.CurrentPos = worldPos;
         this.startedMovingThisFrame = true;
         this.IsMoving = true;
+    }
+
+    /// <summary>
+    /// Gets the current rect of the selection.
+    /// </summary>
+    /// <returns>A rect containing the selected entities.</returns>
+    protected override Rect GetCurrentSelectionBounds()
+    {
+        List<SaveableEntity> entities = MapEditorManager.Instance.SelectedEntities;
+
+        return this.GetBoundingRect(entities.Select(e => (Vector2)e.transform.position));
     }
 
     /// <summary>

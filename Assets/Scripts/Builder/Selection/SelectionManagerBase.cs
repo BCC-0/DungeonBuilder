@@ -95,6 +95,31 @@ public abstract class SelectionManagerBase : MonoBehaviour
     }
 
     /// <summary>
+    /// Resets the selection manager when switching away from the selection tool.
+    /// Cancels any active movement, clears the selection, and hides all buttons.
+    /// </summary>
+    public void ResetSelectionTool()
+    {
+        if (this.IsMovementMode)
+        {
+            this.CancelMovingSelected();
+        }
+        else
+        {
+            this.ClearSelection();
+        }
+
+        this.DisableSelectionButtons();
+        this.DisableMoveButtons();
+
+        this.isDragging = false;
+        this.hasDragged = false;
+        this.isMoving = false;
+
+        this.selectionBox.StopSelection();
+    }
+
+    /// <summary>
     /// Begins a selection drag at the given world position.
     /// </summary>
     /// <param name="worldPos">The pointer's world position at drag start.</param>
@@ -173,11 +198,6 @@ public abstract class SelectionManagerBase : MonoBehaviour
     }
 
     /// <summary>
-    /// Clears the current selection and refreshes the visualizer.
-    /// </summary>
-    public abstract void ClearSelection();
-
-    /// <summary>
     /// Deletes all currently selected items.
     /// </summary>
     public abstract void DeleteSelected();
@@ -198,6 +218,11 @@ public abstract class SelectionManagerBase : MonoBehaviour
     public abstract void CancelMovingSelected();
 
     /// <summary>
+    /// Clears the current selection and refreshes the visualizer.
+    /// </summary>
+    protected abstract void ClearSelection();
+
+    /// <summary>
     /// Rebaselines an in-progress move so that further dragging continues from
     /// the current preview position rather than jumping back to the original
     /// touch-down point. Used on mobile, where lifting and retouching mid-move
@@ -207,15 +232,10 @@ public abstract class SelectionManagerBase : MonoBehaviour
     protected abstract void ContinueMove(Vector2 worldPos);
 
     /// <summary>
-    /// Finds the camera used to convert world positions to UI positions.
+    /// Gets the current world-space bounds of the active selection.
     /// </summary>
-    protected virtual void Awake()
-    {
-        this.cam = Camera.main;
-        this.grid = FindAnyObjectByType<Grid>();
-        this.DisableSelectionButtons();
-        this.DisableMoveButtons();
-    }
+    /// <returns>The rectangle with the selection.</returns>
+    protected abstract Rect GetCurrentSelectionBounds();
 
     /// <summary>
     /// Selects whatever is at the clicked world position (entity or tile,
@@ -230,6 +250,17 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// </summary>
     /// <param name="rect">The world-space rectangle of the drag.</param>
     protected abstract void OnBoxSelect(Rect rect);
+
+    /// <summary>
+    /// Finds the camera used to convert world positions to UI positions.
+    /// </summary>
+    protected virtual void Awake()
+    {
+        this.cam = Camera.main;
+        this.grid = FindAnyObjectByType<Grid>();
+        this.DisableSelectionButtons();
+        this.DisableMoveButtons();
+    }
 
     /// <summary>
     /// Enables the selection buttons.
@@ -331,5 +362,30 @@ public abstract class SelectionManagerBase : MonoBehaviour
         Vector2 localPoint = this.WorldToLocalUiPoint(topCenterWorld);
 
         buttons.anchoredPosition = localPoint + new Vector2(0f, ButtonVerticalPadding);
+    }
+
+    /// <summary>
+    /// Updates the position of the UI buttons when something is selected.
+    /// </summary>
+    private void LateUpdate()
+    {
+        if (this.IsMovementMode)
+        {
+            if (this.moveButtons.gameObject.activeSelf)
+            {
+                this.PositionButtonsAboveRect(
+                    this.moveButtons,
+                    this.GetCurrentSelectionBounds());
+            }
+
+            return;
+        }
+
+        if (this.selectionButtons.gameObject.activeSelf)
+        {
+            this.PositionButtonsAboveRect(
+                this.selectionButtons,
+                this.GetCurrentSelectionBounds());
+        }
     }
 }

@@ -141,12 +141,9 @@ public class MapEditorManager : MonoBehaviour
                 ? this.tileController
                 : this.entityController;
 
-        // Selection is per-layer (a controller is either entity-only or
-        // tile-only), so leaving a layer with an active selection should
-        // clear it rather than leaving it stale/invisible in the background.
         if (previousController != null && previousController != this.activeController)
         {
-            previousController.ClearSelection();
+            previousController.ResetSelectionTool();
         }
 
         this.StartCoroutine(this.WaitForSwitch());
@@ -271,6 +268,11 @@ public class MapEditorManager : MonoBehaviour
         for (int i = 0; i < this.toolOutline.Length; i++)
         {
             this.toolOutline[i].SetActive(i == selectedIndex);
+        }
+
+        if (this.activeController != null)
+        {
+            this.activeController.ResetSelectionTool();
         }
     }
 

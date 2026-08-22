@@ -166,13 +166,11 @@ public abstract class EditorControllerBase : MonoBehaviour
     }
 
     /// <summary>
-    /// Clears any current selection made by this controller. Used, for example,
-    /// when switching away from this controller's layer so a stale selection
-    /// doesn't linger.
+    /// Clears any current selection made by this controller.
     /// </summary>
-    public void ClearSelection()
+    public void ResetSelectionTool()
     {
-        this.selectionManager.ClearSelection();
+        this.selectionManager.ResetSelectionTool();
     }
 
     /// <summary>

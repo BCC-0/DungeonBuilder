@@ -221,7 +221,6 @@ public class PlaytestManager : MonoBehaviour
         };
 
         this.RestoreBuilder();
-        this.RestoreBuilder();
     }
 
     private struct BuilderState

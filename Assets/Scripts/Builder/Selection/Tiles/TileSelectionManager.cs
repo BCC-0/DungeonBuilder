@@ -46,12 +46,6 @@ public class TileSelectionManager : SelectionManagerBase
     private bool startedMovingThisFrame;
 
     /// <inheritdoc/>
-    public override void ClearSelection()
-    {
-        this.SetSelection(new List<Vector2Int>());
-    }
-
-    /// <inheritdoc/>
     public override void DeleteSelected()
     {
         foreach (Vector2Int tile in MapEditorManager.Instance.SelectedTiles)
@@ -87,9 +81,7 @@ public class TileSelectionManager : SelectionManagerBase
 
         this.moveStartTiles.Clear();
 
-        this.moveStartPointerCell =
-            this.saveableTilemap.Tilemap.WorldToCell(
-                this.CurrentPos);
+        this.moveStartPointerCell = (Vector2Int)this.saveableTilemap.Tilemap.WorldToCell(this.CurrentPos);
 
         this.DisableSelectionButtons();
         this.EnableMoveButtons(this.GetTileBoundingRect(selectedTiles));
@@ -127,8 +119,6 @@ public class TileSelectionManager : SelectionManagerBase
             return;
         }
 
-        // extraMoveStartTiles keys are kept up to date every frame in Update(),
-        // so they already ARE the final destination cells - no delta math needed.
         foreach (KeyValuePair<Vector2Int, TileData> entry in this.extraMoveStartTiles)
         {
             this.saveableTilemap.SetTile(
@@ -180,6 +170,12 @@ public class TileSelectionManager : SelectionManagerBase
     }
 
     /// <inheritdoc/>
+    protected override void ClearSelection()
+    {
+        this.SetSelection(new List<Vector2Int>());
+    }
+
+    /// <inheritdoc/>
     protected override void ContinueMove(Vector2 worldPos)
     {
         if (!this.IsMovementMode)
@@ -187,7 +183,7 @@ public class TileSelectionManager : SelectionManagerBase
             return;
         }
 
-        this.moveStartPointerCell = this.saveableTilemap.Tilemap.WorldToCell(worldPos);
+        this.moveStartPointerCell = (Vector2Int)this.saveableTilemap.Tilemap.WorldToCell(worldPos);
 
         this.CurrentPos = worldPos;
         this.startedMovingThisFrame = true;
@@ -195,13 +191,14 @@ public class TileSelectionManager : SelectionManagerBase
     }
 
     /// <summary>
-    /// Finds the correct visualizer.
+    /// Gets the current rect of the selection.
     /// </summary>
-    protected override void Awake()
+    /// <returns>A rect containing the selected tiles.</returns>
+    protected override Rect GetCurrentSelectionBounds()
     {
-        this.selectionVisualizer = FindAnyObjectByType<TileSelectionVisualizer>();
+        List<Vector2Int> tiles = MapEditorManager.Instance.SelectedTiles;
 
-        base.Awake();
+        return this.GetTileBoundingRect(tiles);
     }
 
     /// <summary>
@@ -248,6 +245,16 @@ public class TileSelectionManager : SelectionManagerBase
         }
 
         this.SetSelection(selected);
+    }
+
+    /// <summary>
+    /// Finds the correct visualizer.
+    /// </summary>
+    protected override void Awake()
+    {
+        this.selectionVisualizer = FindAnyObjectByType<TileSelectionVisualizer>();
+
+        base.Awake();
     }
 
     /// <summary>
