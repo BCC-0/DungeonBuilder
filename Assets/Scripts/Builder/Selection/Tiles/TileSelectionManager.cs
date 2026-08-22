@@ -38,7 +38,7 @@ public class TileSelectionManager : SelectionManagerBase
     /// <summary>
     /// Cell under the pointer when movement started.
     /// </summary>
-    private Vector3Int moveStartPointerCell;
+    private Vector2Int moveStartPointerCell;
 
     /// <summary>
     /// Prevents confirming immediately on the same frame movement starts.
@@ -302,12 +302,11 @@ public class TileSelectionManager : SelectionManagerBase
             return;
         }
 
-        Vector3Int currentPointerCell =
-            this.saveableTilemap.Tilemap.WorldToCell(this.CurrentPos);
+        Vector2Int currentPointerCell = (Vector2Int)this.saveableTilemap.Tilemap.WorldToCell(this.CurrentPos);
 
-        Vector3Int cellDelta = currentPointerCell - this.moveStartPointerCell;
+        Vector2Int cellDelta = currentPointerCell - this.moveStartPointerCell;
 
-        if (cellDelta == Vector3Int.zero)
+        if (cellDelta == Vector2Int.zero)
         {
             return;
         }

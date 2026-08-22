@@ -22,17 +22,17 @@ public class EntitySelectionManager : SelectionManagerBase
     /// <summary>
     /// Cell positions of the selected entities when movement started.
     /// </summary>
-    private Dictionary<SaveableEntity, Vector3Int> moveStartCells = new ();
+    private Dictionary<SaveableEntity, Vector2Int> moveStartCells = new ();
 
     /// <summary>
     /// Cell positions of the selected entities when movement is continued on mobile.
     /// </summary>
-    private Dictionary<SaveableEntity, Vector3Int> extraMoveStartCells = new ();
+    private Dictionary<SaveableEntity, Vector2Int> extraMoveStartCells = new ();
 
     /// <summary>
     /// Cell under the pointer when movement started.
     /// </summary>
-    private Vector3Int moveStartPointerCell;
+    private Vector2Int moveStartPointerCell;
 
     /// <summary>
     /// Prevents confirming immediately on the same frame movement starts.
@@ -78,15 +78,15 @@ public class EntitySelectionManager : SelectionManagerBase
 
         this.moveStartCells.Clear();
 
-        this.moveStartPointerCell = this.Grid.WorldToCell(this.CurrentPos);
+        this.moveStartPointerCell = (Vector2Int)this.Grid.WorldToCell(this.CurrentPos);
 
         foreach (SaveableEntity entity in selectedEntities)
         {
-            Vector3Int cell = this.Grid.WorldToCell(entity.transform.position);
+            Vector2Int cell = (Vector2Int)this.Grid.WorldToCell(entity.transform.position);
             this.moveStartCells[entity] = cell;
         }
 
-        this.extraMoveStartCells = new Dictionary<SaveableEntity, Vector3Int>(this.moveStartCells);
+        this.extraMoveStartCells = new Dictionary<SaveableEntity, Vector2Int>(this.moveStartCells);
         this.DisableSelectionButtons();
         this.EnableMoveButtons(this.GetBoundingRect(selectedEntities.Select(e => (Vector2)e.transform.position)));
     }
@@ -107,13 +107,11 @@ public class EntitySelectionManager : SelectionManagerBase
             return;
         }
 
-        Vector3Int currentPointerCell =
-            this.Grid.WorldToCell(this.CurrentPos);
+        Vector2Int currentPointerCell = (Vector2Int)this.Grid.WorldToCell(this.CurrentPos);
 
-        Vector3Int cellDelta =
-            currentPointerCell - this.moveStartPointerCell;
+        Vector2Int cellDelta = currentPointerCell - this.moveStartPointerCell;
 
-        foreach (KeyValuePair<SaveableEntity, Vector3Int> entry in this.extraMoveStartCells)
+        foreach (KeyValuePair<SaveableEntity, Vector2Int> entry in this.extraMoveStartCells)
         {
             SaveableEntity entity = entry.Key;
 
@@ -122,10 +120,9 @@ public class EntitySelectionManager : SelectionManagerBase
                 continue;
             }
 
-            Vector3Int previewCell = entry.Value + cellDelta;
+            Vector3Int previewCell = (Vector3Int)(entry.Value + cellDelta);
 
-            entity.transform.position =
-                this.Grid.GetCellCenterWorld(previewCell);
+            entity.transform.position = this.Grid.GetCellCenterWorld(previewCell);
         }
 
         this.selectionVisualizer.Refresh();
@@ -151,7 +148,7 @@ public class EntitySelectionManager : SelectionManagerBase
         HashSet<SaveableEntity> movingEntities =
             new HashSet<SaveableEntity>(selectedEntities);
 
-        foreach (KeyValuePair<SaveableEntity, Vector3Int> entry in this.extraMoveStartCells)
+        foreach (KeyValuePair<SaveableEntity, Vector2Int> entry in this.extraMoveStartCells)
         {
             SaveableEntity entity = entry.Key;
 
@@ -160,15 +157,14 @@ public class EntitySelectionManager : SelectionManagerBase
                 continue;
             }
 
-            Vector3Int finalCell =
-                this.Grid.WorldToCell(entity.transform.position);
+            Vector2Int finalCell = (Vector2Int)this.Grid.WorldToCell(entity.transform.position);
 
             SaveableEntity entityAtDestination =
                 FindObjectsByType<SaveableEntity>()
                     .FirstOrDefault(other =>
                         other != entity &&
                         !movingEntities.Contains(other) &&
-                        this.Grid.WorldToCell(other.transform.position) == finalCell);
+                        (Vector2Int)this.Grid.WorldToCell(other.transform.position) == finalCell);
 
             if (entityAtDestination != null)
             {
@@ -193,7 +189,7 @@ public class EntitySelectionManager : SelectionManagerBase
             return;
         }
 
-        foreach (KeyValuePair<SaveableEntity, Vector3Int> entry in this.moveStartCells)
+        foreach (KeyValuePair<SaveableEntity, Vector2Int> entry in this.moveStartCells)
         {
             SaveableEntity entity = entry.Key;
 
@@ -202,7 +198,7 @@ public class EntitySelectionManager : SelectionManagerBase
                 continue;
             }
 
-            entity.transform.position = this.Grid.GetCellCenterWorld(entry.Value);
+            entity.transform.position = this.Grid.GetCellCenterWorld((Vector3Int)entry.Value);
         }
 
         this.IsMovementMode = false;
@@ -221,7 +217,7 @@ public class EntitySelectionManager : SelectionManagerBase
             return;
         }
 
-        this.moveStartPointerCell = this.Grid.WorldToCell(worldPos);
+        this.moveStartPointerCell = (Vector2Int)this.Grid.WorldToCell(worldPos);
 
         foreach (SaveableEntity entity in this.extraMoveStartCells.Keys.ToList())
         {
@@ -230,8 +226,7 @@ public class EntitySelectionManager : SelectionManagerBase
                 continue;
             }
 
-            this.extraMoveStartCells[entity] =
-                this.Grid.WorldToCell(entity.transform.position);
+            this.extraMoveStartCells[entity] = (Vector2Int)this.Grid.WorldToCell(entity.transform.position);
         }
 
         this.CurrentPos = worldPos;
@@ -302,17 +297,5 @@ public class EntitySelectionManager : SelectionManagerBase
         {
             this.EnableSelectionButtons(this.GetBoundingRect(entities.Select(e => (Vector2)e.transform.position)));
         }
-    }
-
-    private void PrintDict(Dictionary<SaveableEntity, Vector3Int> dict)
-    {
-        string s = "Dictionary:\n";
-
-        foreach (var pair in dict)
-        {
-            s += $"{pair.Key} -> {pair.Value}\n";
-        }
-
-        Debug.Log(s);
     }
 }
