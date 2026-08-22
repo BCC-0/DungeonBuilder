@@ -45,7 +45,8 @@ public abstract class SelectionManagerBase : MonoBehaviour
 
     private bool isDragging;
     private bool hasDragged;
-    private bool isMovingSelected;
+    private bool isMovementMode;
+    private bool isMoving;
     private Grid grid;
 
     private Vector2 dragStart;
@@ -67,12 +68,21 @@ public abstract class SelectionManagerBase : MonoBehaviour
     }
 
     /// <summary>
+    /// Gets or sets a value indicating whether we are currently in movement mode.
+    /// </summary>
+    protected bool IsMovementMode
+    {
+        get => this.isMovementMode;
+        set => this.isMovementMode = value;
+    }
+
+    /// <summary>
     /// Gets or sets a value indicating whether we are currently moving the selected items.
     /// </summary>
-    protected bool IsMovingSelected
+    protected bool IsMoving
     {
-        get => this.isMovingSelected;
-        set => this.isMovingSelected = value;
+        get => this.isMoving;
+        set => this.isMoving = value;
     }
 
     /// <summary>
@@ -90,8 +100,7 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// <param name="worldPos">The pointer's world position at drag start.</param>
     public void BeginDrag(Vector2 worldPos)
     {
-        Debug.Log("Begin drag");
-        if (this.IsMovingSelected)
+        if (this.IsMovementMode)
         {
             if (!BuilderInputSelector.Instance.IsUsingDesktop)
             {
@@ -140,6 +149,11 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// </summary>
     public void EndDrag()
     {
+        if (this.IsMovementMode)
+        {
+            this.isMoving = false;
+        }
+
         if (!this.isDragging)
         {
             return;

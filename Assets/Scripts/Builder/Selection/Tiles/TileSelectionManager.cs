@@ -28,7 +28,12 @@ public class TileSelectionManager : SelectionManagerBase
     /// <summary>
     /// Original tile data and positions when movement started.
     /// </summary>
-    private Dictionary<Vector2Int, TileData> moveStartTiles = new();
+    private Dictionary<Vector2Int, TileData> moveStartTiles = new ();
+
+    /// <summary>
+    /// Current cell positions of the selected tiles when movement is continued.
+    /// </summary>
+    private Dictionary<Vector2Int, TileData> extraMoveStartTiles = new ();
 
     /// <summary>
     /// Cell under the pointer when movement started.
@@ -39,11 +44,6 @@ public class TileSelectionManager : SelectionManagerBase
     /// Prevents confirming immediately on the same frame movement starts.
     /// </summary>
     private bool startedMovingThisFrame;
-
-    /// <summary>
-    /// Prevents restarting the animation of the outline every frame.
-    /// </summary>
-    private Vector3Int lastPointerPos;
 
     /// <inheritdoc/>
     public override void ClearSelection()
@@ -68,7 +68,7 @@ public class TileSelectionManager : SelectionManagerBase
     /// <inheritdoc/>
     public override void MoveSelected()
     {
-        if (this.IsMovingSelected)
+        if (this.IsMovementMode)
         {
             return;
         }
@@ -82,7 +82,8 @@ public class TileSelectionManager : SelectionManagerBase
         }
 
         this.startedMovingThisFrame = true;
-        this.IsMovingSelected = true;
+        this.IsMovementMode = true;
+        this.IsMoving = true;
 
         this.moveStartTiles.Clear();
 
@@ -104,13 +105,12 @@ public class TileSelectionManager : SelectionManagerBase
 
             this.moveStartTiles[cell] = tile;
 
-            this.saveableTilemap.SetTile(
-                cell.x,
-                cell.y,
-                tileID: null);
+            this.saveableTilemap.SetTile(cell.x, cell.y, tileID: null);
         }
 
-        this.UpdateMovementPreview(Vector3Int.zero);
+        this.extraMoveStartTiles = new Dictionary<Vector2Int, TileData>(this.moveStartTiles);
+
+        this.UpdateMovementPreview();
     }
 
     /// <inheritdoc/>
@@ -122,54 +122,14 @@ public class TileSelectionManager : SelectionManagerBase
             return;
         }
 
-        if (!this.IsMovingSelected)
+        if (!this.IsMovementMode)
         {
             return;
         }
 
-        Vector3Int currentPointerCell =
-            this.saveableTilemap.Tilemap.WorldToCell(
-                this.CurrentPos);
-
-        Vector3Int cellDelta =
-            currentPointerCell - this.moveStartPointerCell;
-
-        foreach (KeyValuePair<Vector2Int, TileData> entry
-                 in this.moveStartTiles)
-        {
-            Vector3Int destinationCell =
-                new Vector3Int(
-                    entry.Key.x,
-                    entry.Key.y,
-                    0) + cellDelta;
-
-            this.saveableTilemap.SetTile(
-                destinationCell.x,
-                destinationCell.y,
-                entry.Value.TileID,
-                entry.Value.HasCollision,
-                entry.Value.Tag);
-        }
-
-        this.movementPreviewTilemap.ClearAllTiles();
-
-        this.IsMovingSelected = false;
-        this.moveStartTiles.Clear();
-
-        this.DisableMoveButtons();
-        this.ClearSelection();
-    }
-
-    /// <inheritdoc/>
-    public override void CancelMovingSelected()
-    {
-        if (!this.IsMovingSelected)
-        {
-            return;
-        }
-
-        foreach (KeyValuePair<Vector2Int, TileData> entry
-                in this.moveStartTiles)
+        // extraMoveStartTiles keys are kept up to date every frame in Update(),
+        // so they already ARE the final destination cells - no delta math needed.
+        foreach (KeyValuePair<Vector2Int, TileData> entry in this.extraMoveStartTiles)
         {
             this.saveableTilemap.SetTile(
                 entry.Key.x,
@@ -181,8 +141,39 @@ public class TileSelectionManager : SelectionManagerBase
 
         this.movementPreviewTilemap.ClearAllTiles();
 
-        this.IsMovingSelected = false;
+        this.IsMovementMode = false;
+        this.IsMoving = false;
         this.moveStartTiles.Clear();
+        this.extraMoveStartTiles.Clear();
+
+        this.DisableMoveButtons();
+        this.ClearSelection();
+    }
+
+    /// <inheritdoc/>
+    public override void CancelMovingSelected()
+    {
+        if (!this.IsMovementMode)
+        {
+            return;
+        }
+
+        foreach (KeyValuePair<Vector2Int, TileData> entry in this.moveStartTiles)
+        {
+            this.saveableTilemap.SetTile(
+                entry.Key.x,
+                entry.Key.y,
+                entry.Value.TileID,
+                entry.Value.HasCollision,
+                entry.Value.Tag);
+        }
+
+        this.movementPreviewTilemap.ClearAllTiles();
+
+        this.IsMovementMode = false;
+        this.IsMoving = false;
+        this.moveStartTiles.Clear();
+        this.extraMoveStartTiles.Clear();
 
         this.DisableMoveButtons();
         this.ClearSelection();
@@ -191,7 +182,16 @@ public class TileSelectionManager : SelectionManagerBase
     /// <inheritdoc/>
     protected override void ContinueMove(Vector2 worldPos)
     {
+        if (!this.IsMovementMode)
+        {
+            return;
+        }
 
+        this.moveStartPointerCell = this.saveableTilemap.Tilemap.WorldToCell(worldPos);
+
+        this.CurrentPos = worldPos;
+        this.startedMovingThisFrame = true;
+        this.IsMoving = true;
     }
 
     /// <summary>
@@ -199,8 +199,7 @@ public class TileSelectionManager : SelectionManagerBase
     /// </summary>
     protected override void Awake()
     {
-        this.selectionVisualizer =
-            FindAnyObjectByType<TileSelectionVisualizer>();
+        this.selectionVisualizer = FindAnyObjectByType<TileSelectionVisualizer>();
 
         base.Awake();
     }
@@ -211,14 +210,11 @@ public class TileSelectionManager : SelectionManagerBase
     /// <param name="position">The position that was clicked.</param>
     protected override void OnClickSelect(Vector2 position)
     {
-        Vector2Int cellPos =
-            (Vector2Int)this.saveableTilemap.Tilemap.WorldToCell(position);
+        Vector2Int cellPos = (Vector2Int)this.saveableTilemap.Tilemap.WorldToCell(position);
 
-        if (this.saveableTilemap.Tilemap.HasTile(
-                new Vector3Int(cellPos.x, cellPos.y, 0)))
+        if (this.saveableTilemap.Tilemap.HasTile(new Vector3Int(cellPos.x, cellPos.y, 0)))
         {
-            this.SetSelection(
-                new List<Vector2Int> { cellPos });
+            this.SetSelection(new List<Vector2Int> { cellPos });
         }
         else
         {
@@ -234,11 +230,9 @@ public class TileSelectionManager : SelectionManagerBase
     {
         List<Vector2Int> selected = new ();
 
-        Vector2Int min =
-            (Vector2Int)this.saveableTilemap.Tilemap.WorldToCell(rect.min);
+        Vector2Int min = (Vector2Int)this.saveableTilemap.Tilemap.WorldToCell(rect.min);
 
-        Vector2Int max =
-            (Vector2Int)this.saveableTilemap.Tilemap.WorldToCell(rect.max);
+        Vector2Int max = (Vector2Int)this.saveableTilemap.Tilemap.WorldToCell(rect.max);
 
         for (int x = min.x; x <= max.x; x++)
         {
@@ -246,8 +240,7 @@ public class TileSelectionManager : SelectionManagerBase
             {
                 Vector2Int cell = new (x, y);
 
-                if (this.saveableTilemap.Tilemap.HasTile(
-                        new Vector3Int(cell.x, cell.y, 0)))
+                if (this.saveableTilemap.Tilemap.HasTile(new Vector3Int(cell.x, cell.y, 0)))
                 {
                     selected.Add(cell);
                 }
@@ -267,8 +260,7 @@ public class TileSelectionManager : SelectionManagerBase
         MapEditorManager.Instance.SelectedTiles = tiles;
         this.selectionVisualizer.Refresh(tiles);
 
-        // While moving, the move buttons own this slot; don't fight them.
-        if (this.IsMovingSelected)
+        if (this.IsMovementMode)
         {
             return;
         }
@@ -290,10 +282,8 @@ public class TileSelectionManager : SelectionManagerBase
     /// <returns>The bounding rectangle in world space.</returns>
     private Rect GetTileBoundingRect(List<Vector2Int> tiles)
     {
-        return GetBoundingRect(
-            tiles.Select(t =>
-                (Vector2)this.saveableTilemap.Tilemap.GetCellCenterWorld(
-                    new Vector3Int(t.x, t.y, 0))));
+        return this.GetBoundingRect(tiles.Select(
+            t => (Vector2)this.saveableTilemap.Tilemap.GetCellCenterWorld(new Vector3Int(t.x, t.y, 0))));
     }
 
     /// <summary>
@@ -301,7 +291,7 @@ public class TileSelectionManager : SelectionManagerBase
     /// </summary>
     private void Update()
     {
-        if (!this.IsMovingSelected)
+        if (!this.IsMovementMode || !this.IsMoving)
         {
             return;
         }
@@ -313,53 +303,51 @@ public class TileSelectionManager : SelectionManagerBase
         }
 
         Vector3Int currentPointerCell =
-            this.saveableTilemap.Tilemap.WorldToCell(
-                this.CurrentPos);
+            this.saveableTilemap.Tilemap.WorldToCell(this.CurrentPos);
 
-        Vector3Int cellDelta =
-            currentPointerCell - this.moveStartPointerCell;
+        Vector3Int cellDelta = currentPointerCell - this.moveStartPointerCell;
 
-        if (currentPointerCell != this.lastPointerPos)
+        if (cellDelta == Vector3Int.zero)
         {
-            this.lastPointerPos = currentPointerCell;
-            this.UpdateMovementPreview(cellDelta);
+            return;
         }
+
+        Vector2Int cellDelta2D = new (cellDelta.x, cellDelta.y);
+
+        Dictionary<Vector2Int, TileData> shifted = new ();
+
+        foreach (KeyValuePair<Vector2Int, TileData> entry in this.extraMoveStartTiles)
+        {
+            shifted[entry.Key + cellDelta2D] = entry.Value;
+        }
+
+        this.extraMoveStartTiles = shifted;
+        this.moveStartPointerCell = currentPointerCell;
+
+        this.UpdateMovementPreview();
     }
 
     /// <summary>
-    /// Updates both the tile preview and the selection outline.
+    /// Draws the tile movement preview and selection outline.
     /// </summary>
-    /// <param name="cellDelta">
-    /// The movement delta in grid cells.
-    /// </param>
-    private void UpdateMovementPreview(Vector3Int cellDelta)
+    private void UpdateMovementPreview()
     {
         this.movementPreviewTilemap.ClearAllTiles();
 
-        List<Vector2Int> previewSelection = new();
+        List<Vector2Int> previewSelection = new ();
 
-        foreach (KeyValuePair<Vector2Int, TileData> entry
-                 in this.moveStartTiles)
+        foreach (KeyValuePair<Vector2Int, TileData> entry in this.extraMoveStartTiles)
         {
-            Vector3Int originalCell =
-                new (entry.Key.x, entry.Key.y, 0);
-
-            Vector3Int previewCell =
-                originalCell + cellDelta;
+            Vector3Int previewCell = new (entry.Key.x, entry.Key.y, 0);
 
             TileBase previewTile =
                 string.IsNullOrEmpty(entry.Value.TileID)
                     ? null
                     : this.saveableTilemap.TileLibrary.GetTileByID(entry.Value.TileID);
 
-            this.movementPreviewTilemap.SetTile(
-                previewCell,
-                previewTile);
+            this.movementPreviewTilemap.SetTile(previewCell, previewTile);
 
-            previewSelection.Add(
-                new Vector2Int(
-                    previewCell.x,
-                    previewCell.y));
+            previewSelection.Add(entry.Key);
         }
 
         this.SetSelection(previewSelection);

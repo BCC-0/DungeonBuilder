@@ -59,7 +59,7 @@ public class EntitySelectionManager : SelectionManagerBase
     /// <inheritdoc/>
     public override void MoveSelected()
     {
-        if (this.IsMovingSelected)
+        if (this.IsMovementMode)
         {
             return;
         }
@@ -73,7 +73,9 @@ public class EntitySelectionManager : SelectionManagerBase
             return;
         }
 
-        this.IsMovingSelected = true;
+        this.IsMovementMode = true;
+        this.IsMoving = true;
+
         this.moveStartCells.Clear();
 
         this.moveStartPointerCell = this.Grid.WorldToCell(this.CurrentPos);
@@ -85,7 +87,6 @@ public class EntitySelectionManager : SelectionManagerBase
         }
 
         this.extraMoveStartCells = new Dictionary<SaveableEntity, Vector3Int>(this.moveStartCells);
-        //this.PrintDict(this.moveStartCells);
         this.DisableSelectionButtons();
         this.EnableMoveButtons(this.GetBoundingRect(selectedEntities.Select(e => (Vector2)e.transform.position)));
     }
@@ -95,7 +96,7 @@ public class EntitySelectionManager : SelectionManagerBase
     /// </summary>
     public void Update()
     {
-        if (!this.IsMovingSelected)
+        if (!this.IsMovementMode || !this.IsMoving)
         {
             return;
         }
@@ -139,7 +140,7 @@ public class EntitySelectionManager : SelectionManagerBase
             return;
         }
 
-        if (!this.IsMovingSelected)
+        if (!this.IsMovementMode)
         {
             return;
         }
@@ -175,7 +176,8 @@ public class EntitySelectionManager : SelectionManagerBase
             }
         }
 
-        this.IsMovingSelected = false;
+        this.IsMovementMode = false;
+        this.IsMoving = false;
         this.moveStartCells.Clear();
         this.extraMoveStartCells.Clear();
 
@@ -186,7 +188,7 @@ public class EntitySelectionManager : SelectionManagerBase
     /// <inheritdoc/>
     public override void CancelMovingSelected()
     {
-        if (!this.IsMovingSelected)
+        if (!this.IsMovementMode)
         {
             return;
         }
@@ -203,7 +205,8 @@ public class EntitySelectionManager : SelectionManagerBase
             entity.transform.position = this.Grid.GetCellCenterWorld(entry.Value);
         }
 
-        this.IsMovingSelected = false;
+        this.IsMovementMode = false;
+        this.IsMoving = false;
         this.moveStartCells.Clear();
 
         this.DisableMoveButtons();
@@ -213,13 +216,12 @@ public class EntitySelectionManager : SelectionManagerBase
     /// <inheritdoc/>
     protected override void ContinueMove(Vector2 worldPos)
     {
-        if (!this.IsMovingSelected)
+        if (!this.IsMovementMode)
         {
             return;
         }
 
-        this.moveStartPointerCell =
-            this.Grid.WorldToCell(worldPos);
+        this.moveStartPointerCell = this.Grid.WorldToCell(worldPos);
 
         foreach (SaveableEntity entity in this.extraMoveStartCells.Keys.ToList())
         {
@@ -234,6 +236,7 @@ public class EntitySelectionManager : SelectionManagerBase
 
         this.CurrentPos = worldPos;
         this.startedMovingThisFrame = true;
+        this.IsMoving = true;
     }
 
     /// <summary>
