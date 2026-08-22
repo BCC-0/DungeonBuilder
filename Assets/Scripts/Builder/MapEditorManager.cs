@@ -59,7 +59,7 @@ public class MapEditorManager : MonoBehaviour
     private EditorTool currentTool;
     private EditLayer currentLayer;
 
-    private List<Vector3Int> selectedTiles = new List<Vector3Int>();
+    private List<Vector2Int> selectedTiles = new List<Vector2Int>();
     private List<SaveableEntity> selectedEntities = new List<SaveableEntity>();
 
     [SerializeField]
@@ -111,7 +111,7 @@ public class MapEditorManager : MonoBehaviour
     /// <summary>
     /// Gets or sets the currently selected tiles.
     /// </summary>
-    public List<Vector3Int> SelectedTiles
+    public List<Vector2Int> SelectedTiles
     {
         get => this.selectedTiles;
         set => this.selectedTiles = value;
@@ -141,12 +141,9 @@ public class MapEditorManager : MonoBehaviour
                 ? this.tileController
                 : this.entityController;
 
-        // Selection is per-layer (a controller is either entity-only or
-        // tile-only), so leaving a layer with an active selection should
-        // clear it rather than leaving it stale/invisible in the background.
         if (previousController != null && previousController != this.activeController)
         {
-            previousController.ClearSelection();
+            previousController.ResetSelectionTool();
         }
 
         this.StartCoroutine(this.WaitForSwitch());
@@ -224,6 +221,34 @@ public class MapEditorManager : MonoBehaviour
     /// </summary>
     public void SelectSelection() => this.SelectTool(EditorTool.Selection, 3);
 
+    /// <summary>
+    /// Deletes the currently selected items.
+    /// </summary>
+    public void OnDeleteSelection() => this.ActiveController.OnDeleteSelection();
+
+    /// <summary>
+    /// Moves the currently selected items.
+    /// </summary>
+    public void OnMoveSelection() => this.ActiveController.OnMoveSelection();
+
+    /// <summary>
+    /// Confirms the move action.
+    /// </summary>
+    public void OnConfirmMove() => this.ActiveController.OnConfirmMove();
+
+    /// <summary>
+    /// Cancels the move action.
+    /// </summary>
+    public void OnCancelMove() => this.ActiveController.OnCancelMove();
+
+    /// <summary>
+    /// Rotates the currently selected items.
+    /// </summary>
+    public void OnRotateSelection()
+    {
+        Debug.Log("Rotate");
+    }
+
     private void Awake()
     {
         Instance = this;
@@ -243,6 +268,11 @@ public class MapEditorManager : MonoBehaviour
         for (int i = 0; i < this.toolOutline.Length; i++)
         {
             this.toolOutline[i].SetActive(i == selectedIndex);
+        }
+
+        if (this.activeController != null)
+        {
+            this.activeController.ResetSelectionTool();
         }
     }
 

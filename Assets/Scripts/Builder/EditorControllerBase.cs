@@ -14,7 +14,7 @@ public abstract class EditorControllerBase : MonoBehaviour
     private SaveableTilemap saveableTilemap;
 
     private SelectionManagerBase selectionManager;
-    private Vector3 currentPos;
+    private Vector2 currentPos;
     private bool primaryHolding;
     private bool secondaryHolding;
 
@@ -52,7 +52,7 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// <summary>
     /// Gets the current world position of the pointer.
     /// </summary>
-    protected Vector3 CurrentPos => this.currentPos;
+    protected Vector2 CurrentPos => this.currentPos;
 
     /// <summary>
     /// Gets a value indicating whether the primary input is held.
@@ -136,59 +136,41 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// <summary>
     /// Deletes all selected entities or tiles.
     /// </summary>
-    public virtual void OnDelete()
+    public void OnDeleteSelection()
     {
         this.selectionManager.DeleteSelected();
     }
 
     /// <summary>
-    /// Clears any current selection made by this controller. Used, for example,
-    /// when switching away from this controller's layer so a stale selection
-    /// doesn't linger.
+    /// Starts moving the selection.
     /// </summary>
-    public void ClearSelection()
+    public void OnMoveSelection()
     {
-        this.selectionManager.ClearSelection();
+        this.selectionManager.MoveSelected();
     }
 
     /// <summary>
-    /// Applies tool continuously while input is held,
-    /// and drives the active selection drag (if any).
+    /// Confirms moving the items to the current shown position.
     /// </summary>
-    protected virtual void Update()
+    public void OnConfirmMove()
     {
-        Mouse mouse = Mouse.current;
+        this.selectionManager.ConfirmMovingSelected();
+    }
 
-        if (mouse != null)
-        {
-            if (BuilderInputSelector.Instance.IsUsingDesktop &&
-                this.CurrentTool == EditorTool.Selection &&
-                this.selectionManager.IsDragging &&
-                !mouse.leftButton.isPressed)
-            {
-                this.OnPrimaryUp();
-            }
+    /// <summary>
+    /// Cancels moving the items and returns them to their last position.
+    /// </summary>
+    public void OnCancelMove()
+    {
+        this.selectionManager.CancelMovingSelected();
+    }
 
-            if (this.primaryHolding && !mouse.leftButton.isPressed)
-            {
-                this.primaryHolding = false;
-            }
-
-            if (this.secondaryHolding && !mouse.rightButton.isPressed)
-            {
-                this.secondaryHolding = false;
-            }
-        }
-
-        if (this.CurrentTool == EditorTool.Selection && this.selectionManager.IsDragging)
-        {
-            this.selectionManager.UpdateDrag(this.CurrentPos);
-        }
-
-        if (this.primaryHolding || this.secondaryHolding)
-        {
-            this.ApplyTool();
-        }
+    /// <summary>
+    /// Clears any current selection made by this controller.
+    /// </summary>
+    public void ResetSelectionTool()
+    {
+        this.selectionManager.ResetSelectionTool();
     }
 
     /// <summary>
@@ -222,5 +204,47 @@ public abstract class EditorControllerBase : MonoBehaviour
 
             _ => EditorAction.None
         };
+    }
+
+    /// <summary>
+    /// Applies tool continuously while input is held,
+    /// and drives the active selection drag (if any).
+    /// </summary>
+    private void Update()
+    {
+        this.selectionManager.CurrentPos = this.currentPos;
+
+        Mouse mouse = Mouse.current;
+
+        if (mouse != null)
+        {
+            if (BuilderInputSelector.Instance.IsUsingDesktop &&
+                this.CurrentTool == EditorTool.Selection &&
+                this.selectionManager.IsDragging &&
+                !mouse.leftButton.isPressed)
+            {
+                this.OnPrimaryUp();
+            }
+
+            if (this.primaryHolding && !mouse.leftButton.isPressed)
+            {
+                this.primaryHolding = false;
+            }
+
+            if (this.secondaryHolding && !mouse.rightButton.isPressed)
+            {
+                this.secondaryHolding = false;
+            }
+        }
+
+        if (this.CurrentTool == EditorTool.Selection && this.selectionManager.IsDragging)
+        {
+            this.selectionManager.UpdateDrag(this.CurrentPos);
+        }
+
+        if (this.primaryHolding || this.secondaryHolding)
+        {
+            this.ApplyTool();
+        }
     }
 }

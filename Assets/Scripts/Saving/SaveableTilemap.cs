@@ -164,6 +164,17 @@ public class SaveableTilemap : SaveableEntity
     }
 
     /// <summary>
+    /// Gets the tile data at the given position, or null if no tile exists there.
+    /// </summary>
+    /// <param name="position">The position of the tiledata to get.</param>
+    /// <returns>The tile data at the given position.</returns>
+    public TileData GetTileData(Vector2Int position)
+    {
+        this.tiles.TryGetValue(position, out TileData tile);
+        return tile;
+    }
+
+    /// <summary>
     /// Updates a single tile visually and updates or adds its collider/behavior.
     /// </summary>
     /// <param name="tile">The tile data to update.</param>

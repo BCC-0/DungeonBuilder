@@ -47,9 +47,8 @@ public static class SaveRegistry
             }
 
             prefabs[identity.PrefabID] = prefab;
-            Debug.Log("Loaded " + identity.PrefabID);
         }
 
-        Debug.Log("Loaded " + prefabs.Count + " entities into the registry.");
+        Debug.Log("Loaded " + prefabs.Count + " entities into save the registry.");
     }
 }
