@@ -33,23 +33,12 @@ public class InventoryBuilderUI : MonoBehaviour
                 this.folderPrefab,
                 this.folderContainer);
 
-            // Your folder UI script would receive the folder data here.
-            // Example:
-            // folderObject.GetComponent<InventoryFolderUI>().Initialize(folder);
+            InventoryFolderUI folderUI = folderObject.GetComponent<InventoryFolderUI>();
 
-            foreach (InventoryItem item in folder.Items)
-            {
-                GameObject itemObject = Instantiate(
-                    this.itemPrefab,
-                    folderObject.transform);
-
-                InventoryItemUI itemUI =
-                    itemObject.GetComponent<InventoryItemUI>();
-
-                itemUI.Initialize(item);
-            }
+            folderUI.Initialize(folder);
         }
     }
+
     private void Start()
     {
         this.BuildUI();
