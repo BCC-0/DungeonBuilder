@@ -1,10 +1,18 @@
-﻿using UnityEngine;
+﻿using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// Controls a single item in the inventory UI.
 /// </summary>
 public class InventoryItemUI : MonoBehaviour
 {
+    [SerializeField]
+    private TMP_Text itemNameText;
+
+    [SerializeField]
+    private Image itemImage;
+
     private InventoryItem item;
 
     /// <summary>
@@ -15,7 +23,10 @@ public class InventoryItemUI : MonoBehaviour
     {
         this.item = inventoryItem;
 
-        // Set text/icon here.
+        if (this.itemNameText != null)
+        {
+            this.itemNameText.text = this.item.Name;
+        }
     }
 
     /// <summary>
@@ -23,6 +34,11 @@ public class InventoryItemUI : MonoBehaviour
     /// </summary>
     public void Select()
     {
+        if (this.item == null)
+        {
+            return;
+        }
+
         EntityEditorController controller =
             FindAnyObjectByType<EntityEditorController>();
 

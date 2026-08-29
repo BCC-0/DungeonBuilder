@@ -1,8 +1,9 @@
 ﻿using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
-/// Controls a single inventory folder/category in the UI.
+/// Controls a single inventory folder/category button in the UI.
 /// </summary>
 public class InventoryFolderUI : MonoBehaviour
 {
@@ -10,34 +11,44 @@ public class InventoryFolderUI : MonoBehaviour
     private TMP_Text folderNameText;
 
     [SerializeField]
-    private Transform itemContainer;
+    private Image folderImage;
 
-    [SerializeField]
-    private GameObject itemPrefab;
+    private InventoryFolder folder;
+    private InventoryBuilderUI inventoryBuilder;
 
     /// <summary>
-    /// Initializes the folder UI and creates its inventory items.
+    /// Initializes this UI element with an inventory folder.
     /// </summary>
-    /// <param name="folder">The inventory folder.</param>
-    public void Initialize(InventoryFolder folder)
+    /// <param name="inventoryFolder">The folder represented by this UI element.</param>
+    /// <param name="builder">The inventory UI builder.</param>
+    public void Initialize(
+            InventoryFolder inventoryFolder,
+            InventoryBuilderUI builder)
     {
-        this.folderNameText.text = folder.Name;
+        this.folder = inventoryFolder;
+        this.inventoryBuilder = builder;
 
-        foreach (Transform child in this.itemContainer)
+        if (this.folderNameText != null)
         {
-            Destroy(child.gameObject);
+            this.folderNameText.text = this.folder.Name;
         }
 
-        foreach (InventoryItem item in folder.Items)
+        if (this.folderImage != null)
         {
-            GameObject itemObject = Instantiate(
-                this.itemPrefab,
-                this.itemContainer);
-
-            InventoryItemUI itemUI =
-                itemObject.GetComponent<InventoryItemUI>();
-
-            itemUI.Initialize(item);
+            this.folderImage.sprite = this.folder.Image;
         }
+    }
+
+    /// <summary>
+    /// Selects this folder and displays its items.
+    /// </summary>
+    public void Select()
+    {
+        if (this.folder == null || this.inventoryBuilder == null)
+        {
+            return;
+        }
+
+        this.inventoryBuilder.ShowFolder(this.folder);
     }
 }

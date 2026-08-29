@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// Represents a placeable entity in the inventory.
@@ -9,9 +10,11 @@ public class InventoryItem
     /// Initializes a new instance of the <see cref="InventoryItem"/> class.
     /// </summary>
     /// <param name="prefab">The prefab this item represents.</param>
-    public InventoryItem(GameObject prefab)
+    /// <param name="sprite">The sprite representing the item.</param>
+    public InventoryItem(GameObject prefab, Sprite sprite)
     {
         this.Prefab = prefab;
+        this.Sprite = sprite;
     }
 
     /// <summary>
@@ -23,4 +26,9 @@ public class InventoryItem
     /// Gets the display name of the item.
     /// </summary>
     public string Name => this.Prefab.name;
+
+    /// <summary>
+    /// Gets the sprite image of this item.
+    /// </summary>
+    public Sprite Sprite { get; }
 }

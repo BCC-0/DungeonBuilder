@@ -32,6 +32,15 @@ public abstract class SaveableEntity : MonoBehaviour
     }
 
     /// <summary>
+    /// Gets the prefab ID of this entity. The prefab ID for each entity of the same type should be the same.
+    /// </summary>
+    /// <returns>The saveable entity as an inventory item.</returns>
+    public virtual InventoryItem GetAsInventoryItem()
+    {
+        return new InventoryItem(this.gameObject, Sprite.Create(Texture2D.redTexture, Rect.MinMaxRect(0, 0, 4, 4), new Vector2(0, 0)));
+    }
+
+    /// <summary>
     /// Writes all fields we need to save from this entity.
     /// </summary>
     /// <param name="writer">The writer which will save the fields.</param>
