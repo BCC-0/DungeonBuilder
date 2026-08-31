@@ -95,6 +95,17 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     }
 
     /// <summary>
+    /// Called when the inventory button is pressed (E).
+    /// Opens the inventory and pauses the rest of the builder.
+    /// </summary>
+    /// <param name="ctx">The input context.</param>
+    public void OnInventory(InputAction.CallbackContext ctx)
+    {
+        this.Inventory
+    }
+
+
+    /// <summary>
     /// Deletes the currently selected objects.
     /// </summary>
     /// <param name="ctx">The input context.</param>

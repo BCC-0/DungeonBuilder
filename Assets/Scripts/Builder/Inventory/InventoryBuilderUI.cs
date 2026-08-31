@@ -33,6 +33,24 @@ public class InventoryBuilderUI : MonoBehaviour
     public List<InventoryFolder> Folders => this.folders;
 
     /// <summary>
+    /// Opens the inventories UI.
+    /// </summary>
+    public void OpenInventory()
+    {
+        this.gameObject.SetActive(true);
+        Time.timeScale = 0;
+    }
+
+    /// <summary>
+    /// Opens the inventories UI.
+    /// </summary>
+    public void CloseInventory()
+    {
+        this.gameObject.SetActive(false);
+        Time.timeScale = 1;
+    }
+
+    /// <summary>
     /// Replaces the current inventory with the supplied folders.
     /// </summary>
     /// <param name="newFolders">The folders to use.</param>
@@ -143,10 +161,8 @@ public class InventoryBuilderUI : MonoBehaviour
             return;
         }
 
-        Debug.Log("A");
         foreach (string folderPath in Directory.GetDirectories(prefabsPath))
         {
-            Debug.Log("B");
             string folderName = Path.GetFileName(folderPath);
             Object[] loadedAssets = Resources.LoadAll("prefabs/SaveableEntities/" + folderName);
 
@@ -155,17 +171,14 @@ public class InventoryBuilderUI : MonoBehaviour
 
             foreach (Object asset in loadedAssets)
             {
-                Debug.Log("C");
                 if (asset is Sprite sprite)
                 {
-                    Debug.Log("D");
                     folderSprite ??= sprite;
                     continue;
                 }
 
                 if (asset is GameObject prefab && prefab.TryGetComponent(out SaveableEntity saveableEntity))
                 {
-                    Debug.Log("E");
                     items.Add(saveableEntity.GetAsInventoryItem());
                 }
             }
@@ -180,5 +193,6 @@ public class InventoryBuilderUI : MonoBehaviour
     {
         this.ScanFolders();
         this.BuildUI();
+        this.CloseInventory();
     }
 }
