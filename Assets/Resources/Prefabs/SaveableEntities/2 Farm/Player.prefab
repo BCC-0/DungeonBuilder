@@ -120,6 +120,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CrawlerPlayerData
   uniqueID: Player
+  spriteRenderer: {fileID: 3064584090858952109}
   maxHealth: 100
   currentHealth: 100
   moveSpeed: 5

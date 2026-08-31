@@ -15,6 +15,9 @@ public abstract class SaveableEntity : MonoBehaviour
     [SerializeField]
     private string uniqueID;
 
+    [SerializeField]
+    private SpriteRenderer spriteRenderer;
+
     /// <summary>
     /// Gets the unique ID of this entity.
     /// </summary>
@@ -37,7 +40,7 @@ public abstract class SaveableEntity : MonoBehaviour
     /// <returns>The saveable entity as an inventory item.</returns>
     public virtual InventoryItem GetAsInventoryItem()
     {
-        return new InventoryItem(this.gameObject, Sprite.Create(Texture2D.redTexture, Rect.MinMaxRect(0, 0, 4, 4), new Vector2(0, 0)));
+        return new InventoryItem(this.gameObject, this.spriteRenderer.sprite);
     }
 
     /// <summary>

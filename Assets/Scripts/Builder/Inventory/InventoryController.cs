@@ -3,10 +3,9 @@ using System.IO;
 using UnityEngine;
 
 /// <summary>
-/// Builds and controls the inventory UI from the folders
-/// provided by the InventoryManager.
+/// Builds and controls the inventory UI from the folders found in the resources folder and the tilelibraries.
 /// </summary>
-public class InventoryBuilderUI : MonoBehaviour
+public class InventoryController : MonoBehaviour
 {
     [SerializeField]
     private Sprite testA;
@@ -25,7 +24,11 @@ public class InventoryBuilderUI : MonoBehaviour
     [SerializeField]
     private GameObject itemPrefab;
 
+    [SerializeField]
+    private GameObject inventory;
+
     private List<InventoryFolder> folders = new ();
+    private bool isOpen;
 
     /// <summary>
     /// Gets all inventory folders.
@@ -37,7 +40,14 @@ public class InventoryBuilderUI : MonoBehaviour
     /// </summary>
     public void OpenInventory()
     {
-        this.gameObject.SetActive(true);
+        if (this.isOpen)
+        {
+            this.CloseInventory();
+            return;
+        }
+
+        this.isOpen = true;
+        this.inventory.gameObject.SetActive(true);
         Time.timeScale = 0;
     }
 
@@ -46,7 +56,8 @@ public class InventoryBuilderUI : MonoBehaviour
     /// </summary>
     public void CloseInventory()
     {
-        this.gameObject.SetActive(false);
+        this.isOpen = false;
+        this.inventory.gameObject.SetActive(false);
         Time.timeScale = 1;
     }
 

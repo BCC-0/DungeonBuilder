@@ -14,6 +14,8 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     [SerializeField]
     private CameraController cameraController;
     [SerializeField]
+    private InventoryController inventoryController;
+    [SerializeField]
     private float desktopZoomSpeed = 0.2f;
 
     private bool isPrimaryHeld;
@@ -99,11 +101,10 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     /// Opens the inventory and pauses the rest of the builder.
     /// </summary>
     /// <param name="ctx">The input context.</param>
-    public void OnInventory(InputAction.CallbackContext ctx)
+    public void OnOpenInventory(InputAction.CallbackContext ctx)
     {
-        this.Inventory
+        this.inventoryController.OpenInventory();
     }
-
 
     /// <summary>
     /// Deletes the currently selected objects.

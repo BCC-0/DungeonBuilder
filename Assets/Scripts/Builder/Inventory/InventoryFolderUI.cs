@@ -14,7 +14,7 @@ public class InventoryFolderUI : MonoBehaviour
     private Image folderImage;
 
     private InventoryFolder folder;
-    private InventoryBuilderUI inventoryBuilder;
+    private InventoryController inventoryBuilder;
 
     /// <summary>
     /// Initializes this UI element with an inventory folder.
@@ -23,7 +23,7 @@ public class InventoryFolderUI : MonoBehaviour
     /// <param name="builder">The inventory UI builder.</param>
     public void Initialize(
             InventoryFolder inventoryFolder,
-            InventoryBuilderUI builder)
+            InventoryController builder)
     {
         this.folder = inventoryFolder;
         this.inventoryBuilder = builder;

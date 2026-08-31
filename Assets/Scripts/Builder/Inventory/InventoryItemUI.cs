@@ -27,6 +27,11 @@ public class InventoryItemUI : MonoBehaviour
         {
             this.itemNameText.text = this.item.Name;
         }
+
+        if (this.itemImage != null)
+        {
+            this.itemImage.sprite = inventoryItem.Sprite;
+        }
     }
 
     /// <summary>
@@ -39,14 +44,7 @@ public class InventoryItemUI : MonoBehaviour
             return;
         }
 
-        EntityEditorController controller =
-            FindAnyObjectByType<EntityEditorController>();
-
-        if (controller == null)
-        {
-            return;
-        }
-
-        controller.SelectedPrefab = this.item.Prefab;
+        // TODO: Select item here, and allow for adding to toolbar.
+        Debug.Log("Selected " + this.itemNameText.text);
     }
 }
