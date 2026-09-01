@@ -27,6 +27,12 @@ public class InventoryController : MonoBehaviour
     [SerializeField]
     private GameObject inventory;
 
+    [SerializeField]
+    private ItemBarSlot[] itemSlots;
+
+    private GameObject selectedInventoryItem;
+    private GameObject selectedToolbarItem;
+
     private List<InventoryFolder> folders = new ();
     private bool isOpen;
 
@@ -59,6 +65,63 @@ public class InventoryController : MonoBehaviour
         this.isOpen = false;
         this.inventory.gameObject.SetActive(false);
         Time.timeScale = 1;
+    }
+
+    /// <summary>
+    /// Selects the given slot.
+    /// </summary>
+    /// <param name="index">The index of the slot to select.</param>
+    public void SelectSlot(int index)
+    {
+        index--; // To work with the arrays.
+
+        if (index < 0 || index >= this.itemSlots.Length)
+        {
+            return;
+        }
+
+        // If we have an inventory item selected, assign it to this slot.
+        if (this.selectedInventoryItem != null)
+        {
+            InventoryItemUI inventoryItemUI =
+                this.selectedInventoryItem.GetComponent<InventoryItemUI>();
+
+            if (inventoryItemUI == null || inventoryItemUI.Item == null)
+            {
+                return;
+            }
+
+            RectTransform itemRect =
+                this.selectedInventoryItem.GetComponent<RectTransform>();
+
+            Vector3 screenPos = itemRect != null
+                ? RectTransformUtility.WorldToScreenPoint(null, itemRect.position)
+                : Vector3.zero;
+
+            this.itemSlots[index].SetItem(
+                inventoryItemUI.Item,
+                screenPos);
+
+            this.selectedInventoryItem = null;
+            return;
+        }
+
+        // If we don't have an inventory item selected, select the item
+        // that is already in this toolbar slot.
+        InventoryItem item = this.itemSlots[index].Item;
+
+        if (item == null)
+        {
+            return;
+        }
+
+        this.selectedToolbarItem = this.itemSlots[index].gameObject;
+
+        // If the inventory is closed, select/use the item for placement.
+        if (!this.isOpen)
+        {
+            // TODO: Select the item's prefab/tile and switch layers.
+        }
     }
 
     /// <summary>

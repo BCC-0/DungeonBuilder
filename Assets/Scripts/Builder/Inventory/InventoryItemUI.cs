@@ -16,6 +16,14 @@ public class InventoryItemUI : MonoBehaviour
     private InventoryItem item;
 
     /// <summary>
+    /// Gets the inventory item this contains.
+    /// </summary>
+    public InventoryItem Item
+    {
+        get { return this.item; }
+    }
+
+    /// <summary>
     /// Initializes this UI element with an inventory item.
     /// </summary>
     /// <param name="inventoryItem">The item represented by this UI element.</param>
@@ -44,7 +52,6 @@ public class InventoryItemUI : MonoBehaviour
             return;
         }
 
-        // TODO: Select item here, and allow for adding to toolbar.
         Debug.Log("Selected " + this.itemNameText.text);
     }
 }

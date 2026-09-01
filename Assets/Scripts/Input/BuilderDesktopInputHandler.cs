@@ -215,9 +215,15 @@ public class BuilderDesktopInputHandler : MonoBehaviour
             return;
         }
 
-        int index = (int)ctx.ReadValue<float>(); // or from binding
+        int index = (int)ctx.ReadValue<float>();
+
+        if (index < 1 || index > 9)
+        {
+            return;
+        }
+
         Debug.Log("Selected slot " + index);
-        this.SelectSlot(index);
+        this.inventoryController.SelectSlot(index);
     }
 
     /// <summary>
@@ -262,11 +268,6 @@ public class BuilderDesktopInputHandler : MonoBehaviour
         {
             this.command = false;
         }
-    }
-
-    private void SelectSlot(int index)
-    {
-        // TODO: Slot selection with both entities and tiles.
     }
 
     private void Update()
