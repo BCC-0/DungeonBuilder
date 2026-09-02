@@ -14,6 +14,7 @@ public class InventoryItemUI : MonoBehaviour
     private Image itemImage;
 
     private InventoryItem item;
+    private InventoryController inventoryController;
 
     /// <summary>
     /// Gets the inventory item this contains.
@@ -26,10 +27,14 @@ public class InventoryItemUI : MonoBehaviour
     /// <summary>
     /// Initializes this UI element with an inventory item.
     /// </summary>
-    /// <param name="inventoryItem">The item represented by this UI element.</param>
-    public void Initialize(InventoryItem inventoryItem)
+    /// <param name="inventoryItem">The inventory item represented by this UI element.</param>
+    /// <param name="controller">The inventory controller.</param>
+    public void Initialize(
+        InventoryItem inventoryItem,
+        InventoryController controller)
     {
         this.item = inventoryItem;
+        this.inventoryController = controller;
 
         if (this.itemNameText != null)
         {
@@ -38,20 +43,20 @@ public class InventoryItemUI : MonoBehaviour
 
         if (this.itemImage != null)
         {
-            this.itemImage.sprite = inventoryItem.Sprite;
+            this.itemImage.sprite = this.item.Sprite;
         }
     }
 
     /// <summary>
-    /// Selects this item for entity placement.
+    /// Selects this item for assigning to a toolbar slot.
     /// </summary>
     public void Select()
     {
-        if (this.item == null)
+        if (this.item == null || this.inventoryController == null)
         {
             return;
         }
 
-        Debug.Log("Selected " + this.itemNameText.text);
+        this.inventoryController.SelectItem(this);
     }
 }

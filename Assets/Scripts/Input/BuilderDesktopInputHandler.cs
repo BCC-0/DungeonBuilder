@@ -222,8 +222,7 @@ public class BuilderDesktopInputHandler : MonoBehaviour
             return;
         }
 
-        Debug.Log("Selected slot " + index);
-        this.inventoryController.SelectSlot(index);
+        this.inventoryController.SelectSlot(index-1);
     }
 
     /// <summary>
