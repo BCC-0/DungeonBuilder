@@ -11,8 +11,6 @@ public class SaveableTilemap : SaveableEntity
 {
     [SerializeField]
     private Tilemap tilemap;
-    [SerializeField]
-    private TileLibrary tileLibrary;
 
     private Dictionary<Vector2Int, TileData> tiles = new ();
     private Dictionary<Vector2Int, GameObject> collisionObjects = new ();
@@ -28,14 +26,6 @@ public class SaveableTilemap : SaveableEntity
     public Tilemap Tilemap
     {
         get { return this.tilemap; }
-    }
-
-    /// <summary>
-    /// Gets the TileLibrary.
-    /// </summary>
-    public TileLibrary TileLibrary
-    {
-        get { return this.tileLibrary; }
     }
 
     /// <summary>
@@ -94,9 +84,9 @@ public class SaveableTilemap : SaveableEntity
     /// </summary>
     public void RebuildTilemap()
     {
-        if (this.tilemap == null || this.tileLibrary == null)
+        if (this.tilemap == null)
         {
-            Debug.LogWarning("Tilemap or TileLibrary not assigned.");
+            Debug.LogWarning("Tilemap not assigned.");
             return;
         }
 
@@ -126,7 +116,12 @@ public class SaveableTilemap : SaveableEntity
     /// <param name="tileID">The tile ID.</param>
     /// <param name="hasCollision">Whether this tile has a collision or not.</param>
     /// <param name="tag">The tag of this tile.</param>
-    public void SetTile(int x, int y, string tileID, bool hasCollision = false, string tag = null)
+    public void SetTile(
+            int x,
+            int y,
+            string tileID,
+            bool hasCollision = false,
+            string tag = null)
     {
         Vector2Int key = new Vector2Int(x, y);
         Vector3Int pos = new Vector3Int(x, y, 0);
@@ -138,7 +133,9 @@ public class SaveableTilemap : SaveableEntity
 
             this.tilemap.SetTile(pos, null);
 
-            if (this.collisionObjects.TryGetValue(key, out GameObject existing))
+            if (this.collisionObjects.TryGetValue(
+                key,
+                out GameObject existing))
             {
                 this.collisionObjects.Remove(key);
                 Destroy(existing);
@@ -166,7 +163,7 @@ public class SaveableTilemap : SaveableEntity
     /// <summary>
     /// Gets the tile data at the given position, or null if no tile exists there.
     /// </summary>
-    /// <param name="position">The position of the tiledata to get.</param>
+    /// <param name="position">The position of the tile data to get.</param>
     /// <returns>The tile data at the given position.</returns>
     public TileData GetTileData(Vector2Int position)
     {
@@ -184,26 +181,34 @@ public class SaveableTilemap : SaveableEntity
 
         TileBase tileBase = string.IsNullOrEmpty(tile.TileID)
             ? null
-            : this.tileLibrary.GetTileByID(tile.TileID);
+            : TileLibrary.GetTileByIDGlobal(tile.TileID);
 
         this.tilemap.SetTile(pos, tileBase);
 
-        // Remove existing collider if it exists
         Vector2Int key = new Vector2Int(tile.X, tile.Y);
-        if (this.collisionObjects.TryGetValue(key, out GameObject existing))
+
+        if (this.collisionObjects.TryGetValue(
+            key,
+            out GameObject existing))
         {
             Destroy(existing);
             this.collisionObjects.Remove(key);
         }
 
-        // Add collider and behavior if needed
         if (tile.HasCollision)
         {
-            GameObject colObj = new GameObject($"Collider_{tile.X}_{tile.Y}");
-            colObj.transform.position = this.tilemap.CellToWorld(pos) + new Vector3(0.5f, 0.5f, 0);
+            GameObject colObj = new GameObject(
+                $"Collider_{tile.X}_{tile.Y}");
+
+            colObj.transform.position =
+                this.tilemap.CellToWorld(pos) +
+                new Vector3(0.5f, 0.5f, 0);
+
             colObj.transform.parent = this.tilemap.transform;
 
-            BoxCollider2D collider = colObj.AddComponent<BoxCollider2D>();
+            BoxCollider2D collider =
+                colObj.AddComponent<BoxCollider2D>();
+
             collider.isTrigger = false;
 
             if (!string.IsNullOrEmpty(tile.Tag))
@@ -211,14 +216,18 @@ public class SaveableTilemap : SaveableEntity
                 colObj.tag = tile.Tag;
             }
 
-            string behaviorTypeName = string.IsNullOrEmpty(tile.TileID)
-                ? null
-                : this.tileLibrary.GetBehaviorType(tile.TileID);
+            string behaviorTypeName =
+                string.IsNullOrEmpty(tile.TileID)
+                    ? null
+                    : TileLibrary.GetBehaviorTypeGlobal(tile.TileID);
 
             if (!string.IsNullOrEmpty(behaviorTypeName))
             {
-                System.Type type = System.Type.GetType(behaviorTypeName);
-                if (type != null && typeof(TileBehaviour).IsAssignableFrom(type))
+                System.Type type =
+                    System.Type.GetType(behaviorTypeName);
+
+                if (type != null &&
+                    typeof(TileBehaviour).IsAssignableFrom(type))
                 {
                     colObj.AddComponent(type);
                 }

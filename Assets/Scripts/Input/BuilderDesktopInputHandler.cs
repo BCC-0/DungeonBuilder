@@ -14,6 +14,8 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     [SerializeField]
     private CameraController cameraController;
     [SerializeField]
+    private InventoryController inventoryController;
+    [SerializeField]
     private float desktopZoomSpeed = 0.2f;
 
     private bool isPrimaryHeld;
@@ -92,6 +94,16 @@ public class BuilderDesktopInputHandler : MonoBehaviour
         {
             this.ActiveController.OnSecondaryUp();
         }
+    }
+
+    /// <summary>
+    /// Called when the inventory button is pressed (E).
+    /// Opens the inventory and pauses the rest of the builder.
+    /// </summary>
+    /// <param name="ctx">The input context.</param>
+    public void OnOpenInventory(InputAction.CallbackContext ctx)
+    {
+        this.inventoryController.OpenInventory();
     }
 
     /// <summary>
@@ -203,9 +215,14 @@ public class BuilderDesktopInputHandler : MonoBehaviour
             return;
         }
 
-        int index = (int)ctx.ReadValue<float>(); // or from binding
-        Debug.Log("Selected slot " + index);
-        this.SelectSlot(index);
+        int index = (int)ctx.ReadValue<float>();
+
+        if (index < 1 || index > 9)
+        {
+            return;
+        }
+
+        this.inventoryController.SelectSlot(index-1);
     }
 
     /// <summary>
@@ -250,11 +267,6 @@ public class BuilderDesktopInputHandler : MonoBehaviour
         {
             this.command = false;
         }
-    }
-
-    private void SelectSlot(int index)
-    {
-        // TODO: Slot selection with both entities and tiles.
     }
 
     private void Update()

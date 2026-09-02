@@ -349,7 +349,7 @@ public class TileSelectionManager : SelectionManagerBase
             TileBase previewTile =
                 string.IsNullOrEmpty(entry.Value.TileID)
                     ? null
-                    : this.saveableTilemap.TileLibrary.GetTileByID(entry.Value.TileID);
+                    : TileLibrary.GetTileByIDGlobal(entry.Value.TileID);
 
             this.movementPreviewTilemap.SetTile(previewCell, previewTile);
 

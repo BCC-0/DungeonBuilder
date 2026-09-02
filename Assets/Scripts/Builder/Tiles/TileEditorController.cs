@@ -40,7 +40,7 @@ public class TileEditorController : EditorControllerBase
                     return;
                 }
 
-                string tileID = this.SaveableTilemap.TileLibrary.GetIDForTile(this.selectedTile);
+                string tileID = TileLibrary.GetIDForTileGlobal(this.selectedTile);
                 this.SaveableTilemap.SetTile(cellPos.x, cellPos.y, tileID, hasCollision: false);
                 break;
 

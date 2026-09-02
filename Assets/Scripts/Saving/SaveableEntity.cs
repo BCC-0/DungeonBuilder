@@ -15,6 +15,9 @@ public abstract class SaveableEntity : MonoBehaviour
     [SerializeField]
     private string uniqueID;
 
+    [SerializeField]
+    private SpriteRenderer spriteRenderer;
+
     /// <summary>
     /// Gets the unique ID of this entity.
     /// </summary>
@@ -29,6 +32,15 @@ public abstract class SaveableEntity : MonoBehaviour
     {
         PrefabIdentity identity = this.GetComponent<PrefabIdentity>();
         return identity != null ? identity.PrefabID : string.Empty;
+    }
+
+    /// <summary>
+    /// Gets the prefab ID of this entity. The prefab ID for each entity of the same type should be the same.
+    /// </summary>
+    /// <returns>The saveable entity as an inventory item.</returns>
+    public virtual InventoryItem GetAsInventoryItem()
+    {
+        return new InventoryItem(this.gameObject, this.spriteRenderer.sprite);
     }
 
     /// <summary>
