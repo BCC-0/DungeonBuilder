@@ -153,7 +153,7 @@ GameObject:
   - component: {fileID: 8704239365106173982}
   - component: {fileID: 1119842860272496509}
   m_Layer: 0
-  m_Name: Debug2
+  m_Name: Debug_1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -224,7 +224,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 1
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: fb7226c33b199554cb9122c8e02f2969, type: 3}
+  m_Sprite: {fileID: 21300000, guid: a064f84865e43be45b3920b7333df6ca, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -246,7 +246,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7d08685b29f8d9b448b588d994714e7c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Debug_SaveableEntity
-  uniqueID: Debug2
+  uniqueID: Debug_1
   spriteRenderer: {fileID: 3064584090858952109}
 --- !u!114 &1119842860272496509
 MonoBehaviour:
@@ -260,4 +260,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f162a1fe513da454ba930aa444eaf1a9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PrefabIdentity
-  prefabID: Debug2
+  prefabID: Debug_1
