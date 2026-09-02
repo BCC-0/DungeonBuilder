@@ -82,7 +82,7 @@ public class ItemBarSlot : MonoBehaviour
 
         RectTransform imageTransform = this.itemImage.rectTransform;
         Vector2 targetSize = this.GetAspectRatioSize(inventorySize, this.originalImageSize);
-        Vector3 targetPosition = imageTransform.position;
+        Vector3 targetPosition = this.transform.position;
 
         imageTransform.position = screenPos;
         imageTransform.sizeDelta = inventorySize;

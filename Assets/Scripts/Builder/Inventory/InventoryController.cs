@@ -70,9 +70,6 @@ public class InventoryController : MonoBehaviour
 
     /// <summary>
     /// Closes the inventories UI.
-    ///
-    /// Note: this intentionally does NOT clear the equipped toolbar slot -
-    /// a slot must always remain selected/equipped while the inventory is closed.
     /// </summary>
     public void CloseInventory()
     {
@@ -87,9 +84,6 @@ public class InventoryController : MonoBehaviour
 
     /// <summary>
     /// Selects the given inventory item.
-    ///
-    /// If a slot is already selected, the item is immediately assigned
-    /// to that slot. Otherwise the item remains selected until a slot is clicked.
     /// </summary>
     /// <param name="itemUI">The inventory item UI that was clicked.</param>
     public void SelectItem(InventoryItemUI itemUI)
@@ -119,12 +113,7 @@ public class InventoryController : MonoBehaviour
 
     /// <summary>
     /// Selects the given toolbar slot, equipping whatever item currently
-    /// lives in it (switching layers and assigning it to the relevant
-    /// editor controller).
-    ///
-    /// If an inventory item is already selected, the item is immediately
-    /// assigned to this slot instead. Otherwise the slot itself becomes
-    /// the new equipped slot.
+    /// lives in it.
     /// </summary>
     /// <param name="index">The zero-based index of the slot.</param>
     public void SelectSlot(int index)
@@ -146,8 +135,6 @@ public class InventoryController : MonoBehaviour
             return;
         }
 
-        // An inventory item is already selected.
-        // Assign it directly to this slot.
         if (this.selectedInventoryItem != null)
         {
             this.AssignItemToSlot(
@@ -225,8 +212,7 @@ public class InventoryController : MonoBehaviour
                 this.itemPrefab,
                 this.itemContainer);
 
-            InventoryItemUI itemUI =
-                itemObject.GetComponent<InventoryItemUI>();
+            InventoryItemUI itemUI = itemObject.GetComponent<InventoryItemUI>();
 
             if (itemUI == null)
             {
@@ -405,14 +391,11 @@ public class InventoryController : MonoBehaviour
             selectionSize = new Vector2(selectionDimension, selectionDimension);
         }
 
-        this.selectionImage.SetParent(
-            targetRect,
-            false);
+        this.selectionImage.SetParent(targetRect, false);
 
         this.selectionImage.gameObject.SetActive(true);
 
-        this.selectionImage.sizeDelta =
-            selectionSize;
+        this.selectionImage.sizeDelta = selectionSize;
     }
 
     /// <summary>
