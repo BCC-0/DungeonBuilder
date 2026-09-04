@@ -19,6 +19,14 @@ public abstract class SaveableEntity : MonoBehaviour
     private SpriteRenderer spriteRenderer;
 
     /// <summary>
+    /// Gets the sprite renderer of this entity.
+    /// </summary>
+    protected SpriteRenderer SpriteRenderer
+    {
+        get { return this.spriteRenderer; }
+    }
+
+    /// <summary>
     /// Gets the unique ID of this entity.
     /// </summary>
     /// <returns>The UID.</returns>

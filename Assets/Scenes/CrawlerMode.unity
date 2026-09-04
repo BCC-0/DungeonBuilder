@@ -2117,6 +2117,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   uniqueID: Player
+  spriteRenderer: {fileID: 0}
   maxHealth: 100
   currentHealth: 0
   moveSpeed: 5
@@ -4510,8 +4511,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SaveableTilemap
   uniqueID: Tilemap
+  spriteRenderer: {fileID: 0}
   tilemap: {fileID: 1580576529}
-  tileLibrary: {fileID: 11400000, guid: 27cfbe945689584418bb616ecb2d8726, type: 2}
 --- !u!483693784 &1580576528
 TilemapRenderer:
   serializedVersion: 2

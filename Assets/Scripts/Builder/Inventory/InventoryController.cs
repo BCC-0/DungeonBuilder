@@ -491,7 +491,7 @@ public class InventoryController : MonoBehaviour
                     "prefabs/SaveableEntities/" + folderName);
 
             Sprite folderSprite = null;
-            List<InventoryItem> items = new();
+            List<InventoryItem> items = new ();
 
             foreach (Object asset in loadedAssets)
             {
