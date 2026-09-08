@@ -3386,8 +3386,8 @@ MonoBehaviour:
         m_CallState: 2
     m_ActionId: 5b9a30ed-1dc9-46b6-aafd-e9a4443076d9
     m_ActionName: 'Player/Open Inventory[/Keyboard/e]'
-  m_NeverAutoSwitchControlSchemes: 0
-  m_DefaultControlScheme: 
+  m_NeverAutoSwitchControlSchemes: 1
+  m_DefaultControlScheme: Keyboard&Mouse
   m_DefaultActionMap: Player
   m_SplitScreenIndex: -1
   m_Camera: {fileID: 519420031}

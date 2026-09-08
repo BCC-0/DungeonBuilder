@@ -12845,7 +12845,7 @@ MonoBehaviour:
     m_ActionId: ef6202b8-4987-4e31-b34c-bd518b65fb99
     m_ActionName: 'Builder/CancelMoveSelection[/Keyboard/escape]'
   m_NeverAutoSwitchControlSchemes: 0
-  m_DefaultControlScheme: 
+  m_DefaultControlScheme: Keyboard&Mouse
   m_DefaultActionMap: Builder
   m_SplitScreenIndex: -1
   m_Camera: {fileID: 47208768}
