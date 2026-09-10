@@ -817,7 +817,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   saveableTilemap: {fileID: 547713615080710944}
-  selectedTile: {fileID: 11400000, guid: 2068027c2e560e044aaa52ff00bfef10, type: 2}
+  selectedTile: {fileID: 0}
 --- !u!1 &142968687
 GameObject:
   m_ObjectHideFlags: 0
@@ -864,7 +864,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   saveableTilemap: {fileID: 547713615080710944}
-  selectedPrefab: {fileID: 6128487705197769401, guid: 9d34a5c01e75c7840b92a09682cc3ab2, type: 3}
+  selectedPrefab: {fileID: 0}
 --- !u!1 &235420613
 GameObject:
   m_ObjectHideFlags: 0
