@@ -150,8 +150,8 @@ public class CrawlerInputHandler : MonoBehaviour
 
     private void Update()
     {
-        // Detect first touch input to switch UI dynamically
-        if (!this.usingTouch && Touchscreen.current != null && Touchscreen.current.touches.Count > 0)
+        // Detect an actual active touch to switch UI dynamically.
+        if (!this.usingTouch && UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches.Count > 0)
         {
             this.UpdateControlScheme("Touch");
         }

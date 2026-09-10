@@ -1,10 +1,11 @@
-﻿using UnityEditor;
+﻿using System.IO;
+using UnityEditor;
 using UnityEngine;
 
 /// <summary>
 /// A wrapper for an item the player can pick up.
 /// </summary>
-public class ItemObject : MonoBehaviour
+public class ItemObject : SaveableEntity
 {
     [SerializeField]
     private Item originalItem;
@@ -12,7 +13,6 @@ public class ItemObject : MonoBehaviour
     [Header("Runtime Copy (Editable)")]
     [SerializeField]
     private Item runtimeItem;
-    private SpriteRenderer spriteRenderer;
 
     /// <summary>
     /// Gets the runtime item this object contains.
@@ -20,9 +20,9 @@ public class ItemObject : MonoBehaviour
     public Item Item => this.runtimeItem;
 
     /// <summary>
-    /// sets the item of this object.
+    /// Sets the item of this object.
     /// </summary>
-    /// <param name="item">A copy of a scriptable item object. Don't ever use the scriptable object iself.</param>
+    /// <param name="item">A copy of a scriptable item object. Don't ever use the scriptable object itself.</param>
     public void SetItem(Item item)
     {
 #if UNITY_EDITOR
@@ -34,14 +34,13 @@ public class ItemObject : MonoBehaviour
 #endif
         this.runtimeItem = item;
 
-        if (this.spriteRenderer != null && this.runtimeItem != null)
+        if (this.SpriteRenderer != null && this.runtimeItem != null)
         {
-            this.spriteRenderer.sprite = this.runtimeItem.Icon;
+            this.SpriteRenderer.sprite = this.runtimeItem.Icon;
         }
     }
 
 #if UNITY_EDITOR
-
     /// <summary>
     /// Creates a copy of the scriptable object for editing in the unity editor.
     /// </summary>
@@ -52,43 +51,83 @@ public class ItemObject : MonoBehaviour
         {
             this.runtimeItem = ScriptableObject.Instantiate(this.originalItem);
             this.runtimeItem.name = this.originalItem.name + "_RuntimeCopy";
-
-            // Update sprite if available
-            if (this.spriteRenderer == null)
-            {
-                this.spriteRenderer = this.GetComponent<SpriteRenderer>();
-            }
-
-            this.spriteRenderer.sprite = this.runtimeItem.Icon;
+            this.SpriteRenderer.sprite = this.runtimeItem.Icon;
         }
     }
 #endif
 
-    private void Awake()
+    /// <summary>
+    /// Writes the item's definition ID and its runtime-editable fields.
+    /// </summary>
+    /// <param name="writer">The writer which will save the fields.</param>
+    public override void Write(BinaryWriter writer)
     {
+        base.Write(writer);
+
+        writer.Write(this.runtimeItem.ItemID);
+
+        this.runtimeItem.WriteRuntimeFields(writer);
+    }
+
+    /// <summary>
+    /// Reads the item's definition ID and restores its runtime-editable fields.
+    /// </summary>
+    /// <param name="reader">The reader which will read the fields to restore.</param>
+    public override void Read(BinaryReader reader)
+    {
+        base.Read(reader);
+
+        string itemID = reader.ReadString();
+        Debug.Log($"Read item ID: '{itemID}'");
+        Item def = ItemLibrary.GetItemByIDGlobal(itemID);
+
+        if (def == null)
+        {
+            Debug.LogError($"Could not find Item with ID '{itemID}'.");
+            return;
+        }
+
+        Item copy = Instantiate(def);
+        copy.name = def.name + "_RuntimeCopy";
+        copy.ReadRuntimeFields(reader);
+
+        this.originalItem = def;
+        this.SetItem(copy);
+    }
+
+    /// <summary>
+    /// Creates a runtime copy if it doesnt exist yet.
+    /// </summary>
+    protected override void Awake()
+    {
+        base.Awake();
+
         if (this.originalItem == null)
         {
             Debug.LogError($"ItemObject on {this.gameObject.name} has no Item assigned!");
             return;
         }
 
-        // Initialize SpriteRenderer first
-        this.spriteRenderer = this.GetComponent<SpriteRenderer>();
-
         if (this.runtimeItem != null)
         {
+            this.SpriteRenderer.sprite = this.runtimeItem.Icon;
             return;
         }
 
-        // Create a runtime copy of the original item
-        Item runtimeCopy = ScriptableObject.Instantiate(this.originalItem);
+        Item runtimeCopy = Instantiate(this.originalItem);
 
 #if UNITY_EDITOR
-        // Optional: rename in editor for clarity
         runtimeCopy.name = this.originalItem.name + "_RuntimeCopy";
 #endif
 
-        // Assign the runtime copy
         this.SetItem(runtimeCopy);
+    }
+
+    private void OnDestroy()
+    {
+        if (this.runtimeItem != null)
+        {
+            Destroy(this.runtimeItem);
+        }
     }
 }

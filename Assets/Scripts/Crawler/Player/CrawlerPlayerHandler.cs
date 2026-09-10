@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -10,7 +11,7 @@ public class CrawlerPlayerHandler : MonoBehaviour
 {
     private CrawlerPlayerData playerData;
 
-    private Rigidbody2D rb;
+    private Rigidbody2D rigidbody2d;
     private Vector2 movementDirection;
 
     private int movementLockCount = 0;
@@ -18,6 +19,10 @@ public class CrawlerPlayerHandler : MonoBehaviour
 
     private Animator animator;
     private AnimatorOverrideController overrideController;
+
+    private HashSet<RepeatingDamage> activeRepeatingDamages = new HashSet<RepeatingDamage>();
+
+    private Dictionary<RepeatingDamage, Coroutine> repeatingDamageCoroutines = new Dictionary<RepeatingDamage, Coroutine>();
 
     /// <summary>
     /// Gets the last direction this player was facing.
@@ -132,7 +137,7 @@ public class CrawlerPlayerHandler : MonoBehaviour
 
     private void Start()
     {
-        this.rb = this.GetComponent<Rigidbody2D>();
+        this.rigidbody2d = this.GetComponent<Rigidbody2D>();
         this.playerData = this.GetComponent<CrawlerPlayerData>();
         this.animator = this.GetComponent<Animator>();
 
@@ -149,15 +154,16 @@ public class CrawlerPlayerHandler : MonoBehaviour
     {
         if (this.CanMove)
         {
-            Vector2 targetPosition = this.rb.position + (this.movementDirection * this.playerData.MoveSpeed * Time.fixedDeltaTime);
+            Vector2 targetPosition = this.rigidbody2d.position + (this.movementDirection * this.playerData.MoveSpeed * Time.fixedDeltaTime);
 
-            this.rb.MovePosition(targetPosition);
+            this.rigidbody2d.MovePosition(targetPosition);
         }
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
         GameObject gameObject = collision.gameObject;
+
         if (gameObject.CompareTag("Item"))
         {
             ItemObject itemObject = gameObject.GetComponent<ItemObject>();
@@ -172,7 +178,88 @@ public class CrawlerPlayerHandler : MonoBehaviour
             Destroy(gameObject);
         }
 
-        // TODO: Add damage
+        if (gameObject.layer == 7)
+        {
+            Damage damage = gameObject.GetComponent<Damage>();
+
+            if (damage == null)
+            {
+                return;
+            }
+
+            this.playerData.TakeDamage(damage.Amount);
+
+            if (damage is RepeatingDamage repeatingDamage)
+            {
+                this.StartRepeatingDamage(repeatingDamage);
+            }
+        }
+    }
+
+    private void OnCollisionExit2D(Collision2D collision)
+    {
+        if (collision.gameObject.layer != 7)
+        {
+            return;
+        }
+
+        RepeatingDamage repeatingDamage =
+            collision.gameObject.GetComponent<RepeatingDamage>();
+
+        if (repeatingDamage != null)
+        {
+            this.StopRepeatingDamage(repeatingDamage);
+        }
+    }
+
+    private void StartRepeatingDamage(RepeatingDamage damage)
+    {
+        if (damage == null)
+        {
+            return;
+        }
+
+        if (!this.activeRepeatingDamages.Add(damage))
+        {
+            return;
+        }
+
+        Coroutine coroutine = this.StartCoroutine(this.ApplyRepeatingDamage(damage));
+
+        this.repeatingDamageCoroutines.Add(damage, coroutine);
+    }
+
+    private void StopRepeatingDamage(RepeatingDamage damage)
+    {
+        if (damage == null)
+        {
+            return;
+        }
+
+        this.activeRepeatingDamages.Remove(damage);
+
+        if (this.repeatingDamageCoroutines.TryGetValue(damage, out Coroutine coroutine))
+        {
+            this.StopCoroutine(coroutine);
+            this.repeatingDamageCoroutines.Remove(damage);
+        }
+    }
+
+    private IEnumerator ApplyRepeatingDamage(RepeatingDamage damage)
+    {
+        this.playerData.TakeDamage(damage.RepeatingAmount);
+
+        while (this.activeRepeatingDamages.Contains(damage))
+        {
+            yield return new WaitForSeconds(damage.RepeatInterval);
+
+            if (!this.activeRepeatingDamages.Contains(damage))
+            {
+                yield break;
+            }
+
+            this.playerData.TakeDamage(damage.RepeatingAmount);
+        }
     }
 
     private void UpdateAnimator()

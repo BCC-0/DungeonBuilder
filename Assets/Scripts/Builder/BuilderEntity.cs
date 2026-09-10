@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using UnityEngine;
 
@@ -9,6 +10,8 @@ using UnityEngine;
 /// </summary>
 public class BuilderEntity : SaveableEntity
 {
+    private Item originalItem;
+
     /// <summary>
     /// Gets the prefab this builder entity represents.
     /// </summary>
@@ -41,6 +44,23 @@ public class BuilderEntity : SaveableEntity
         SaveableEntity source = prefab.GetComponent<SaveableEntity>();
         if (source != null)
         {
+            if (source is ItemObject itemSource)
+            {
+                FieldInfo originalItemField = typeof(ItemObject).GetField(
+                    "originalItem",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+
+                this.originalItem = (Item)originalItemField.GetValue(itemSource);
+
+                if (this.originalItem == null || string.IsNullOrEmpty(this.originalItem.ItemID))
+                {
+                    Debug.LogError(
+                        $"BuilderEntity '{prefabID}' failed to capture a valid originalItem " +
+                        $"(item={(this.originalItem == null ? "NULL" : this.originalItem.name)}, " +
+                        $"ItemID='{this.originalItem?.ItemID}'). This entity WILL corrupt the save stream.");
+                }
+            }
+
             FieldInfo[] sourceFields = source.GetType().GetFields(
                 BindingFlags.Instance |
                 BindingFlags.Public |
@@ -117,6 +137,57 @@ public class BuilderEntity : SaveableEntity
             {
                 mb.enabled = false;
             }
+        }
+    }
+
+    /// <summary>
+    /// Writes base builder data, plus item data in the same wire format
+    /// ItemObject.Write produces, so ItemObject.Read can consume it on load.
+    /// </summary>
+    /// <param name="writer">The writer used for saving/loading.</param>
+    public override void Write(BinaryWriter writer)
+    {
+        base.Write(writer);
+
+        bool isItemEntity = this.originalItem != null;
+
+        if (isItemEntity)
+        {
+            if (string.IsNullOrEmpty(this.originalItem.ItemID))
+            {
+                throw new System.InvalidOperationException(
+                    $"Cannot save: BuilderEntity for prefab '{this.PrefabID}' has an " +
+                    $"originalItem with no ItemID. Fix the asset before saving.");
+            }
+
+            writer.Write(this.originalItem.ItemID);
+            this.originalItem.WriteRuntimeFields(writer);
+        }
+    }
+
+    /// <summary>
+    /// Mirrors Write: if this entity represents an item, consume the same
+    /// itemID + runtime fields Write appended, keeping the stream aligned.
+    /// </summary>
+    /// <param name="reader">The reader used for saving/loading.</param>
+    public override void Read(BinaryReader reader)
+    {
+        base.Read(reader);
+
+        if (this.originalItem != null)
+        {
+            string itemID = reader.ReadString();
+            Item def = ItemLibrary.GetItemByIDGlobal(itemID);
+            if (def == null)
+            {
+                Debug.LogError($"BuilderEntity: could not find Item with ID '{itemID}'.");
+                return;
+            }
+
+            Item copy = Instantiate(def);
+            copy.name = def.name + "_RuntimeCopy";
+            copy.ReadRuntimeFields(reader);
+            this.originalItem = copy;
         }
     }
 

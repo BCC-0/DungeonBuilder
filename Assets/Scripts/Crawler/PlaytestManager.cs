@@ -160,7 +160,6 @@ public class PlaytestManager : MonoBehaviour
 
         yield return null;
 
-        Debug.Log(this.storedBuilderState.ActiveLayer);
         MapEditorManager.Instance.SetLayer(this.storedBuilderState.ActiveLayer);
     }
 
@@ -174,6 +173,19 @@ public class PlaytestManager : MonoBehaviour
             if (entity.CompareTag("PlayerEntity"))
             {
                 playerCount++;
+            }
+        }
+
+        foreach (BuilderEntity entity in BuilderRegistry.GetAll())
+        {
+            if (entity.PrefabID != null && SaveRegistry.GetPrefab(entity.PrefabID)?.GetComponent<ItemObject>() != null)
+            {
+                FieldInfo f = typeof(BuilderEntity).GetField("originalItem", BindingFlags.NonPublic | BindingFlags.Instance);
+                Item item = (Item)f.GetValue(entity);
+                if (item == null || string.IsNullOrEmpty(item.ItemID))
+                {
+                    errors.Add($"Item entity '{entity.PrefabID}' at {entity.transform.position} has no valid ItemID.");
+                }
             }
         }
 

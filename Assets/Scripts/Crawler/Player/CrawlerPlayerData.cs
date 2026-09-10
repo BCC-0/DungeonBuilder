@@ -2,6 +2,7 @@
 using System.Linq;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// Contains all player-related stats and inventory data.
@@ -15,8 +16,12 @@ public class CrawlerPlayerData : SaveableEntity
     private int maxHealth = 100;
 
     [SerializeField]
-    [SaveField]
     private int currentHealth = 100;
+
+    [SerializeField]
+    private Slider healthSlider;
+    [SerializeField]
+    private TextMeshProUGUI healthText;
 
     [SerializeField]
     private float moveSpeed = 5f;
@@ -84,20 +89,34 @@ public class CrawlerPlayerData : SaveableEntity
     /// Heals the player.
     /// </summary>
     /// <param name="amount">Amount to heal.</param>
-    public void Heal(int amount)
+    /// <returns>The amount of health left after taking damage.</returns>
+    public int Heal(int amount)
     {
+        if (amount <= 0)
+        {
+            return 0;
+        }
+
         this.currentHealth = Mathf.Min(this.currentHealth + amount, this.maxHealth);
-        Debug.Log($"Player healed: {amount}. Current health: {this.currentHealth}");
+        this.SetHealthSlider();
+        return this.currentHealth;
     }
 
     /// <summary>
     /// Damages the player.
     /// </summary>
     /// <param name="amount">Amount of damage.</param>
-    public void TakeDamage(int amount)
+    /// <returns>The amount of health left after taking damage.</returns>
+    public int TakeDamage(int amount)
     {
+        if (amount <= 0)
+        {
+            return 0;
+        }
+
         this.currentHealth = Mathf.Max(this.currentHealth - amount, 0);
-        Debug.Log($"Player took {amount} damage. Current health: {this.currentHealth}");
+        this.SetHealthSlider();
+        return this.currentHealth;
     }
 
     /// <summary>
@@ -207,6 +226,17 @@ public class CrawlerPlayerData : SaveableEntity
         return opened;
     }
 
+    private void SetHealthSlider()
+    {
+        int damage = this.maxHealth - this.currentHealth;
+        if (damage > 0f)
+        {
+            this.healthSlider.value = damage;
+        }
+
+        this.healthText.text = this.currentHealth + "/" + this.maxHealth;
+    }
+
     private void OnInventoryChange()
     {
         List<Item> weapons = this.inventory
@@ -226,7 +256,10 @@ public class CrawlerPlayerData : SaveableEntity
     {
         this.currentHealth = this.maxHealth;
 
-        // Close inventory if it is opened. Useful for debugging/working on inventory UI.
+        this.healthSlider.maxValue = this.maxHealth;
+        this.SetHealthSlider();
+
+        // Close inventory if it is opened.
         if (this.inventoryCanvas.activeSelf)
         {
             this.OpenInventory();
