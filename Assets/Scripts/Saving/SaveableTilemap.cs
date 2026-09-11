@@ -79,6 +79,22 @@ public class SaveableTilemap : SaveableEntity
     }
 
     /// <summary>
+    /// Updates an existing tile's data and refreshes its visual/collision state.
+    /// </summary>
+    /// <param name="position">The position to apply the update to.</param>
+    /// <param name="data">The tiledata to apply to the given position.</param>
+    public void UpdateTileData(Vector2Int position, TileData data)
+    {
+        if (data == null)
+        {
+            return;
+        }
+
+        this.tiles[position] = data;
+        this.UpdateSingleTile(data);
+    }
+
+    /// <summary>
     /// Updates the Tilemap visually and creates colliders for tiles that need them.
     /// Full rebuild used mainly on load.
     /// </summary>
