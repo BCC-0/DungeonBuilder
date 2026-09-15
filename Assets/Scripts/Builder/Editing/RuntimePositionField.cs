@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 
@@ -231,6 +232,21 @@ public class RuntimePositionField : MonoBehaviour
                 return;
             }
 
+            Vector2Int destinationCell =
+                new Vector2Int(
+                    Mathf.RoundToInt(gridPosition.x),
+                    Mathf.RoundToInt(gridPosition.y));
+
+            SaveableEntity entityAtDestination =
+                this.FindEntityAtPosition(
+                    destinationCell,
+                    entity);
+
+            if (entityAtDestination != null)
+            {
+                Destroy(entityAtDestination.gameObject);
+            }
+
             Vector2 worldPosition =
                 this.GridToWorld(gridPosition);
 
@@ -302,6 +318,24 @@ public class RuntimePositionField : MonoBehaviour
 
             this.Refresh();
         }
+    }
+
+    /// <summary>
+    /// Finds an entity at the given position.
+    /// </summary>
+    /// <param name="cell">The cell to find at.</param>
+    /// <param name="ignore">An entity to ignore. (The one we are trying to place there)</param>
+    /// <returns>The found entity.</returns>
+    private SaveableEntity FindEntityAtPosition(
+        Vector2Int cell,
+        SaveableEntity ignore)
+    {
+        return FindObjectsByType<SaveableEntity>()
+            .FirstOrDefault(other =>
+                other != ignore &&
+                new Vector2Int(
+                    Mathf.FloorToInt(other.transform.position.x),
+                    Mathf.FloorToInt(other.transform.position.y)) == cell);
     }
 
     /// <summary>

@@ -198,6 +198,8 @@ public static class SaveManager
                 entity.Read(payloadReader);
                 Register(entity);
                 loadedCount++;
+
+                entity.OnFinishMapLoad();
             }
             else
             {
@@ -205,7 +207,6 @@ public static class SaveManager
             }
         }
 
-        Debug.Log($"Loaded {loadedCount}/{count} entities. (player mode).");
     }
 
     /// <summary>

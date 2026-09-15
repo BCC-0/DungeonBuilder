@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Unity.VisualScripting;
 using UnityEngine;
 
@@ -196,8 +197,7 @@ public class RuntimePropertyEditor : MonoBehaviour
 
     private void BuildTileInspector()
     {
-        IReadOnlyList<Vector2Int> selected =
-            MapEditorManager.Instance.SelectedTiles;
+        IReadOnlyList<Vector2Int> selected = MapEditorManager.Instance.SelectedTiles;
 
         if (selected == null || selected.Count == 0)
         {
@@ -266,9 +266,7 @@ public class RuntimePropertyEditor : MonoBehaviour
             foreach (TileBehaviour behaviour in behaviours)
             {
                 System.Reflection.FieldInfo matchingField =
-                    this.FindField(
-                        behaviour.GetType(),
-                        field.Name);
+                    this.FindField(behaviour.GetType(), field.Name);
 
                 if (matchingField == null ||
                     matchingField.FieldType != field.FieldType ||
@@ -321,21 +319,20 @@ public class RuntimePropertyEditor : MonoBehaviour
         }
     }
 
-    private List<System.Reflection.FieldInfo> GetSaveFields(Type type)
+    private List<FieldInfo> GetSaveFields(Type type)
     {
-        List<System.Reflection.FieldInfo> fields =
-            new List<System.Reflection.FieldInfo>();
+        List<FieldInfo> fields = new List<FieldInfo>();
 
         while (type != null)
         {
-            System.Reflection.FieldInfo[] declaredFields =
+            FieldInfo[] declaredFields =
                 type.GetFields(
-                    System.Reflection.BindingFlags.Instance |
-                    System.Reflection.BindingFlags.Public |
-                    System.Reflection.BindingFlags.NonPublic |
-                    System.Reflection.BindingFlags.DeclaredOnly);
+                    BindingFlags.Instance |
+                    BindingFlags.Public |
+                    BindingFlags.NonPublic |
+                    BindingFlags.DeclaredOnly);
 
-            foreach (System.Reflection.FieldInfo field in declaredFields)
+            foreach (FieldInfo field in declaredFields)
             {
                 if (Attribute.IsDefined(
                         field,
@@ -366,8 +363,7 @@ public class RuntimePropertyEditor : MonoBehaviour
             return fieldName;
         }
 
-        return char.ToUpper(fieldName[0]) +
-               fieldName.Substring(1);
+        return char.ToUpper(fieldName[0]) + fieldName.Substring(1) + ":";
     }
 
     private T CreateRow<T>(GameObject prefab)
@@ -391,10 +387,7 @@ public class RuntimePropertyEditor : MonoBehaviour
             return null;
         }
 
-        GameObject row =
-            Instantiate(
-                prefab,
-                this.propertyContainer);
+        GameObject row = Instantiate(prefab, this.propertyContainer);
 
         this.generatedRows.Add(row);
 
@@ -457,5 +450,24 @@ public class RuntimePropertyEditor : MonoBehaviour
         }
 
         return string.Empty;
+    }
+
+    private FieldInfo FindField(Type type, string fieldName)
+    {
+        while (type != null)
+        {
+            FieldInfo field = type.GetField(
+                fieldName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+
+            if (field != null)
+            {
+                return field;
+            }
+
+            type = type.BaseType;
+        }
+
+        return null;
     }
 }

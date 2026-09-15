@@ -120,6 +120,7 @@ public class EntitySelectionManager : SelectionManagerBase
         }
 
         this.selectionVisualizer.Refresh();
+        RuntimePropertyEditor.Instance.Rebuild();
     }
 
     /// <inheritdoc/>

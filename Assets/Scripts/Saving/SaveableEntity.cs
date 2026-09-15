@@ -78,6 +78,14 @@ public abstract class SaveableEntity : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Called when the map is finished loading.
+    /// </summary>
+    public virtual void OnFinishMapLoad()
+    {
+
+    }
+
     protected virtual void Awake()
     {
         if (string.IsNullOrEmpty(this.uniqueID))

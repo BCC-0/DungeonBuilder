@@ -227,6 +227,22 @@ public class CrawlerPlayerData : SaveableEntity
         return opened;
     }
 
+    /// <summary>
+    /// Called when the map is finished loading.
+    /// </summary>
+    public override void OnFinishMapLoad()
+    {
+        this.currentHealth = this.maxHealth;
+
+        this.healthSlider.maxValue = this.maxHealth;
+        this.SetHealthSlider();
+
+        if (this.inventoryCanvas.activeSelf)
+        {
+            this.OpenInventory();
+        }
+    }
+
     private void SetHealthSlider()
     {
         int damage = this.maxHealth - this.currentHealth;
@@ -248,23 +264,8 @@ public class CrawlerPlayerData : SaveableEntity
             .Where(item => item.ItemType == ItemType.Tool)
             .ToList();
 
-        // Populate UI sections
         this.inventoryWeaponsUI.PopulateInventory(this, weapons.ToArray());
         this.inventoryToolsUI.PopulateInventory(this, tools.ToArray());
-    }
-
-    private void Start()
-    {
-        this.currentHealth = this.maxHealth;
-
-        this.healthSlider.maxValue = this.maxHealth;
-        this.SetHealthSlider();
-
-        // Close inventory if it is opened.
-        if (this.inventoryCanvas.activeSelf)
-        {
-            this.OpenInventory();
-        }
     }
 
     private void OnDisable()

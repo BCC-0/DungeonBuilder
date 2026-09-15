@@ -13,16 +13,7 @@ using UnityEngine.UIElements;
 public class RuntimeEditableValue
 {
     /// <summary>
-    /// The original field information from the source object.
-    /// </summary>
-    public FieldInfo Field { get; }
-
-    /// <summary>
-    /// The current runtime value of the field.
-    /// </summary>
-    public object Value { get; set; }
-
-    /// <summary>
+    /// Initializes a new instance of the <see cref="RuntimeEditableValue"/> class.
     /// Creates a runtime-editable value.
     /// </summary>
     /// <param name="field">The source field.</param>
@@ -34,4 +25,14 @@ public class RuntimeEditableValue
         this.Field = field;
         this.Value = value;
     }
+
+    /// <summary>
+    /// Gets the original field information from the source object.
+    /// </summary>
+    public FieldInfo Field { get; }
+
+    /// <summary>
+    /// Gets or sets the current runtime value of the field.
+    /// </summary>
+    public object Value { get; set; }
 }
