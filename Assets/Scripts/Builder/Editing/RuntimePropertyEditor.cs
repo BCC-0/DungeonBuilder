@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Reflection;
 using UnityEngine;
-using UnityEngine.UI;
 
+/// <summary>
+/// A script that populates the inspector of the builder and allows
+/// the editing of marked properties.
+/// </summary>
 public class RuntimePropertyEditor : MonoBehaviour
 {
     [Header("UI")]
@@ -14,14 +16,14 @@ public class RuntimePropertyEditor : MonoBehaviour
     private GameObject propertyRowPrefab;
 
     [SerializeField]
-    private GameObject transformRowPrefab;
+    private GameObject positionRowPrefab;
 
     private List<GameObject> generatedRows = new List<GameObject>();
 
     private string lastSelectionKey;
 
     /// <summary>
-    /// Rebuilds the selection inspector.
+    /// Rebuild the inspector.
     /// </summary>
     public void Rebuild()
     {
@@ -51,7 +53,8 @@ public class RuntimePropertyEditor : MonoBehaviour
             return;
         }
 
-        string selectionKey = this.BuildSelectionKey();
+        string selectionKey =
+            this.BuildSelectionKey();
 
         if (selectionKey == this.lastSelectionKey)
         {
@@ -77,84 +80,87 @@ public class RuntimePropertyEditor : MonoBehaviour
 
     private void BuildEntityInspector()
     {
-        IReadOnlyList<SaveableEntity> selected = MapEditorManager.Instance.SelectedEntities;
+        IReadOnlyList<SaveableEntity> selected =
+            MapEditorManager.Instance.SelectedEntities;
 
         if (selected == null || selected.Count == 0)
         {
             return;
         }
 
-        RuntimeTransformEditor transformEditor = this.CreateRow<RuntimeTransformEditor>(this.transformRowPrefab);
+        RuntimePositionField positionEditor = this.CreateRow<RuntimePositionField>(this.positionRowPrefab);
 
-        if (transformEditor != null)
+        if (positionEditor != null)
         {
-            transformEditor.Initialize(selected);
+            positionEditor.Initialize(selected);
         }
 
-        // Build the list of actual objects whose
-        // RuntimeEditable fields we want to inspect.
-        List<object> targets = new List<object>();
+        List<BuilderEntity> builderEntities = new List<BuilderEntity>();
 
         foreach (SaveableEntity entity in selected)
         {
-            if (entity == null)
+            if (entity is BuilderEntity builderEntity)
             {
-                continue;
-            }
-
-            // ItemObject exposes its runtime Item instead
-            // of editing fields on ItemObject itself.
-            if (entity is ItemObject itemObject)
-            {
-                if (itemObject.Item != null)
-                {
-                    targets.Add(itemObject.Item);
-                }
-            }
-            else
-            {
-                targets.Add(entity);
+                builderEntities.Add(builderEntity);
             }
         }
 
-        if (targets.Count == 0)
+        if (builderEntities.Count == 0)
         {
             return;
         }
 
-        // Multi-selection only works when all targets
-        // have the same runtime type.
-        Type targetType = targets[0].GetType();
+        BuilderEntity firstEntity = builderEntities[0];
 
-        for (int i = 1; i < targets.Count; i++)
+        IReadOnlyDictionary<string, RuntimeEditableValue> fields = firstEntity.RuntimeEditableFields;
+
+        if (fields == null || fields.Count == 0)
         {
-            if (targets[i].GetType() != targetType)
-            {
-                return;
-            }
+            return;
         }
 
-        FieldInfo[] fields = targetType.GetFields(
-            BindingFlags.Instance |
-            BindingFlags.Public |
-            BindingFlags.NonPublic);
-
-        foreach (FieldInfo field in fields)
+        foreach (KeyValuePair<string, RuntimeEditableValue> entry in fields)
         {
-            if (!Attribute.IsDefined(
-                    field,
-                    typeof(RuntimeEditableAttribute)))
+            string fieldName = entry.Key;
+            RuntimeEditableValue editableValue = entry.Value;
+
+            if (editableValue == null ||
+                editableValue.Field == null)
             {
                 continue;
             }
 
-            if (!this.IsSupportedType(field.FieldType))
-            {
-                Debug.LogWarning(
-                    $"RuntimePropertyEditor: Field '{field.Name}' " +
-                    $"on {targetType.Name} has unsupported type " +
-                    $"{field.FieldType.Name}.");
+            Type fieldType =
+                editableValue.Field.FieldType;
 
+            if (!this.IsSupportedType(fieldType))
+            {
+                continue;
+            }
+
+            bool validForAll = true;
+
+            foreach (BuilderEntity entity in builderEntities)
+            {
+                if (!entity.TryGetRuntimeEditableField(
+                        fieldName,
+                        out RuntimeEditableValue matchingValue))
+                {
+                    validForAll = false;
+                    break;
+                }
+
+                if (matchingValue == null ||
+                    matchingValue.Field == null ||
+                    matchingValue.Field.FieldType != fieldType)
+                {
+                    validForAll = false;
+                    break;
+                }
+            }
+
+            if (!validForAll)
+            {
                 continue;
             }
 
@@ -168,15 +174,16 @@ public class RuntimePropertyEditor : MonoBehaviour
             }
 
             property.Initialize(
-                this.GetDisplayName(field.Name),
-                field,
-                targets);
+                this.GetDisplayName(fieldName),
+                fieldName,
+                builderEntities);
         }
     }
 
     private void BuildTileInspector()
     {
-        IReadOnlyList<Vector2Int> selected = MapEditorManager.Instance.SelectedTiles;
+        IReadOnlyList<Vector2Int> selected =
+            MapEditorManager.Instance.SelectedTiles;
 
         if (selected == null || selected.Count == 0)
         {
@@ -196,11 +203,13 @@ public class RuntimePropertyEditor : MonoBehaviour
             return;
         }
 
-        List<object> targets = new List<object>();
+        List<object> targets =
+            new List<object>();
 
         foreach (Vector2Int position in selected)
         {
-            TileData data = tilemap.GetTileData(position);
+            TileData data =
+                tilemap.GetTileData(position);
 
             if (data != null)
             {
@@ -213,7 +222,8 @@ public class RuntimePropertyEditor : MonoBehaviour
             return;
         }
 
-        Type targetType = targets[0].GetType();
+        Type targetType =
+            targets[0].GetType();
 
         for (int i = 1; i < targets.Count; i++)
         {
@@ -223,20 +233,11 @@ public class RuntimePropertyEditor : MonoBehaviour
             }
         }
 
-        FieldInfo[] fields = targetType.GetFields(
-            BindingFlags.Instance |
-            BindingFlags.Public |
-            BindingFlags.NonPublic);
+        List<System.Reflection.FieldInfo> fields =
+            this.GetSaveFields(targetType);
 
-        foreach (FieldInfo field in fields)
+        foreach (System.Reflection.FieldInfo field in fields)
         {
-            if (!Attribute.IsDefined(
-                    field,
-                    typeof(RuntimeEditableAttribute)))
-            {
-                continue;
-            }
-
             if (!this.IsSupportedType(field.FieldType))
             {
                 continue;
@@ -255,21 +256,58 @@ public class RuntimePropertyEditor : MonoBehaviour
                 this.GetDisplayName(field.Name),
                 field,
                 targets,
-                () => this.RefreshTiles(tilemap, selected));
+                () => this.RefreshTiles(
+                    tilemap,
+                    selected));
         }
     }
 
-    private void RefreshTiles(SaveableTilemap tilemap, IReadOnlyList<Vector2Int> positions)
+    private void RefreshTiles(
+        SaveableTilemap tilemap,
+        IReadOnlyList<Vector2Int> positions)
     {
         foreach (Vector2Int position in positions)
         {
-            TileData data = tilemap.GetTileData(position);
+            TileData data =
+                tilemap.GetTileData(position);
 
             if (data != null)
             {
-                tilemap.UpdateTileData(position, data);
+                tilemap.UpdateTileData(
+                    position,
+                    data);
             }
         }
+    }
+
+    private List<System.Reflection.FieldInfo> GetSaveFields(Type type)
+    {
+        List<System.Reflection.FieldInfo> fields =
+            new List<System.Reflection.FieldInfo>();
+
+        while (type != null)
+        {
+            System.Reflection.FieldInfo[] declaredFields =
+                type.GetFields(
+                    System.Reflection.BindingFlags.Instance |
+                    System.Reflection.BindingFlags.Public |
+                    System.Reflection.BindingFlags.NonPublic |
+                    System.Reflection.BindingFlags.DeclaredOnly);
+
+            foreach (System.Reflection.FieldInfo field in declaredFields)
+            {
+                if (Attribute.IsDefined(
+                        field,
+                        typeof(SaveFieldAttribute)))
+                {
+                    fields.Add(field);
+                }
+            }
+
+            type = type.BaseType;
+        }
+
+        return fields;
     }
 
     private bool IsSupportedType(Type type)
@@ -312,13 +350,15 @@ public class RuntimePropertyEditor : MonoBehaviour
             return null;
         }
 
-        GameObject row = Instantiate(
-            prefab,
-            this.propertyContainer);
+        GameObject row =
+            Instantiate(
+                prefab,
+                this.propertyContainer);
 
         this.generatedRows.Add(row);
 
-        T component = row.GetComponent<T>();
+        T component =
+            row.GetComponent<T>();
 
         if (component == null)
         {
@@ -351,14 +391,16 @@ public class RuntimePropertyEditor : MonoBehaviour
             {
                 if (entity != null)
                 {
-                    key += entity.GetUniqueID() + ";";
+                    key +=
+                        entity.GetUniqueID() + ";";
                 }
             }
 
             return key;
         }
 
-        IReadOnlyList<Vector2Int> tiles = MapEditorManager.Instance.SelectedTiles;
+        IReadOnlyList<Vector2Int> tiles =
+            MapEditorManager.Instance.SelectedTiles;
 
         if (tiles != null && tiles.Count > 0)
         {
@@ -366,7 +408,8 @@ public class RuntimePropertyEditor : MonoBehaviour
 
             foreach (Vector2Int tile in tiles)
             {
-                key += $"{tile.x},{tile.y};";
+                key +=
+                    $"{tile.x},{tile.y};";
             }
 
             return key;

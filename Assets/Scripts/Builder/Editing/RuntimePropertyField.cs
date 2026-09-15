@@ -23,6 +23,9 @@ public class RuntimePropertyField : MonoBehaviour
     private List<object> targets;
     private Action onValueChanged;
     private bool updating;
+    private List<BuilderEntity> builderTargets;
+    private string builderFieldName;
+    private bool usingBuilderValues;
 
     /// <summary>
     /// Initialize the property field.
@@ -39,6 +42,56 @@ public class RuntimePropertyField : MonoBehaviour
     {
         this.field = field;
         this.targets = targets;
+        this.builderTargets = null;
+        this.builderFieldName = null;
+        this.usingBuilderValues = false;
+        this.onValueChanged = onValueChanged;
+
+        if (this.label != null)
+        {
+            this.label.text = displayName;
+        }
+
+        this.Setup();
+    }
+
+    /// <summary>
+    /// Initialize the property field.
+    /// </summary>
+    /// <param name="displayName">The name to display the property as.</param>
+    /// <param name="fieldName">The name of the field to edit.</param>
+    /// <param name="targets">The objects to set the field on.</param>
+    /// <param name="onValueChanged">An action to invoke when the field has been changed.</param>
+    public void Initialize(
+            string displayName,
+            string fieldName,
+            List<BuilderEntity> targets,
+            Action onValueChanged = null)
+    {
+        if (targets == null ||
+            targets.Count == 0)
+        {
+            return;
+        }
+
+        if (!targets[0].TryGetRuntimeEditableField(
+                fieldName,
+                out RuntimeEditableValue editableValue))
+        {
+            return;
+        }
+
+        if (editableValue == null ||
+            editableValue.Field == null)
+        {
+            return;
+        }
+
+        this.field = editableValue.Field;
+        this.targets = null;
+        this.builderTargets = targets;
+        this.builderFieldName = fieldName;
+        this.usingBuilderValues = true;
         this.onValueChanged = onValueChanged;
 
         if (this.label != null)
@@ -51,6 +104,11 @@ public class RuntimePropertyField : MonoBehaviour
 
     private void Setup()
     {
+        if (this.field == null)
+        {
+            return;
+        }
+
         Type type = this.field.FieldType;
 
         if (this.inputField != null)
@@ -82,8 +140,14 @@ public class RuntimePropertyField : MonoBehaviour
             return;
         }
 
-        bool value = Convert.ToBoolean(
-            this.field.GetValue(this.targets[0]));
+        object currentValue = this.GetCurrentValue();
+
+        if (currentValue == null)
+        {
+            return;
+        }
+
+        bool value = Convert.ToBoolean(currentValue);
 
         this.updating = true;
         this.toggle.isOn = value;
@@ -99,13 +163,36 @@ public class RuntimePropertyField : MonoBehaviour
             return;
         }
 
-        object value = this.field.GetValue(this.targets[0]);
+        object value = this.GetCurrentValue();
 
         this.updating = true;
         this.inputField.text = value != null ? value.ToString() : string.Empty;
         this.updating = false;
 
         this.inputField.onEndEdit.AddListener(this.OnInputChanged);
+    }
+
+    private object GetCurrentValue()
+    {
+        if (this.usingBuilderValues)
+        {
+            if (this.builderTargets == null ||
+                this.builderTargets.Count == 0)
+            {
+                return null;
+            }
+
+            return this.builderTargets[0]
+                .GetRuntimeEditableValue(this.builderFieldName);
+        }
+
+        if (this.targets == null ||
+            this.targets.Count == 0)
+        {
+            return null;
+        }
+
+        return this.field.GetValue(this.targets[0]);
     }
 
     private void OnInputChanged(string value)
@@ -139,6 +226,30 @@ public class RuntimePropertyField : MonoBehaviour
 
     private void ApplyValue(object value)
     {
+        if (this.usingBuilderValues)
+        {
+            if (this.builderTargets == null)
+            {
+                return;
+            }
+
+            foreach (BuilderEntity target in this.builderTargets)
+            {
+                if (target == null)
+                {
+                    continue;
+                }
+
+                target.SetRuntimeEditableValue(
+                    this.builderFieldName,
+                    value);
+            }
+
+            this.onValueChanged?.Invoke();
+            return;
+        }
+
+        // Existing TileData reflection behavior.
         if (this.targets == null)
         {
             return;

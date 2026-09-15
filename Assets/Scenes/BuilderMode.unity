@@ -3835,6 +3835,7 @@ GameObject:
   - component: {fileID: 595929097}
   - component: {fileID: 595929096}
   - component: {fileID: 595929098}
+  - component: {fileID: 595929099}
   m_Layer: 0
   m_Name: PropertyContainer
   m_TagString: Untagged
@@ -3856,11 +3857,11 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1729679916}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: -0.0000038146973, y: 0}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &595929096
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3916,7 +3917,7 @@ MonoBehaviour:
     m_Right: 0
     m_Top: 0
     m_Bottom: 0
-  m_ChildAlignment: 0
+  m_ChildAlignment: 4
   m_Spacing: 5
   m_ChildForceExpandWidth: 1
   m_ChildForceExpandHeight: 1
@@ -3925,6 +3926,20 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
+--- !u!114 &595929099
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 595929094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3245ec927659c4140ac4f8d17403cc18, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.ContentSizeFitter
+  m_HorizontalFit: 0
+  m_VerticalFit: 2
 --- !u!114 &602389042
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7372,7 +7387,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RuntimePropertyEditor
   propertyContainer: {fileID: 595929095}
   propertyRowPrefab: {fileID: 3011177141004706493, guid: 4f667c1380eac164fb31dc55682b4bd5, type: 3}
-  transformRowPrefab: {fileID: 0}
+  positionRowPrefab: {fileID: 3487035033670572255, guid: b19a5ac75f1f31a4c8f2de9edafd7fe7, type: 3}
 --- !u!114 &1096714804
 MonoBehaviour:
   m_ObjectHideFlags: 0

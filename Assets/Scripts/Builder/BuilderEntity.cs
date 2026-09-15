@@ -4,160 +4,172 @@ using System.IO;
 using System.Reflection;
 using UnityEngine;
 
-/// <summary>
-/// A lightweight version of SaveableEntity used in the builder.
-/// Inherits SaveableEntity to reuse save/load logic.
-/// </summary>
 public class BuilderEntity : SaveableEntity
 {
+    private readonly Dictionary<string, RuntimeEditableValue> runtimeEditableFields =
+        new Dictionary<string, RuntimeEditableValue>();
+
     private Item originalItem;
 
-    /// <summary>
-    /// Gets the prefab this builder entity represents.
-    /// </summary>
     public string PrefabID { get; private set; }
 
-    /// <summary>
-    /// Initialize the builder entity dynamically from a prefab.
-    /// </summary>
-    /// <param name="prefabID">The ID for the prefab we stimulate.</param>
+    public IReadOnlyDictionary<string, RuntimeEditableValue> RuntimeEditableFields => this.runtimeEditableFields;
+
     public void Initialize(string prefabID)
     {
         this.PrefabID = prefabID;
 
-        // Store prefab ID in identity component
+        this.runtimeEditableFields.Clear();
+
         PrefabIdentity identity = this.GetComponent<PrefabIdentity>();
+
         if (identity != null)
         {
             identity.PrefabID = prefabID;
         }
 
         GameObject prefab = SaveRegistry.GetPrefab(prefabID);
+
         if (prefab == null)
         {
-            Debug.LogError($"Prefab not found for ID: {prefabID}");
+            Debug.LogError(
+                $"Prefab not found for ID: {prefabID}");
+
             return;
         }
 
         this.gameObject.tag = prefab.tag;
 
-        SaveableEntity source = prefab.GetComponent<SaveableEntity>();
+        SaveableEntity source =
+            prefab.GetComponent<SaveableEntity>();
+
         if (source != null)
         {
-            if (source is ItemObject itemSource)
-            {
-                FieldInfo originalItemField = typeof(ItemObject).GetField(
-                    "originalItem",
-                    BindingFlags.NonPublic | BindingFlags.Instance);
-
-                this.originalItem = (Item)originalItemField.GetValue(itemSource);
-
-                if (this.originalItem == null || string.IsNullOrEmpty(this.originalItem.ItemID))
-                {
-                    Debug.LogError(
-                        $"BuilderEntity '{prefabID}' failed to capture a valid originalItem " +
-                        $"(item={(this.originalItem == null ? "NULL" : this.originalItem.name)}, " +
-                        $"ItemID='{this.originalItem?.ItemID}'). This entity WILL corrupt the save stream.");
-                }
-            }
-
-            FieldInfo[] sourceFields = source.GetType().GetFields(
-                BindingFlags.Instance |
-                BindingFlags.Public |
-                BindingFlags.NonPublic);
-
-            FieldInfo[] targetFields = this.GetType().GetFields(
-                BindingFlags.Instance |
-                BindingFlags.Public |
-                BindingFlags.NonPublic);
-
-            Dictionary<string, FieldInfo> targetMap = new ();
-            foreach (FieldInfo f in targetFields)
-            {
-                targetMap[f.Name] = f;
-            }
-
-            foreach (FieldInfo field in sourceFields)
-            {
-                if (!Attribute.IsDefined(field, typeof(SaveFieldAttribute)))
-                {
-                    continue;
-                }
-
-                if (targetMap.TryGetValue(field.Name, out FieldInfo targetField))
-                {
-                    object value = field.GetValue(source);
-
-                    try
-                    {
-                        targetField.SetValue(this, value);
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.LogWarning(
-                            $"Failed to copy field '{field.Name}' on {this.name}: {e.Message}");
-                    }
-                }
-            }
+            this.InitializeSourceData(source);
         }
 
-        SpriteRenderer prefabRenderer = prefab.GetComponent<SpriteRenderer>();
-        if (prefabRenderer != null)
+        this.CopyRenderer(prefab);
+        this.CopySelectionOutline(prefab);
+        this.DisableOtherBehaviours();
+    }
+
+    public bool TryGetRuntimeEditableField(
+        string fieldName,
+        out RuntimeEditableValue editableValue)
+    {
+        return this.runtimeEditableFields.TryGetValue(
+            fieldName,
+            out editableValue);
+    }
+
+    public void SetRuntimeEditableValue(
+        string fieldName,
+        object value)
+    {
+        if (!this.runtimeEditableFields.TryGetValue(
+                fieldName,
+                out RuntimeEditableValue editableValue))
         {
-            SpriteRenderer sr = this.GetComponent<SpriteRenderer>();
-            if (sr == null)
-            {
-                sr = this.gameObject.AddComponent<SpriteRenderer>();
-            }
-
-            sr.sprite = prefabRenderer.sprite;
-            sr.color = prefabRenderer.color;
-            sr.sortingLayerID = prefabRenderer.sortingLayerID;
-            sr.sortingOrder = prefabRenderer.sortingOrder;
-        }
-        else
-        {
-            Debug.Log($"BuilderEntity is invisible: {prefabID} at {this.transform.position}");
-        }
-
-        Transform selectionOutline = prefab.transform.Find("SelectionOutline");
-
-        if (selectionOutline != null)
-        {
-            GameObject outline = Instantiate(
-                selectionOutline.gameObject,
-                this.transform);
-
-            outline.name = selectionOutline.name;
+            return;
         }
 
-        foreach (MonoBehaviour mb in this.GetComponents<MonoBehaviour>())
+        if (editableValue == null ||
+            editableValue.Field == null)
         {
-            if (mb != this && !(mb is SaveableEntity))
-            {
-                mb.enabled = false;
-            }
+            return;
+        }
+
+        Type fieldType =
+            editableValue.Field.FieldType;
+
+        if (value != null &&
+            !fieldType.IsInstanceOfType(value))
+        {
+            return;
+        }
+
+        editableValue.Value = value;
+
+        if (this.originalItem != null &&
+            Attribute.IsDefined(
+                editableValue.Field,
+                typeof(RuntimeEditableAttribute)) &&
+            editableValue.Field.DeclaringType != null &&
+            editableValue.Field.DeclaringType.IsAssignableFrom(
+                this.originalItem.GetType()))
+        {
+            editableValue.Field.SetValue(
+                this.originalItem,
+                value);
         }
     }
 
-    /// <summary>
-    /// Writes base builder data, plus item data in the same wire format
-    /// ItemObject.Write produces, so ItemObject.Read can consume it on load.
-    /// </summary>
-    /// <param name="writer">The writer used for saving/loading.</param>
+    public object GetRuntimeEditableValue(string fieldName)
+    {
+        if (!this.runtimeEditableFields.TryGetValue(
+                fieldName,
+                out RuntimeEditableValue editableValue))
+        {
+            return null;
+        }
+
+        return editableValue.Value;
+    }
+
     public override void Write(BinaryWriter writer)
     {
-        base.Write(writer);
+        this.WriteTransformData(writer);
 
-        bool isItemEntity = this.originalItem != null;
+        List<KeyValuePair<string, RuntimeEditableValue>> fieldsToSave =
+            new List<KeyValuePair<string, RuntimeEditableValue>>();
 
-        if (isItemEntity)
+        foreach (KeyValuePair<string, RuntimeEditableValue> entry in
+                 this.runtimeEditableFields)
         {
-            if (string.IsNullOrEmpty(this.originalItem.ItemID))
+            RuntimeEditableValue editableValue =
+                entry.Value;
+
+            if (editableValue == null ||
+                editableValue.Field == null)
             {
-                throw new System.InvalidOperationException(
-                    $"Cannot save: BuilderEntity for prefab '{this.PrefabID}' has an " +
-                    $"originalItem with no ItemID. Fix the asset before saving.");
+                continue;
+            }
+
+            if (!Attribute.IsDefined(
+                    editableValue.Field,
+                    typeof(SaveFieldAttribute)))
+            {
+                continue;
+            }
+
+            fieldsToSave.Add(entry);
+        }
+
+        writer.Write(fieldsToSave.Count);
+
+        foreach (KeyValuePair<string, RuntimeEditableValue> entry in
+                 fieldsToSave)
+        {
+            RuntimeEditableValue editableValue =
+                entry.Value;
+
+            writer.Write(entry.Key);
+
+            this.WriteValue(
+                writer,
+                editableValue.Field.FieldType,
+                editableValue.Value);
+        }
+
+        if (this.originalItem != null)
+        {
+            if (string.IsNullOrEmpty(
+                    this.originalItem.ItemID))
+            {
+                throw new InvalidOperationException(
+                    $"Cannot save: BuilderEntity for prefab " +
+                    $"'{this.PrefabID}' has an originalItem with no " +
+                    $"ItemID. Fix the asset before saving.");
             }
 
             writer.Write(this.originalItem.ItemID);
@@ -165,44 +177,314 @@ public class BuilderEntity : SaveableEntity
         }
     }
 
-    /// <summary>
-    /// Mirrors Write: if this entity represents an item, consume the same
-    /// itemID + runtime fields Write appended, keeping the stream aligned.
-    /// </summary>
-    /// <param name="reader">The reader used for saving/loading.</param>
     public override void Read(BinaryReader reader)
     {
-        base.Read(reader);
+        this.ReadTransformData(reader);
+
+        this.runtimeEditableFields.Clear();
+
+        int fieldCount =
+            reader.ReadInt32();
+
+        for (int i = 0; i < fieldCount; i++)
+        {
+            string fieldName =
+                reader.ReadString();
+
+            FieldInfo field =
+                this.FindSourceField(
+                    fieldName);
+
+            if (field != null)
+            {
+                object value =
+                    this.ReadValue(
+                        reader,
+                        field.FieldType);
+
+                this.runtimeEditableFields[fieldName] =
+                    new RuntimeEditableValue(
+                        field,
+                        value);
+            }
+            else
+            {
+                Debug.LogWarning(
+                    $"BuilderEntity: could not resolve source field " +
+                    $"'{fieldName}' for prefab '{this.PrefabID}'. " +
+                    $"Save data may be corrupted from this point.");
+            }
+        }
 
         if (this.originalItem != null)
         {
-            string itemID = reader.ReadString();
-            Item def = ItemLibrary.GetItemByIDGlobal(itemID);
+            string itemID =
+                reader.ReadString();
+
+            Item def =
+                ItemLibrary.GetItemByIDGlobal(itemID);
+
             if (def == null)
             {
-                Debug.LogError($"BuilderEntity: could not find Item with ID '{itemID}'.");
+                Debug.LogError(
+                    $"BuilderEntity: could not find Item " +
+                    $"with ID '{itemID}'.");
+
                 return;
             }
 
-            Item copy = Instantiate(def);
-            copy.name = def.name + "_RuntimeCopy";
+            Item copy =
+                Instantiate(def);
+
+            copy.name =
+                def.name + "_RuntimeCopy";
+
             copy.ReadRuntimeFields(reader);
+
             this.originalItem = copy;
+
+            this.CopyRuntimeEditableFields(
+                this.originalItem);
         }
     }
 
-    /// <summary>
-    /// Override Awake so BuilderEntities register only in the builder registry.
-    /// </summary>
     protected override void Awake()
     {
         base.Awake();
+
         BuilderRegistry.Register(this);
 
-        // Disable all other behaviours to make it lightweight
-        foreach (MonoBehaviour mb in this.GetComponents<MonoBehaviour>())
+        foreach (MonoBehaviour mb in
+                 this.GetComponents<MonoBehaviour>())
         {
             if (mb != this)
+            {
+                mb.enabled = false;
+            }
+        }
+    }
+
+    private void InitializeSourceData(SaveableEntity source)
+    {
+        if (source is ItemObject itemSource)
+        {
+            FieldInfo originalItemField =
+                typeof(ItemObject).GetField(
+                    "originalItem",
+                    BindingFlags.NonPublic |
+                    BindingFlags.Instance);
+
+            if (originalItemField != null)
+            {
+                this.originalItem =
+                    (Item)originalItemField.GetValue(itemSource);
+            }
+
+            if (this.originalItem == null ||
+                string.IsNullOrEmpty(this.originalItem.ItemID))
+            {
+                Debug.LogError(
+                    $"BuilderEntity '{this.PrefabID}' failed to capture " +
+                    $"a valid originalItem " +
+                    $"(item={(this.originalItem == null ? "NULL" : this.originalItem.name)}, " +
+                    $"ItemID='{this.originalItem?.ItemID}'). " +
+                    $"This entity WILL corrupt the save stream.");
+            }
+
+            if (this.originalItem != null)
+            {
+                this.CopyRuntimeEditableFields(
+                    this.originalItem);
+            }
+
+            this.CopySaveFields(source);
+
+            return;
+        }
+
+        this.CopySaveFields(source);
+    }
+
+    private void CopyRuntimeEditableFields(object source)
+    {
+        if (source == null)
+        {
+            return;
+        }
+
+        List<FieldInfo> sourceFields =
+            this.GetAllFields(source.GetType());
+
+        foreach (FieldInfo field in sourceFields)
+        {
+            if (!Attribute.IsDefined(
+                    field,
+                    typeof(RuntimeEditableAttribute)))
+            {
+                continue;
+            }
+
+            object value =
+                field.GetValue(source);
+
+            this.runtimeEditableFields[field.Name] =
+                new RuntimeEditableValue(
+                    field,
+                    value);
+        }
+    }
+
+    private void CopySaveFields(SaveableEntity source)
+    {
+        if (source == null)
+        {
+            return;
+        }
+
+        List<FieldInfo> sourceFields =
+            this.GetAllFields(source.GetType());
+
+        foreach (FieldInfo field in sourceFields)
+        {
+            if (!Attribute.IsDefined(
+                    field,
+                    typeof(SaveFieldAttribute)))
+            {
+                continue;
+            }
+
+            object value =
+                field.GetValue(source);
+
+            this.runtimeEditableFields[field.Name] =
+                new RuntimeEditableValue(
+                    field,
+                    value);
+        }
+    }
+
+    private List<FieldInfo> GetAllFields(Type type)
+    {
+        List<FieldInfo> fields =
+            new List<FieldInfo>();
+
+        while (type != null)
+        {
+            fields.AddRange(
+                type.GetFields(
+                    BindingFlags.Instance |
+                    BindingFlags.Public |
+                    BindingFlags.NonPublic |
+                    BindingFlags.DeclaredOnly));
+
+            type = type.BaseType;
+        }
+
+        return fields;
+    }
+
+    private FieldInfo FindSourceField(string fieldName)
+    {
+        if (string.IsNullOrEmpty(this.PrefabID))
+        {
+            return null;
+        }
+
+        GameObject prefab =
+            SaveRegistry.GetPrefab(this.PrefabID);
+
+        if (prefab == null)
+        {
+            return null;
+        }
+
+        SaveableEntity source =
+            prefab.GetComponent<SaveableEntity>();
+
+        if (source == null)
+        {
+            return null;
+        }
+
+        List<FieldInfo> fields =
+            this.GetAllFields(source.GetType());
+
+        foreach (FieldInfo field in fields)
+        {
+            if (field.Name == fieldName &&
+                Attribute.IsDefined(
+                    field,
+                    typeof(SaveFieldAttribute)))
+            {
+                return field;
+            }
+        }
+
+        return null;
+    }
+
+    private void CopyRenderer(GameObject prefab)
+    {
+        SpriteRenderer prefabRenderer =
+            prefab.GetComponent<SpriteRenderer>();
+
+        if (prefabRenderer != null)
+        {
+            SpriteRenderer sr =
+                this.GetComponent<SpriteRenderer>();
+
+            if (sr == null)
+            {
+                sr =
+                    this.gameObject.AddComponent<SpriteRenderer>();
+            }
+
+            sr.sprite =
+                prefabRenderer.sprite;
+
+            sr.color =
+                prefabRenderer.color;
+
+            sr.sortingLayerID =
+                prefabRenderer.sortingLayerID;
+
+            sr.sortingOrder =
+                prefabRenderer.sortingOrder;
+        }
+        else
+        {
+            Debug.Log(
+                $"BuilderEntity is invisible: " +
+                $"{this.PrefabID} at {this.transform.position}");
+        }
+    }
+
+    private void CopySelectionOutline(GameObject prefab)
+    {
+        Transform selectionOutline =
+            prefab.transform.Find("SelectionOutline");
+
+        if (selectionOutline == null)
+        {
+            return;
+        }
+
+        GameObject outline =
+            Instantiate(
+                selectionOutline.gameObject,
+                this.transform);
+
+        outline.name =
+            selectionOutline.name;
+    }
+
+    private void DisableOtherBehaviours()
+    {
+        foreach (MonoBehaviour mb in
+                 this.GetComponents<MonoBehaviour>())
+        {
+            if (mb != this &&
+                !(mb is SaveableEntity))
             {
                 mb.enabled = false;
             }
