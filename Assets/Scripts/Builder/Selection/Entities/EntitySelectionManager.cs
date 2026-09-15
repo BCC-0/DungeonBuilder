@@ -172,7 +172,8 @@ public class EntitySelectionManager : SelectionManagerBase
         this.extraMoveStartCells.Clear();
 
         this.DisableMoveButtons();
-        this.ClearSelection();
+        this.SetSelection(MapEditorManager.Instance.SelectedEntities);
+        RuntimePropertyEditor.Instance.Rebuild();
     }
 
     /// <inheritdoc/>
@@ -200,7 +201,8 @@ public class EntitySelectionManager : SelectionManagerBase
         this.moveStartCells.Clear();
 
         this.DisableMoveButtons();
-        this.ClearSelection();
+        this.SetSelection(MapEditorManager.Instance.SelectedEntities);
+        RuntimePropertyEditor.Instance.Rebuild();
     }
 
     /// <inheritdoc/>

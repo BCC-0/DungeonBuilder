@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
 /// <summary>
@@ -23,6 +24,14 @@ public class RuntimePropertyEditor : MonoBehaviour
     private string lastSelectionKey;
 
     /// <summary>
+    /// Gets the instance of the property editor.
+    /// </summary>
+    public static RuntimePropertyEditor Instance
+    {
+        get; private set;
+    }
+
+    /// <summary>
     /// Rebuild the inspector.
     /// </summary>
     public void Rebuild()
@@ -44,6 +53,11 @@ public class RuntimePropertyEditor : MonoBehaviour
         {
             this.BuildTileInspector();
         }
+    }
+
+    private void Start()
+    {
+        Instance = this;
     }
 
     private void Update()
@@ -203,42 +217,71 @@ public class RuntimePropertyEditor : MonoBehaviour
             return;
         }
 
-        List<object> targets =
-            new List<object>();
+        // Position is always available for selected tiles.
+        RuntimePositionField positionEditor =
+            this.CreateRow<RuntimePositionField>(
+                this.positionRowPrefab);
+
+        if (positionEditor != null)
+        {
+            positionEditor.Initialize(selected, tilemap);
+        }
+
+        List<TileBehaviour> behaviours =
+            new List<TileBehaviour>();
 
         foreach (Vector2Int position in selected)
         {
-            TileData data =
-                tilemap.GetTileData(position);
+            TileBehaviour behaviour =
+                tilemap.GetTileBehaviour(position);
 
-            if (data != null)
+            if (behaviour != null)
             {
-                targets.Add(data);
+                behaviours.Add(behaviour);
             }
         }
 
-        if (targets.Count == 0)
+        if (behaviours.Count == 0)
         {
             return;
         }
 
-        Type targetType =
-            targets[0].GetType();
-
-        for (int i = 1; i < targets.Count; i++)
-        {
-            if (targets[i].GetType() != targetType)
-            {
-                return;
-            }
-        }
+        // Only properties common to every selected behaviour
+        // should be displayed.
+        Type firstType =
+            behaviours[0].GetType();
 
         List<System.Reflection.FieldInfo> fields =
-            this.GetSaveFields(targetType);
+            this.GetSaveFields(firstType);
 
         foreach (System.Reflection.FieldInfo field in fields)
         {
             if (!this.IsSupportedType(field.FieldType))
+            {
+                continue;
+            }
+
+            bool validForAll = true;
+
+            foreach (TileBehaviour behaviour in behaviours)
+            {
+                System.Reflection.FieldInfo matchingField =
+                    this.FindField(
+                        behaviour.GetType(),
+                        field.Name);
+
+                if (matchingField == null ||
+                    matchingField.FieldType != field.FieldType ||
+                    !Attribute.IsDefined(
+                        matchingField,
+                        typeof(SaveFieldAttribute)))
+                {
+                    validForAll = false;
+                    break;
+                }
+            }
+
+            if (!validForAll)
             {
                 continue;
             }
@@ -255,10 +298,8 @@ public class RuntimePropertyEditor : MonoBehaviour
             property.Initialize(
                 this.GetDisplayName(field.Name),
                 field,
-                targets,
-                () => this.RefreshTiles(
-                    tilemap,
-                    selected));
+                new List<object>(behaviours),
+                null);
         }
     }
 
