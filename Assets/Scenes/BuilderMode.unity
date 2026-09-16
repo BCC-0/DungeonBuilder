@@ -11740,6 +11740,9 @@ MonoBehaviour:
   - {fileID: 408119134}
   selectionImage: {fileID: 2135867203}
   selectionScale: 1.2
+  folderNames:
+  - 1 Default
+  - 2 Farm
 --- !u!1 &1741936548
 GameObject:
   m_ObjectHideFlags: 0

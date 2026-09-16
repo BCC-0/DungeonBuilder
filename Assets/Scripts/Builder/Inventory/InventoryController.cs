@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.IO;
 using UnityEngine;
 
 /// <summary>
@@ -30,6 +29,9 @@ public class InventoryController : MonoBehaviour
 
     [SerializeField]
     private float selectionScale = 1.2f;
+
+    [SerializeField]
+    private string[] folderNames;
 
     private InventoryItemUI selectedInventoryItem;
 
@@ -469,29 +471,25 @@ public class InventoryController : MonoBehaviour
     /// </summary>
     private void ScanFolders()
     {
-        string prefabsPath = Path.Combine(
-            Application.dataPath,
-            "Resources/prefabs/SaveableEntities");
-
-        if (!Directory.Exists(prefabsPath))
+        if (this.folderNames == null || this.folderNames.Length == 0)
         {
-            Debug.LogWarning(
-                $"No prefabs folder found at {prefabsPath}.");
-
+            Debug.LogWarning("No inventory folder names have been assigned.");
             return;
         }
 
-        foreach (string folderPath in Directory.GetDirectories(prefabsPath))
+        foreach (string folderName in this.folderNames)
         {
-            string folderName =
-                Path.GetFileName(folderPath);
+            if (string.IsNullOrWhiteSpace(folderName))
+            {
+                continue;
+            }
 
             Object[] loadedAssets =
                 Resources.LoadAll(
                     "prefabs/SaveableEntities/" + folderName);
 
             Sprite folderSprite = null;
-            List<InventoryItem> items = new ();
+            List<InventoryItem> items = new();
 
             foreach (Object asset in loadedAssets)
             {
