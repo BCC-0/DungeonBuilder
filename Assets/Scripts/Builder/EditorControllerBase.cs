@@ -40,6 +40,11 @@ public abstract class EditorControllerBase : MonoBehaviour
     }
 
     /// <summary>
+    /// Gets the tilemap used by this editor controller.
+    /// </summary>
+    public SaveableTilemap Tilemap => this.saveableTilemap;
+
+    /// <summary>
     /// Gets the shared tilemap used for tile painting.
     /// </summary>
     protected SaveableTilemap SaveableTilemap => this.saveableTilemap;

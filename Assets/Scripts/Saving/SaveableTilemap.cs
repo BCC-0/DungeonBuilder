@@ -79,6 +79,22 @@ public class SaveableTilemap : SaveableEntity
     }
 
     /// <summary>
+    /// Updates an existing tile's data and refreshes its visual/collision state.
+    /// </summary>
+    /// <param name="position">The position to apply the update to.</param>
+    /// <param name="data">The tiledata to apply to the given position.</param>
+    public void UpdateTileData(Vector2Int position, TileData data)
+    {
+        if (data == null)
+        {
+            return;
+        }
+
+        this.tiles[position] = data;
+        this.UpdateSingleTile(data);
+    }
+
+    /// <summary>
     /// Updates the Tilemap visually and creates colliders for tiles that need them.
     /// Full rebuild used mainly on load.
     /// </summary>
@@ -161,6 +177,31 @@ public class SaveableTilemap : SaveableEntity
     }
 
     /// <summary>
+    /// Gets the TileBehaviour associated with the tile at the given position.
+    /// </summary>
+    /// <param name="position">The tile position.</param>
+    /// <returns>
+    /// The TileBehaviour associated with the tile, or null if the tile
+    /// does not have a behaviour.
+    /// </returns>
+    public TileBehaviour GetTileBehaviour(Vector2Int position)
+    {
+        if (!this.collisionObjects.TryGetValue(
+            position,
+            out GameObject collisionObject))
+        {
+            return null;
+        }
+
+        if (collisionObject == null)
+        {
+            return null;
+        }
+
+        return collisionObject.GetComponent<TileBehaviour>();
+    }
+
+    /// <summary>
     /// Gets the tile data at the given position, or null if no tile exists there.
     /// </summary>
     /// <param name="position">The position of the tile data to get.</param>
@@ -169,6 +210,68 @@ public class SaveableTilemap : SaveableEntity
     {
         this.tiles.TryGetValue(position, out TileData tile);
         return tile;
+    }
+
+    /// <summary>
+    /// Moves a tile from one grid position to another.
+    /// </summary>
+    /// <param name="oldPosition">The current tile position.</param>
+    /// <param name="newPosition">The new tile position.</param>
+    /// <returns>
+    /// True if the tile was moved successfully; otherwise false.
+    /// </returns>
+    public bool MoveTile(Vector2Int oldPosition, Vector2Int newPosition)
+    {
+        if (oldPosition == newPosition)
+        {
+            return true;
+        }
+
+        if (!this.tiles.TryGetValue(
+                oldPosition,
+                out TileData tile))
+        {
+            return false;
+        }
+
+        if (this.tiles.ContainsKey(newPosition))
+        {
+            return false;
+        }
+
+        Vector3Int oldCell =
+            new Vector3Int(
+                oldPosition.x,
+                oldPosition.y,
+                0);
+
+        this.tilemap.SetTile(
+            oldCell,
+            null);
+
+        if (this.collisionObjects.TryGetValue(
+                oldPosition,
+                out GameObject oldCollision))
+        {
+            this.collisionObjects.Remove(
+                oldPosition);
+
+            if (oldCollision != null)
+            {
+                Destroy(oldCollision);
+            }
+        }
+
+        this.tiles.Remove(oldPosition);
+
+        tile.X = newPosition.x;
+        tile.Y = newPosition.y;
+
+        this.tiles[newPosition] = tile;
+
+        this.UpdateSingleTile(tile);
+
+        return true;
     }
 
     /// <summary>

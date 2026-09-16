@@ -9,7 +9,7 @@ using UnityEngine;
 /// </summary>
 public static class SaveManager
 {
-    private const int SaveVersion = 2;
+    private const int SaveVersion = 3;
 
     private static Dictionary<string, SaveableEntity> saveables =
         new Dictionary<string, SaveableEntity>();
@@ -46,6 +46,49 @@ public static class SaveManager
     }
 
     /// <summary>
+    /// Writes a single entity record as: id, prefabID, payload length, payload bytes.
+    /// The length prefix lets a loader skip a record safely even if it can't
+    /// resolve the prefab, keeping the rest of the stream aligned.
+    /// </summary>
+    /// <param name="writer">The writer for the overall file.</param>
+    /// <param name="id">The entity's unique ID.</param>
+    /// <param name="prefabID">The entity's prefab ID.</param>
+    /// <param name="entity">The entity whose Write method produces the payload.</param>
+    private static void WriteEntityRecord(BinaryWriter writer, string id, string prefabID, SaveableEntity entity)
+    {
+        writer.Write(id);
+        writer.Write(prefabID);
+
+        using MemoryStream payloadStream = new MemoryStream();
+        using (BinaryWriter payloadWriter = new BinaryWriter(payloadStream))
+        {
+            entity.Write(payloadWriter);
+        }
+
+        byte[] payload = payloadStream.ToArray();
+        writer.Write(payload.Length);
+        writer.Write(payload);
+    }
+
+    /// <summary>
+    /// Reads a single entity record's header and payload bytes without
+    /// interpreting them, so the caller can decide what to do with the
+    /// payload (or discard it) while keeping the stream aligned.
+    /// </summary>
+    /// <param name="reader">The reader for the overall file.</param>
+    /// <param name="id">The entity's unique ID.</param>
+    /// <param name="prefabID">The entity's prefab ID.</param>
+    /// <param name="payload">The raw payload bytes for this entity.</param>
+    private static void ReadEntityRecord(BinaryReader reader, out string id, out string prefabID, out byte[] payload)
+    {
+        id = reader.ReadString();
+        prefabID = reader.ReadString();
+
+        int length = reader.ReadInt32();
+        payload = reader.ReadBytes(length);
+    }
+
+    /// <summary>
     /// DO NOT USE!
     /// Saves this map to it's own file using raw entities.
     /// </summary>
@@ -68,9 +111,7 @@ public static class SaveManager
 
         foreach (SaveableEntity entity in runtimeEntities)
         {
-            writer.Write(entity.GetUniqueID());
-            writer.Write(entity.GetPrefabID());
-            entity.Write(writer);
+            WriteEntityRecord(writer, entity.GetUniqueID(), entity.GetPrefabID(), entity);
         }
 
         Debug.Log($"Saved {runtimeEntities.Count} runtime entities.");
@@ -99,22 +140,26 @@ public static class SaveManager
         Transform entityParent = GameObject.FindWithTag("Entity parent").transform;
         Debug.Log(entityParent.name);
 
+        SaveableTilemap sceneTilemap = GameObject.FindWithTag("TilemapEntity")?.GetComponent<SaveableTilemap>();
+
         using FileStream stream = File.Open(path, FileMode.Open);
         using BinaryReader reader = new BinaryReader(stream);
 
         int version = reader.ReadInt32();
         int count = reader.ReadInt32();
+        int loadedCount = 0;
 
         for (int i = 0; i < count; i++)
         {
-            string id = reader.ReadString();
-            string prefabID = reader.ReadString();
+            ReadEntityRecord(reader, out string id, out string prefabID, out byte[] payload);
 
-            SaveableTilemap tilemap = GameObject.FindWithTag("TilemapEntity")?.GetComponent<SaveableTilemap>();
+            using MemoryStream payloadStream = new MemoryStream(payload);
+            using BinaryReader payloadReader = new BinaryReader(payloadStream);
 
-            if (tilemap != null && tilemap.GetUniqueID() == id)
+            if (sceneTilemap != null && sceneTilemap.GetUniqueID() == id)
             {
-                tilemap.Read(reader);
+                sceneTilemap.Read(payloadReader);
+                loadedCount++;
                 continue;
             }
 
@@ -150,16 +195,18 @@ public static class SaveManager
                     .GetField("uniqueID", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
                     .SetValue(entity, id);
 
-                entity.Read(reader);
+                entity.Read(payloadReader);
                 Register(entity);
+                loadedCount++;
+
+                entity.OnFinishMapLoad();
             }
             else
             {
-                Debug.LogWarning($"Prefab {prefabID} not found for entity {id}.");
+                Debug.LogWarning($"Prefab {prefabID} not found for entity {id}. Skipping this entity.");
             }
         }
 
-        Debug.Log($"Loaded {count} entities. (player mode).");
     }
 
     /// <summary>
@@ -197,9 +244,7 @@ public static class SaveManager
 
             Debug.Log($"Saving Tilemap | ID: {id} | Prefab: {prefabID}");
 
-            writer.Write(id);
-            writer.Write(prefabID);
-            tilemap.Write(writer);
+            WriteEntityRecord(writer, id, prefabID, tilemap);
         }
 
         foreach (BuilderEntity builder in builders)
@@ -219,9 +264,7 @@ public static class SaveManager
                 continue;
             }
 
-            writer.Write(id);
-            writer.Write(prefabID);
-            builder.Write(writer);
+            WriteEntityRecord(writer, id, prefabID, builder);
         }
 
         Debug.Log($"Saved {builders.Count} builder entities and {tilemaps.Count} tilemaps.");
@@ -233,7 +276,6 @@ public static class SaveManager
     /// <param name="path">The path to load from. Format: /[username]/[mapName]</param>
     public static void LoadBuilderMap(string path)
     {
-        // First initialize the registry if it hasn't been yet.
         if (!SaveRegistry.IsInitialized)
         {
             SaveRegistry.InitializeRegistryFromResources();
@@ -247,7 +289,6 @@ public static class SaveManager
             return;
         }
 
-        // Clear existing builder entities
         foreach (BuilderEntity b in BuilderRegistry.GetAll())
         {
             Object.DestroyImmediate(b.gameObject);
@@ -258,11 +299,14 @@ public static class SaveManager
 
         int version = reader.ReadInt32();
         int count = reader.ReadInt32();
+        int loadedCount = 0;
 
         for (int i = 0; i < count; i++)
         {
-            string id = reader.ReadString();
-            string prefabID = version >= 2 ? reader.ReadString() : "DefaultPrefab";
+            ReadEntityRecord(reader, out string id, out string prefabID, out byte[] payload);
+
+            using MemoryStream payloadStream = new MemoryStream(payload);
+            using BinaryReader payloadReader = new BinaryReader(payloadStream);
 
             if (string.IsNullOrEmpty(id))
             {
@@ -279,7 +323,8 @@ public static class SaveManager
             SaveableEntity existingSceneEntity = SaveManager.GetEntityByID(id);
             if (existingSceneEntity != null && existingSceneEntity is SaveableTilemap)
             {
-                existingSceneEntity.Read(reader);
+                existingSceneEntity.Read(payloadReader);
+                loadedCount++;
                 continue;
             }
 
@@ -295,10 +340,11 @@ public static class SaveManager
 
             builder.Initialize(prefabID);
 
-            builder.Read(reader);
+            builder.Read(payloadReader);
             BuilderRegistry.Register(builder);
+            loadedCount++;
         }
 
-        Debug.Log($"Loaded {count} builder entities.");
+        Debug.Log($"Loaded {loadedCount}/{count} builder entities.");
     }
 }

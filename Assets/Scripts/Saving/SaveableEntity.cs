@@ -5,10 +5,6 @@ using System.IO;
 using System.Reflection;
 using UnityEngine;
 
-/// <summary>
-/// The base class for all entities that will be saved in a map.
-/// This automatically saves and restores transforms.
-/// </summary>
 [RequireComponent(typeof(PrefabIdentity))]
 public abstract class SaveableEntity : MonoBehaviour
 {
@@ -18,60 +14,28 @@ public abstract class SaveableEntity : MonoBehaviour
     [SerializeField]
     private SpriteRenderer spriteRenderer;
 
-    /// <summary>
-    /// Gets the sprite renderer of this entity.
-    /// </summary>
     protected SpriteRenderer SpriteRenderer
     {
         get { return this.spriteRenderer; }
     }
 
-    /// <summary>
-    /// Gets the unique ID of this entity.
-    /// </summary>
-    /// <returns>The UID.</returns>
     public string GetUniqueID() => this.uniqueID;
 
-    /// <summary>
-    /// Gets the prefab ID of this entity. The prefab ID for each entity of the same type should be the same.
-    /// </summary>
-    /// <returns>The Prefab ID.</returns>
     public string GetPrefabID()
     {
         PrefabIdentity identity = this.GetComponent<PrefabIdentity>();
         return identity != null ? identity.PrefabID : string.Empty;
     }
 
-    /// <summary>
-    /// Gets the prefab ID of this entity. The prefab ID for each entity of the same type should be the same.
-    /// </summary>
-    /// <returns>The saveable entity as an inventory item.</returns>
     public virtual InventoryItem GetAsInventoryItem()
     {
         return new InventoryItem(this.gameObject, this.spriteRenderer.sprite);
     }
 
-    /// <summary>
-    /// Writes all fields we need to save from this entity.
-    /// </summary>
-    /// <param name="writer">The writer which will save the fields.</param>
     public virtual void Write(BinaryWriter writer)
     {
-        // --- Save Transform ---
-        writer.Write(this.transform.position.x);
-        writer.Write(this.transform.position.y);
-        writer.Write(this.transform.position.z);
+        this.WriteTransformData(writer);
 
-        writer.Write(this.transform.rotation.x);
-        writer.Write(this.transform.rotation.y);
-        writer.Write(this.transform.rotation.z);
-        writer.Write(this.transform.rotation.w);
-
-        writer.Write(this.transform.localScale.x);
-        writer.Write(this.transform.localScale.y);
-        writer.Write(this.transform.localScale.z);
-
-        // --- Save Fields ---
         FieldInfo[] fields = this.GetSaveFields();
         writer.Write(fields.Length);
 
@@ -84,38 +48,14 @@ public abstract class SaveableEntity : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Reads all fields we need to restore for this entity.
-    /// </summary>
-    /// <param name="reader">The reader which will read the fields to restore.</param>
     public virtual void Read(BinaryReader reader)
     {
-        // --- Load Transform ---
-        Vector3 pos = new Vector3(
-            reader.ReadSingle(),
-            reader.ReadSingle(),
-            reader.ReadSingle());
+        this.ReadTransformData(reader);
 
-        Quaternion rot = new Quaternion(
-            reader.ReadSingle(),
-            reader.ReadSingle(),
-            reader.ReadSingle(),
-            reader.ReadSingle());
-
-        Vector3 scale = new Vector3(
-            reader.ReadSingle(),
-            reader.ReadSingle(),
-            reader.ReadSingle());
-
-        this.transform.position = pos;
-        this.transform.rotation = rot;
-        this.transform.localScale = scale;
-
-        // --- Load Fields ---
         int fieldCount = reader.ReadInt32();
 
         FieldInfo[] fields = this.GetSaveFields();
-        Dictionary<string, FieldInfo> fieldMap = new ();
+        Dictionary<string, FieldInfo> fieldMap = new();
 
         foreach (FieldInfo f in fields)
         {
@@ -139,8 +79,13 @@ public abstract class SaveableEntity : MonoBehaviour
     }
 
     /// <summary>
-    /// Registers this entity to the SaveManager and makes sure it has a unique ID.
+    /// Called when the map is finished loading.
     /// </summary>
+    public virtual void OnFinishMapLoad()
+    {
+
+    }
+
     protected virtual void Awake()
     {
         if (string.IsNullOrEmpty(this.uniqueID))
@@ -154,14 +99,53 @@ public abstract class SaveableEntity : MonoBehaviour
         }
     }
 
-    private FieldInfo[] GetSaveFields()
+    protected void WriteTransformData(BinaryWriter writer)
+    {
+        writer.Write(this.transform.position.x);
+        writer.Write(this.transform.position.y);
+        writer.Write(this.transform.position.z);
+
+        writer.Write(this.transform.rotation.x);
+        writer.Write(this.transform.rotation.y);
+        writer.Write(this.transform.rotation.z);
+        writer.Write(this.transform.rotation.w);
+
+        writer.Write(this.transform.localScale.x);
+        writer.Write(this.transform.localScale.y);
+        writer.Write(this.transform.localScale.z);
+    }
+
+    protected void ReadTransformData(BinaryReader reader)
+    {
+        Vector3 pos = new Vector3(
+            reader.ReadSingle(),
+            reader.ReadSingle(),
+            reader.ReadSingle());
+
+        Quaternion rot = new Quaternion(
+            reader.ReadSingle(),
+            reader.ReadSingle(),
+            reader.ReadSingle(),
+            reader.ReadSingle());
+
+        Vector3 scale = new Vector3(
+            reader.ReadSingle(),
+            reader.ReadSingle(),
+            reader.ReadSingle());
+
+        this.transform.position = pos;
+        this.transform.rotation = rot;
+        this.transform.localScale = scale;
+    }
+
+    protected FieldInfo[] GetSaveFields()
     {
         FieldInfo[] allFields = this.GetType().GetFields(
             BindingFlags.Instance |
             BindingFlags.Public |
             BindingFlags.NonPublic);
 
-        List<FieldInfo> saveFields = new ();
+        List<FieldInfo> saveFields = new();
 
         foreach (FieldInfo field in allFields)
         {
@@ -174,7 +158,7 @@ public abstract class SaveableEntity : MonoBehaviour
         return saveFields.ToArray();
     }
 
-    private void WriteValue(BinaryWriter writer, Type type, object value)
+    protected void WriteValue(BinaryWriter writer, Type type, object value)
     {
         if (type == typeof(int))
         {
@@ -221,7 +205,7 @@ public abstract class SaveableEntity : MonoBehaviour
         }
     }
 
-    private object ReadValue(BinaryReader reader, Type type)
+    protected object ReadValue(BinaryReader reader, Type type)
     {
         if (type == typeof(int))
         {
