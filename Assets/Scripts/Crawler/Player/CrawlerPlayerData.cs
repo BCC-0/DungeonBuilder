@@ -12,7 +12,7 @@ public class CrawlerPlayerData : SaveableEntity
 {
     [Header("Player Attributes")]
     [SerializeField]
-    [SaveField]
+    [SaveField(1, 200)]
     private int maxHealth = 100;
 
     [SerializeField]
@@ -24,7 +24,7 @@ public class CrawlerPlayerData : SaveableEntity
     private TextMeshProUGUI healthText;
 
     [SerializeField]
-    [SaveField]
+    [SaveField(1, 12)]
     private float moveSpeed = 5f;
 
     [Header("Inventory")]

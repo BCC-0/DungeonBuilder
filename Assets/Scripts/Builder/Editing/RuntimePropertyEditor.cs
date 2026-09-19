@@ -23,6 +23,8 @@ public class RuntimePropertyEditor : MonoBehaviour
     private List<GameObject> generatedRows = new List<GameObject>();
 
     private string lastSelectionKey;
+    private RuntimePropertyField referenceField;
+    private int referenceIndex = -1;
 
     /// <summary>
     /// Gets the instance of the property editor.
@@ -54,6 +56,40 @@ public class RuntimePropertyEditor : MonoBehaviour
         {
             this.BuildTileInspector();
         }
+    }
+
+    /// <summary>
+    /// Start selecting which objects to reference for a reference field.
+    /// </summary>
+    /// <param name="propertyField">The field to add the reference to.</param>
+    public void BeginReferenceSelection(RuntimePropertyField propertyField)
+    {
+        this.referenceField = propertyField;
+        this.referenceIndex = -1;
+    }
+
+    public void BeginReferenceSelection(RuntimePropertyField propertyField, int index)
+    {
+        this.referenceField = propertyField;
+        this.referenceIndex = index;
+    }
+
+
+    public void SelectReference(SaveableEntity entity)
+    {
+        if (this.referenceField == null ||
+            entity == null)
+        {
+            return;
+        }
+
+        this.referenceField.SetReference(entity);
+        this.referenceField = null;
+    }
+
+    public void CancelReferenceSelection()
+    {
+        this.referenceField = null;
     }
 
     private void Start()
