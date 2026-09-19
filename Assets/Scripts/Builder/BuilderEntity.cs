@@ -88,9 +88,24 @@ public class BuilderEntity : SaveableEntity
             return;
         }
 
+        bool fitsFieldType =
+            value == null ||
+            fieldType.IsInstanceOfType(value);
+
+        // Builder proxies stand in for entities of the real type.
+        bool isEntityProxy =
+            value is BuilderEntity &&
+            typeof(SaveableEntity).IsAssignableFrom(fieldType);
+
+        if (!fitsFieldType && !isEntityProxy)
+        {
+            return;
+        }
+
         editableValue.Value = value;
 
-        if (this.originalItem != null &&
+        if (fitsFieldType &&
+            this.originalItem != null &&
             Attribute.IsDefined(
                 editableValue.Field,
                 typeof(RuntimeEditableAttribute)) &&

@@ -28,6 +28,16 @@ public abstract class SaveableEntity : MonoBehaviour
     }
 
     /// <summary>
+    /// Gets the entity that owns this entity.
+    /// </summary>
+    public SaveableEntity OwnedBy => this.ownedBy;
+
+    /// <summary>
+    /// Gets whether this entity currently exists in the world.
+    /// </summary>
+    public bool ExistsInWorld => this.ownedBy == null;
+
+    /// <summary>
     /// Gets the unique id of this entity.
     /// Can be used for referencing other entities.
     /// </summary>
@@ -54,16 +64,6 @@ public abstract class SaveableEntity : MonoBehaviour
     }
 
     /// <summary>
-    /// Gets the entity that owns this entity.
-    /// </summary>
-    public SaveableEntity OwnedBy => this.ownedBy;
-
-    /// <summary>
-    /// Gets whether this entity currently exists in the world.
-    /// </summary>
-    public bool ExistsInWorld => this.ownedBy == null;
-
-    /// <summary>
     /// Makes this entity owned by another entity.
     /// </summary>
     /// <param name="owner">The entity that owns this entity.</param>
@@ -84,18 +84,14 @@ public abstract class SaveableEntity : MonoBehaviour
 
     /// <summary>
     /// Writes this entity to the map file.
+    /// The layout is the same as before ownership was added: the transform
+    /// first, then the save fields. Ownership is not stored, it is restored
+    /// on load from the reference fields of the owner.
     /// </summary>
     /// <param name="writer">The writer to use.</param>
     public virtual void Write(BinaryWriter writer)
     {
-        bool existsInWorld = this.ExistsInWorld;
-
-        writer.Write(existsInWorld);
-
-        if (existsInWorld)
-        {
-            this.WriteTransformData(writer);
-        }
+        this.WriteTransformData(writer);
 
         FieldInfo[] fields = this.GetSaveFields();
         writer.Write(fields.Length);
@@ -115,17 +111,12 @@ public abstract class SaveableEntity : MonoBehaviour
     /// <param name="reader">The reader to use.</param>
     public virtual void Read(BinaryReader reader)
     {
-        bool existsInWorld = reader.ReadBoolean();
-
-        if (existsInWorld)
-        {
-            this.ReadTransformData(reader);
-        }
+        this.ReadTransformData(reader);
 
         int fieldCount = reader.ReadInt32();
 
         FieldInfo[] fields = this.GetSaveFields();
-        Dictionary<string, FieldInfo> fieldMap = new ();
+        Dictionary<string, FieldInfo> fieldMap = new();
 
         foreach (FieldInfo f in fields)
         {
@@ -141,24 +132,12 @@ public abstract class SaveableEntity : MonoBehaviour
                 object value = this.ReadValue(reader, field.FieldType);
                 field.SetValue(this, value);
 
-                SaveFieldAttribute attribute = field.GetCustomAttribute<SaveFieldAttribute>();
-
-                if (attribute != null &&
-                    !attribute.ReferenceOnly &&
-                    value is SaveableEntity entity)
-                {
-                    entity.SetOwner(this);
-                }
+                this.ClaimReferencedEntities(field, value);
             }
             else
             {
                 Debug.LogWarning($"Field {fieldName} not found on {this.name}");
             }
-        }
-
-        if (!existsInWorld)
-        {
-            this.SetWorldPresence(false);
         }
     }
 
@@ -319,9 +298,16 @@ public abstract class SaveableEntity : MonoBehaviour
 
             if (list != null)
             {
-                foreach (SaveableEntity entity in list)
+                foreach (object item in list)
                 {
-                    writer.Write(entity.GetUniqueID());
+                    // Empty slots ("None" in the inspector) are stored as an
+                    // empty id, the same way single references are.
+                    SaveableEntity entity = item as SaveableEntity;
+
+                    writer.Write(
+                        entity != null
+                            ? entity.GetUniqueID()
+                            : string.Empty);
                 }
             }
         }
@@ -384,5 +370,39 @@ public abstract class SaveableEntity : MonoBehaviour
 
         Debug.LogError($"Unsupported load type: {type}");
         return null;
+    }
+
+    /// <summary>
+    /// Makes this entity the owner of the entities in a reference field,
+    /// unless the field is marked as reference only. This is what restores
+    /// ownership on load, both for single references and for lists.
+    /// </summary>
+    /// <param name="field">The field that was read.</param>
+    /// <param name="value">The value that was read into it.</param>
+    private void ClaimReferencedEntities(FieldInfo field, object value)
+    {
+        SaveFieldAttribute attribute =
+            field.GetCustomAttribute<SaveFieldAttribute>();
+
+        if (attribute == null ||
+            attribute.ReferenceOnly)
+        {
+            return;
+        }
+
+        if (value is SaveableEntity entity)
+        {
+            entity.SetOwner(this);
+        }
+        else if (value is IList list)
+        {
+            foreach (object item in list)
+            {
+                if (item is SaveableEntity listed)
+                {
+                    listed.SetOwner(this);
+                }
+            }
+        }
     }
 }

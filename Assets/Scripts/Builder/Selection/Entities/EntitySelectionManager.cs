@@ -44,7 +44,10 @@ public class EntitySelectionManager : SelectionManagerBase
     {
         foreach (SaveableEntity entity in MapEditorManager.Instance.SelectedEntities)
         {
-            Destroy(entity.gameObject);
+            if (entity != null)
+            {
+                Destroy(entity.gameObject);
+            }
         }
 
         this.ClearSelection();
@@ -58,14 +61,14 @@ public class EntitySelectionManager : SelectionManagerBase
             return;
         }
 
-        this.startedMovingThisFrame = true;
-
         List<SaveableEntity> selectedEntities = MapEditorManager.Instance.SelectedEntities;
 
         if (selectedEntities == null || selectedEntities.Count == 0)
         {
             return;
         }
+
+        this.startedMovingThisFrame = true;
 
         this.IsMovementMode = true;
         this.IsMoving = true;
@@ -120,7 +123,13 @@ public class EntitySelectionManager : SelectionManagerBase
         }
 
         this.selectionVisualizer.Refresh();
-        RuntimePropertyEditor.Instance.Rebuild();
+
+        // Only the position row changes while moving. Rebuilding the whole
+        // inspector every frame is wasteful and would destroy the rows.
+        if (RuntimePropertyEditor.Instance != null)
+        {
+            RuntimePropertyEditor.Instance.RefreshPosition();
+        }
     }
 
     /// <inheritdoc/>
@@ -159,6 +168,7 @@ public class EntitySelectionManager : SelectionManagerBase
                     .FirstOrDefault(other =>
                         other != entity &&
                         !movingEntities.Contains(other) &&
+                        !IsTilemapEntity(other) &&
                         (Vector2Int)this.Grid.WorldToCell(other.transform.position) == finalCell);
 
             if (entityAtDestination != null)
@@ -174,7 +184,11 @@ public class EntitySelectionManager : SelectionManagerBase
 
         this.DisableMoveButtons();
         this.SetSelection(MapEditorManager.Instance.SelectedEntities);
-        RuntimePropertyEditor.Instance.Rebuild();
+
+        if (RuntimePropertyEditor.Instance != null)
+        {
+            RuntimePropertyEditor.Instance.Rebuild();
+        }
     }
 
     /// <inheritdoc/>
@@ -200,16 +214,55 @@ public class EntitySelectionManager : SelectionManagerBase
         this.IsMovementMode = false;
         this.IsMoving = false;
         this.moveStartCells.Clear();
+        this.extraMoveStartCells.Clear();
 
         this.DisableMoveButtons();
         this.SetSelection(MapEditorManager.Instance.SelectedEntities);
-        RuntimePropertyEditor.Instance.Rebuild();
+
+        if (RuntimePropertyEditor.Instance != null)
+        {
+            RuntimePropertyEditor.Instance.Rebuild();
+        }
     }
 
     /// <inheritdoc/>
     protected override void ClearSelection()
     {
         this.SetSelection(new List<SaveableEntity>());
+    }
+
+    /// <inheritdoc/>
+    protected override void OnReferenceSelectionEnded()
+    {
+        // The selection was never changed, so just bring the buttons back.
+        this.SetSelection(MapEditorManager.Instance.SelectedEntities);
+    }
+
+    /// <inheritdoc/>
+    protected override List<SaveableEntity> PickEntitiesAt(Vector2 position)
+    {
+        SaveableEntity closestEntity = FindObjectsByType<SaveableEntity>()
+            .Where(e => !IsTilemapEntity(e))
+            .OrderBy(e => Vector2.Distance(e.transform.position, position))
+            .FirstOrDefault();
+
+        if (closestEntity != null &&
+            Vector2.Distance(closestEntity.transform.position, position) <= this.entitySelectRadius)
+        {
+            return new List<SaveableEntity> { closestEntity };
+        }
+
+        return new List<SaveableEntity>();
+    }
+
+    /// <inheritdoc/>
+    protected override List<SaveableEntity> PickEntitiesIn(Rect rect)
+    {
+        return FindObjectsByType<SaveableEntity>()
+            .Where(e =>
+                !IsTilemapEntity(e) &&
+                rect.Contains(e.transform.position))
+            .ToList();
     }
 
     /// <inheritdoc/>
@@ -245,7 +298,10 @@ public class EntitySelectionManager : SelectionManagerBase
     {
         List<SaveableEntity> entities = MapEditorManager.Instance.SelectedEntities;
 
-        return this.GetBoundingRect(entities.Select(e => (Vector2)e.transform.position));
+        return this.GetBoundingRect(
+            entities
+                .Where(e => e != null)
+                .Select(e => (Vector2)e.transform.position));
     }
 
     /// <summary>
@@ -254,14 +310,11 @@ public class EntitySelectionManager : SelectionManagerBase
     /// <param name="position">The position that was clicked.</param>
     protected override void OnClickSelect(Vector2 position)
     {
-        SaveableEntity closestEntity = FindObjectsByType<SaveableEntity>()
-            .OrderBy(e => Vector2.Distance(e.transform.position, position))
-            .FirstOrDefault();
+        List<SaveableEntity> picked = this.PickEntitiesAt(position);
 
-        if (closestEntity != null &&
-            Vector2.Distance(closestEntity.transform.position, position) <= this.entitySelectRadius)
+        if (picked.Count > 0)
         {
-            this.SetSelection(new List<SaveableEntity> { closestEntity });
+            this.SetSelection(picked);
         }
         else
         {
@@ -275,13 +328,7 @@ public class EntitySelectionManager : SelectionManagerBase
     /// <param name="rect">The world-space rectangle of the drag.</param>
     protected override void OnBoxSelect(Rect rect)
     {
-        List<SaveableEntity> selected = FindObjectsByType<SaveableEntity>()
-            .Where(e =>
-                e.GetComponent<Tilemap>() == null &&
-                rect.Contains(e.transform.position))
-            .ToList();
-
-        this.SetSelection(selected);
+        this.SetSelection(this.PickEntitiesIn(rect));
     }
 
     /// <summary>
@@ -294,6 +341,17 @@ public class EntitySelectionManager : SelectionManagerBase
     }
 
     /// <summary>
+    /// Whether the entity is the tilemap, which must never be selected or replaced
+    /// like a normal entity.
+    /// </summary>
+    /// <param name="entity">The entity to check.</param>
+    /// <returns>True if the entity is a tilemap.</returns>
+    private static bool IsTilemapEntity(SaveableEntity entity)
+    {
+        return entity.GetComponent<Tilemap>() != null;
+    }
+
+    /// <summary>
     /// Writes the given selection to <see cref="MapEditorManager"/> and refreshes
     /// the visualizer.
     /// </summary>
@@ -303,13 +361,20 @@ public class EntitySelectionManager : SelectionManagerBase
         MapEditorManager.Instance.SelectedEntities = entities;
         this.selectionVisualizer.Refresh();
 
+        if (this.IsReferenceSelectionMode)
+        {
+            return;
+        }
+
         if (entities == null || entities.Count == 0)
         {
             this.DisableSelectionButtons();
         }
         else
         {
-            this.EnableSelectionButtons(this.GetBoundingRect(entities.Select(e => (Vector2)e.transform.position)));
+            this.EnableSelectionButtons(
+                this.GetBoundingRect(
+                    entities.Select(e => (Vector2)e.transform.position)));
         }
     }
 }

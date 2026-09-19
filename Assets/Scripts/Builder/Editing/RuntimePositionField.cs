@@ -1,7 +1,11 @@
+using System.Collections;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.Tilemaps;
 
 /// <summary>
 /// Inspector row used for editing the position of selected entities or tiles.
@@ -62,7 +66,7 @@ public class RuntimePositionField : MonoBehaviour
     /// <summary>
     /// Refreshes all position values.
     /// </summary>
-    private void Refresh()
+    public void Refresh()
     {
         if (this.tileMode)
         {
@@ -164,6 +168,9 @@ public class RuntimePositionField : MonoBehaviour
     /// </summary>
     private void RegisterListeners()
     {
+        this.positionX.onEndEdit.RemoveAllListeners();
+        this.positionY.onEndEdit.RemoveAllListeners();
+
         this.positionX.onEndEdit.AddListener(
             _ => this.Apply());
 
@@ -255,6 +262,15 @@ public class RuntimePositionField : MonoBehaviour
                     worldPosition.x,
                     worldPosition.y,
                     entity.transform.position.z);
+
+            // Keep the selection outline on the entity.
+            EntitySelectionVisualizer visualizer =
+                FindAnyObjectByType<EntitySelectionVisualizer>();
+
+            if (visualizer != null)
+            {
+                visualizer.Refresh();
+            }
         }
         catch (EditException exception)
         {
@@ -322,6 +338,8 @@ public class RuntimePositionField : MonoBehaviour
 
     /// <summary>
     /// Finds an entity at the given position.
+    /// The tilemap entity is ignored, otherwise it would be found (and
+    /// destroyed) for every position close to the origin.
     /// </summary>
     /// <param name="cell">The cell to find at.</param>
     /// <param name="ignore">An entity to ignore. (The one we are trying to place there)</param>
@@ -333,6 +351,7 @@ public class RuntimePositionField : MonoBehaviour
         return FindObjectsByType<SaveableEntity>()
             .FirstOrDefault(other =>
                 other != ignore &&
+                other.GetComponent<Tilemap>() == null &&
                 new Vector2Int(
                     Mathf.FloorToInt(other.transform.position.x),
                     Mathf.FloorToInt(other.transform.position.y)) == cell);

@@ -27,6 +27,10 @@ public class CrawlerPlayerData : SaveableEntity
     [SaveField(1, 12)]
     private float moveSpeed = 5f;
 
+    [SerializeField]
+    [SaveField(referenceOnly: false)]
+    private SaveableEntity referenceTest;
+
     [Header("Inventory")]
     [SerializeField]
     private List<Item> inventory = new List<Item>();

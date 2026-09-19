@@ -1,6 +1,7 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Reflection;
 using TMPro;
 using UnityEngine;
@@ -17,6 +18,8 @@ public class RuntimePropertyField : MonoBehaviour
     private TMP_InputField inputField;
     [SerializeField]
     private Toggle toggle;
+
+    [Header("Slider (optional)")]
     [SerializeField]
     private Slider slider;
     [SerializeField]
@@ -25,20 +28,28 @@ public class RuntimePropertyField : MonoBehaviour
     private TextMeshProUGUI sliderValueLabel;
     [SerializeField]
     private TextMeshProUGUI sliderMaxLabel;
+
+    [Header("References (optional)")]
     [SerializeField]
     private Button referenceButton;
     [SerializeField]
     private Transform referenceContainer;
     [SerializeField]
     private Button referenceButtonPrefab;
+    [SerializeField]
+    private Button addReferenceButton;
 
     private FieldInfo field;
     private List<object> targets;
     private Action onValueChanged;
     private bool updating;
-    private List<BuilderEntity> builderTargets;
+
+    /// <summary>
+    /// When set, the values live on <see cref="BuilderEntity"/> runtime editable
+    /// values and are read and written through the entity instead of the field.
+    /// The field then only describes the type, it is not a field of the target.
+    /// </summary>
     private string builderFieldName;
-    private bool usingBuilderValues;
 
     /// <summary>
     /// Initialize the property field.
@@ -55,9 +66,7 @@ public class RuntimePropertyField : MonoBehaviour
     {
         this.field = field;
         this.targets = targets;
-        this.builderTargets = null;
         this.builderFieldName = null;
-        this.usingBuilderValues = false;
         this.onValueChanged = onValueChanged;
 
         if (this.label != null)
@@ -81,7 +90,8 @@ public class RuntimePropertyField : MonoBehaviour
             List<BuilderEntity> targets,
             Action onValueChanged = null)
     {
-        if (targets == null || targets.Count == 0)
+        if (targets == null ||
+            targets.Count == 0)
         {
             return;
         }
@@ -100,10 +110,8 @@ public class RuntimePropertyField : MonoBehaviour
         }
 
         this.field = editableValue.Field;
-        this.targets = null;
-        this.builderTargets = targets;
+        this.targets = new List<object>(targets);
         this.builderFieldName = fieldName;
-        this.usingBuilderValues = true;
         this.onValueChanged = onValueChanged;
 
         if (this.label != null)
@@ -115,14 +123,60 @@ public class RuntimePropertyField : MonoBehaviour
     }
 
     /// <summary>
-    /// Sets the reference to this property field after choosing to select an entity.
+    /// Whether the given entity can be stored in this field
+    /// (or added to it, for lists).
     /// </summary>
-    /// <param name="entity">The entity to select.</param>
-    public void SetReference(SaveableEntity entity)
+    /// <param name="entity">The entity to check.</param>
+    /// <returns>True when the entity has a fitting type.</returns>
+    public bool CanReference(SaveableEntity entity)
     {
         if (this.field == null ||
-            !typeof(SaveableEntity).IsAssignableFrom(
-                this.field.FieldType))
+            entity == null)
+        {
+            return false;
+        }
+
+        if (this.IsReferenceList())
+        {
+            return FitsType(
+                this.field.FieldType.GetGenericArguments()[0],
+                entity);
+        }
+
+        return typeof(SaveableEntity).IsAssignableFrom(this.field.FieldType) &&
+               FitsType(this.field.FieldType, entity);
+    }
+
+    /// <summary>
+    /// Whether this field holds a list of entity references.
+    /// </summary>
+    /// <returns>True when the field is a list of entities.</returns>
+    public bool IsReferenceList()
+    {
+        if (this.field == null ||
+            !typeof(IList).IsAssignableFrom(
+                this.field.FieldType) ||
+            !this.field.FieldType.IsGenericType)
+        {
+            return false;
+        }
+
+        Type elementType =
+            this.field.FieldType.GetGenericArguments()[0];
+
+        return typeof(SaveableEntity).IsAssignableFrom(
+            elementType);
+    }
+
+    /// <summary>
+    /// Sets the single entity this field references.
+    /// </summary>
+    /// <param name="entity">The entity to reference.</param>
+    public void SetReference(SaveableEntity entity)
+    {
+        if (!this.CanReference(entity) ||
+            this.IsReferenceList() ||
+            this.targets == null)
         {
             return;
         }
@@ -137,21 +191,25 @@ public class RuntimePropertyField : MonoBehaviour
                 continue;
             }
 
+            SaveableEntity owner = ResolveOwner(target);
+
             SaveableEntity previous =
-                this.field.GetValue(target) as SaveableEntity;
+                this.GetFieldValue(target) as SaveableEntity;
 
             if (previous != null &&
-                previous.OwnedBy == (SaveableEntity)target)
+                owner != null &&
+                previous.OwnedBy == owner)
             {
                 previous.ReleaseOwner();
             }
 
-            this.field.SetValue(target, entity);
+            this.SetValue(target, entity);
 
             if (attribute != null &&
-                !attribute.ReferenceOnly)
+                !attribute.ReferenceOnly &&
+                owner != null)
             {
-                entity.SetOwner((SaveableEntity)target);
+                entity.SetOwner(owner);
             }
         }
 
@@ -160,15 +218,20 @@ public class RuntimePropertyField : MonoBehaviour
     }
 
     /// <summary>
-    /// Sets a reference in a reference list.
+    /// Replaces one element of the referenced list.
     /// </summary>
-    /// <param name="index">The index of the reference.</param>
-    /// <param name="entity">The entity to select.</param>
+    /// <param name="index">The list index to replace.</param>
+    /// <param name="entity">The new entity.</param>
     public void SetReference(int index, SaveableEntity entity)
     {
-        if (this.field == null ||
-            entity == null ||
-            !this.IsReferenceList())
+        if (!this.CanReference(entity) ||
+            !this.IsReferenceList() ||
+            this.targets == null)
+        {
+            return;
+        }
+
+        if (this.WarnIfBuilderList())
         {
             return;
         }
@@ -183,7 +246,8 @@ public class RuntimePropertyField : MonoBehaviour
                 continue;
             }
 
-            IList list = this.field.GetValue(target) as IList;
+            IList list =
+                this.GetFieldValue(target) as IList;
 
             if (list == null ||
                 index < 0 ||
@@ -192,11 +256,14 @@ public class RuntimePropertyField : MonoBehaviour
                 continue;
             }
 
+            SaveableEntity owner = ResolveOwner(target);
+
             SaveableEntity previous =
                 list[index] as SaveableEntity;
 
             if (previous != null &&
-                previous.OwnedBy == (SaveableEntity)target)
+                owner != null &&
+                previous.OwnedBy == owner)
             {
                 previous.ReleaseOwner();
             }
@@ -204,186 +271,378 @@ public class RuntimePropertyField : MonoBehaviour
             list[index] = entity;
 
             if (attribute != null &&
-                !attribute.ReferenceOnly)
+                !attribute.ReferenceOnly &&
+                owner != null)
             {
-                entity.SetOwner((SaveableEntity)target);
+                entity.SetOwner(owner);
             }
         }
 
-        this.UpdateReferenceButtons();
+        this.SetupReferenceList();
         this.onValueChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Adds entities to the referenced list. Entities already in the list
+    /// and entities of the wrong type are skipped.
+    /// </summary>
+    /// <param name="entities">The entities to add.</param>
+    public void AddReferences(
+        IReadOnlyList<SaveableEntity> entities)
+    {
+        if (entities == null ||
+            entities.Count == 0 ||
+            !this.IsReferenceList() ||
+            this.targets == null)
+        {
+            return;
+        }
+
+        if (this.WarnIfBuilderList())
+        {
+            return;
+        }
+
+        SaveFieldAttribute attribute =
+            this.field.GetCustomAttribute<SaveFieldAttribute>();
+
+        foreach (object target in this.targets)
+        {
+            if (target == null)
+            {
+                continue;
+            }
+
+            IList list =
+                this.GetFieldValue(target) as IList;
+
+            if (list == null)
+            {
+                continue;
+            }
+
+            SaveableEntity owner = ResolveOwner(target);
+
+            foreach (SaveableEntity entity in entities)
+            {
+                if (!this.CanReference(entity) ||
+                    list.Contains(entity))
+                {
+                    continue;
+                }
+
+                list.Add(entity);
+
+                if (attribute != null &&
+                    !attribute.ReferenceOnly &&
+                    owner != null)
+                {
+                    entity.SetOwner(owner);
+                }
+            }
+        }
+
+        this.SetupReferenceList();
+        this.onValueChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Whether an entity fits a required field type. Entities in the builder
+    /// are <see cref="BuilderEntity"/> proxies, so for those the class of the
+    /// prefab they stand for is checked instead of the proxy itself.
+    /// </summary>
+    private static bool FitsType(Type required, SaveableEntity entity)
+    {
+        if (required == null ||
+            entity == null)
+        {
+            return false;
+        }
+
+        if (entity is BuilderEntity builder)
+        {
+            GameObject prefab =
+                SaveRegistry.GetPrefab(builder.PrefabID);
+
+            SaveableEntity source =
+                prefab != null
+                    ? prefab.GetComponent<SaveableEntity>()
+                    : null;
+
+            return source != null &&
+                   required.IsInstanceOfType(source);
+        }
+
+        return required.IsInstanceOfType(entity);
+    }
+
+    /// <summary>
+    /// Gets the SaveableEntity that owns the edited object, if there is one.
+    /// The edited object can be an entity itself, or a component on an entity.
+    /// Plain objects (for example tile behaviours) have no owner.
+    /// </summary>
+    private static SaveableEntity ResolveOwner(object target)
+    {
+        if (target is SaveableEntity entity)
+        {
+            return entity;
+        }
+
+        if (target is Component component)
+        {
+            return component.GetComponent<SaveableEntity>();
+        }
+
+        return null;
+    }
+
+    private static string FormatNumber(float value)
+    {
+        return value.ToString(
+            "0.##",
+            CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// Lists on builder entities are not supported yet: the typed list of
+    /// the real class cannot hold builder proxies.
+    /// </summary>
+    /// <returns>True when the field is a list on builder entities.</returns>
+    private bool WarnIfBuilderList()
+    {
+        if (this.builderFieldName == null)
+        {
+            return false;
+        }
+
+        Debug.LogWarning(
+            $"RuntimePropertyField: reference lists on builder " +
+            $"entities are not supported yet ({this.builderFieldName}).");
+
+        return true;
+    }
+
+    /// <summary>
+    /// Gets the slider range of the field, if it has one.
+    /// </summary>
+    private bool TryGetRange(out float min, out float max)
+    {
+        // TODO: if BuilderEntity runtime editable values carry their own
+        // min/max, read them here as well.
+        SaveFieldAttribute attribute =
+            this.field != null
+                ? this.field.GetCustomAttribute<SaveFieldAttribute>()
+                : null;
+
+        if (attribute != null &&
+            attribute.HasRange)
+        {
+            min = attribute.Min;
+            max = attribute.Max;
+            return true;
+        }
+
+        min = 0f;
+        max = 0f;
+        return false;
     }
 
     private void Setup()
     {
-        if (this.field == null)
+        if (this.inputField != null)
+        {
+            this.inputField.gameObject.SetActive(false);
+            this.inputField.onEndEdit.RemoveAllListeners();
+        }
+
+        if (this.toggle != null)
+        {
+            this.toggle.gameObject.SetActive(false);
+            this.toggle.onValueChanged.RemoveAllListeners();
+        }
+
+        if (this.slider != null)
+        {
+            this.slider.gameObject.SetActive(false);
+            this.slider.onValueChanged.RemoveAllListeners();
+        }
+
+        if (this.referenceButton != null)
+        {
+            this.referenceButton.gameObject.SetActive(false);
+        }
+
+        if (this.referenceContainer != null)
+        {
+            this.referenceContainer.gameObject.SetActive(false);
+        }
+
+        if (this.addReferenceButton != null)
+        {
+            this.addReferenceButton.gameObject.SetActive(false);
+        }
+
+        if (this.field == null ||
+            this.targets == null ||
+            this.targets.Count == 0)
         {
             return;
         }
 
         Type type = this.field.FieldType;
 
-        SaveFieldAttribute saveAttribute =
-            this.field.GetCustomAttribute<SaveFieldAttribute>();
-
-        bool isReference =
-            typeof(SaveableEntity).IsAssignableFrom(type);
-
-        bool isReferenceList =
-            this.IsReferenceList();
-
-        bool useSlider =
-            (type == typeof(int) || type == typeof(float)) &&
-            saveAttribute != null &&
-            saveAttribute.HasRange &&
-            saveAttribute.Min <= saveAttribute.Max;
-
-        if (this.inputField != null)
-        {
-            this.inputField.gameObject.SetActive(
-                !isReference &&
-                !isReferenceList &&
-                type != typeof(bool) &&
-                !useSlider);
-
-            this.inputField.onEndEdit.RemoveAllListeners();
-        }
-
-        if (this.toggle != null)
-        {
-            this.toggle.gameObject.SetActive(
-                !isReference &&
-                !isReferenceList &&
-                type == typeof(bool));
-
-            this.toggle.onValueChanged.RemoveAllListeners();
-        }
-
-        if (this.slider != null)
-        {
-            this.slider.gameObject.SetActive(
-                !isReference &&
-                !isReferenceList &&
-                useSlider);
-
-            this.slider.onValueChanged.RemoveAllListeners();
-        }
-
-        if (this.sliderMinLabel != null)
-        {
-            this.sliderMinLabel.gameObject.SetActive(
-                !isReference &&
-                !isReferenceList &&
-                useSlider);
-        }
-
-        if (this.sliderValueLabel != null)
-        {
-            this.sliderValueLabel.gameObject.SetActive(
-                !isReference &&
-                !isReferenceList &&
-                useSlider);
-        }
-
-        if (this.sliderMaxLabel != null)
-        {
-            this.sliderMaxLabel.gameObject.SetActive(
-                !isReference &&
-                !isReferenceList &&
-                useSlider);
-        }
-
-        if (this.referenceButton != null)
-        {
-            this.referenceButton.gameObject.SetActive(isReference);
-            this.referenceButton.onClick.RemoveAllListeners();
-
-            if (isReference)
-            {
-                this.referenceButton.onClick.AddListener(
-                    this.BeginReferenceSelection);
-
-                this.UpdateReferenceButton();
-            }
-        }
-
-        if (this.referenceContainer != null)
-        {
-            this.referenceContainer.gameObject.SetActive(isReferenceList);
-        }
-
-        if (isReferenceList)
+        if (this.IsReferenceList())
         {
             this.SetupReferenceList();
             return;
         }
 
-        if (isReference)
+        if (typeof(SaveableEntity).IsAssignableFrom(type))
         {
+            this.SetupReference();
             return;
         }
 
         if (type == typeof(bool))
         {
             this.SetupBool();
+            return;
         }
-        else if (useSlider)
+
+        if ((type == typeof(int) || type == typeof(float)) &&
+            this.slider != null &&
+            this.TryGetRange(out float min, out float max))
         {
-            this.SetupSlider(saveAttribute);
+            this.SetupSlider(min, max);
+            return;
         }
-        else
+
+        this.SetupInput();
+    }
+
+    private void SetupBool()
+    {
+        if (this.toggle == null)
         {
-            this.SetupInput();
+            return;
         }
+
+        this.toggle.gameObject.SetActive(true);
+
+        this.updating = true;
+        this.toggle.isOn = Convert.ToBoolean(this.GetCurrentValue());
+        this.updating = false;
+
+        this.toggle.onValueChanged.AddListener(this.OnToggleChanged);
+    }
+
+    private void SetupInput()
+    {
+        if (this.inputField == null)
+        {
+            return;
+        }
+
+        this.inputField.gameObject.SetActive(true);
+
+        this.RefreshInput();
+
+        this.inputField.onEndEdit.AddListener(this.OnInputChanged);
+    }
+
+    private void SetupSlider(float min, float max)
+    {
+        this.slider.gameObject.SetActive(true);
+
+        this.slider.minValue = min;
+        this.slider.maxValue = max;
+        this.slider.wholeNumbers =
+            this.field.FieldType == typeof(int);
+
+        if (this.sliderMinLabel != null)
+        {
+            this.sliderMinLabel.text = FormatNumber(min);
+        }
+
+        if (this.sliderMaxLabel != null)
+        {
+            this.sliderMaxLabel.text = FormatNumber(max);
+        }
+
+        this.RefreshSlider();
+
+        this.slider.onValueChanged.AddListener(this.OnSliderChanged);
+    }
+
+    private void SetupReference()
+    {
+        if (this.referenceButton == null)
+        {
+            return;
+        }
+
+        this.referenceButton.gameObject.SetActive(true);
+        this.referenceButton.onClick.RemoveAllListeners();
+        this.referenceButton.onClick.AddListener(
+            this.BeginReferenceSelection);
+
+        this.UpdateReferenceButton();
     }
 
     private void SetupReferenceList()
     {
+        if (this.referenceContainer == null ||
+            this.referenceButtonPrefab == null ||
+            this.addReferenceButton == null ||
+            this.targets == null ||
+            this.targets.Count == 0)
+        {
+            return;
+        }
+
+        this.referenceContainer.gameObject.SetActive(true);
+        this.addReferenceButton.gameObject.SetActive(true);
+
+        this.addReferenceButton.onClick.RemoveAllListeners();
+        this.addReferenceButton.onClick.AddListener(
+            this.BeginReferenceSelection);
+
         this.ClearReferenceButtons();
 
-        if (this.referenceContainer == null ||
-            this.referenceButtonPrefab == null)
-        {
-            return;
-        }
-
         IList list =
-            this.GetCurrentValue() as IList;
+            this.GetFieldValue(this.targets[0]) as IList;
 
-        if (list == null)
+        if (list != null)
         {
-            return;
-        }
-
-        for (int i = 0; i < list.Count; i++)
-        {
-            int index = i;
-
-            Button button =
-                Instantiate(
-                    this.referenceButtonPrefab,
-                    this.referenceContainer);
-
-            button.gameObject.SetActive(true);
-            button.onClick.RemoveAllListeners();
-
-            button.onClick.AddListener(
-                () => this.BeginReferenceSelection(index));
-
-            SaveableEntity entity =
-                list[i] as SaveableEntity;
-
-            TextMeshProUGUI buttonText =
-                button.GetComponentInChildren<TextMeshProUGUI>();
-
-            if (buttonText != null)
+            for (int i = 0; i < list.Count; i++)
             {
-                buttonText.text =
-                    entity != null
-                        ? entity.name
-                        : "Select Reference";
+                SaveableEntity entity = list[i] as SaveableEntity;
+
+                Button button =
+                    Instantiate(
+                        this.referenceButtonPrefab,
+                        this.referenceContainer);
+
+                int index = i;
+
+                button.onClick.RemoveAllListeners();
+                button.onClick.AddListener(
+                    () => this.BeginReferenceSelection(index));
+
+                TextMeshProUGUI buttonText =
+                    button.GetComponentInChildren<TextMeshProUGUI>();
+
+                if (buttonText != null)
+                {
+                    buttonText.text =
+                        entity != null
+                            ? entity.name
+                            : "None";
+                }
             }
         }
+
+        this.RebuildLayout();
     }
 
     private void ClearReferenceButtons()
@@ -397,128 +656,132 @@ public class RuntimePropertyField : MonoBehaviour
              i >= 0;
              i--)
         {
-            Destroy(this.referenceContainer.GetChild(i).gameObject);
+            Transform child = this.referenceContainer.GetChild(i);
+
+            // Destroy only takes effect at the end of the frame. Detach first,
+            // so the old button no longer counts towards the row height.
+            child.SetParent(null, false);
+            Destroy(child.gameObject);
         }
     }
 
-    private void SetupBool()
+    /// <summary>
+    /// Recalculates the layout so the row and the inspector around it resize
+    /// to fit the current number of reference buttons.
+    /// </summary>
+    private void RebuildLayout()
     {
-        if (this.toggle == null)
+        RectTransform row = this.transform as RectTransform;
+
+        if (row == null)
         {
             return;
         }
 
-        object currentValue = this.GetCurrentValue();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(row);
 
-        if (currentValue == null)
+        RectTransform parent = row.parent as RectTransform;
+
+        if (parent != null)
         {
-            return;
+            LayoutRebuilder.ForceRebuildLayoutImmediate(parent);
         }
-
-        bool value = Convert.ToBoolean(currentValue);
-
-        this.updating = true;
-        this.toggle.isOn = value;
-        this.updating = false;
-
-        this.toggle.onValueChanged.AddListener(this.OnToggleChanged);
     }
 
-    private void SetupInput()
+    private void UpdateReferenceButton()
     {
-        if (this.inputField == null)
+        if (this.referenceButton == null ||
+            this.targets == null ||
+            this.targets.Count == 0 ||
+            this.field == null)
         {
             return;
         }
 
-        object value = this.GetCurrentValue();
+        SaveableEntity entity =
+            this.GetFieldValue(this.targets[0])
+                as SaveableEntity;
 
-        this.updating = true;
-        this.inputField.text =
-            value != null ? value.ToString() : string.Empty;
-        this.updating = false;
+        TextMeshProUGUI buttonText =
+            this.referenceButton
+                .GetComponentInChildren<TextMeshProUGUI>();
 
-        this.inputField.onEndEdit.AddListener(this.OnInputChanged);
+        if (buttonText != null)
+        {
+            buttonText.text =
+                entity != null
+                    ? entity.name
+                    : "None";
+        }
     }
 
-    private void SetupSlider(SaveFieldAttribute saveAttribute)
+    private void BeginReferenceSelection()
     {
-        if (this.slider == null)
+        if (RuntimePropertyEditor.Instance != null)
         {
-            return;
+            RuntimePropertyEditor.Instance.BeginReferenceSelection(this);
         }
-
-        object currentValue = this.GetCurrentValue();
-
-        if (currentValue == null)
-        {
-            return;
-        }
-
-        float min = saveAttribute.Min;
-        float max = saveAttribute.Max;
-        float value = Convert.ToSingle(currentValue);
-
-        this.slider.minValue = min;
-        this.slider.maxValue = max;
-
-        this.updating = true;
-        this.slider.value = Mathf.Clamp(value, min, max);
-        this.updating = false;
-
-        if (this.sliderMinLabel != null)
-        {
-            this.sliderMinLabel.text = min.ToString();
-        }
-
-        if (this.sliderMaxLabel != null)
-        {
-            this.sliderMaxLabel.text = max.ToString();
-        }
-
-        this.UpdateSliderValueLabel(this.slider.value);
-
-        this.slider.onValueChanged.AddListener(this.OnSliderChanged);
     }
 
-    private void UpdateSliderValueLabel(float value)
+    private void BeginReferenceSelection(int index)
     {
-        if (this.sliderValueLabel == null)
+        if (RuntimePropertyEditor.Instance != null)
         {
-            return;
-        }
-
-        if (this.field.FieldType == typeof(int))
-        {
-            this.sliderValueLabel.text = Mathf.RoundToInt(value).ToString();
-        }
-        else
-        {
-            this.sliderValueLabel.text = value.ToString("0.##");
+            RuntimePropertyEditor.Instance.BeginReferenceSelection(this, index);
         }
     }
 
+    /// <summary>
+    /// Reads the value of the field on one target. For builder entities the
+    /// value comes from the runtime editable values, because the field
+    /// belongs to the prefab class and not to the builder entity.
+    /// </summary>
+    private object GetFieldValue(object target)
+    {
+        if (target == null)
+        {
+            return null;
+        }
+
+        if (this.builderFieldName != null &&
+            target is BuilderEntity builderEntity)
+        {
+            return builderEntity.GetRuntimeEditableValue(
+                this.builderFieldName);
+        }
+
+        return this.field.GetValue(target);
+    }
+
+    /// <summary>
+    /// Reads the value of the first target.
+    /// </summary>
     private object GetCurrentValue()
     {
-        if (this.usingBuilderValues)
-        {
-            if (this.builderTargets == null ||
-                this.builderTargets.Count == 0)
-            {
-                return null;
-            }
-
-            return this.builderTargets[0]
-                .GetRuntimeEditableValue(this.builderFieldName);
-        }
-
         if (this.targets == null ||
             this.targets.Count == 0)
         {
             return null;
         }
 
-        return this.field.GetValue(this.targets[0]);
+        return this.GetFieldValue(this.targets[0]);
+    }
+
+    /// <summary>
+    /// Writes a value to one target.
+    /// </summary>
+    private void SetValue(object target, object value)
+    {
+        if (this.builderFieldName != null &&
+            target is BuilderEntity builderEntity)
+        {
+            builderEntity.SetRuntimeEditableValue(
+                this.builderFieldName,
+                value);
+            return;
+        }
+
+        this.field.SetValue(target, value);
     }
 
     private void OnInputChanged(string value)
@@ -533,11 +796,13 @@ public class RuntimePropertyField : MonoBehaviour
                 this.field.FieldType,
                 out object converted))
         {
-            this.Refresh();
+            // Invalid text, show the real value again.
+            this.RefreshInput();
             return;
         }
 
         this.ApplyValue(converted);
+        this.RefreshInput();
     }
 
     private void OnToggleChanged(bool value)
@@ -557,49 +822,43 @@ public class RuntimePropertyField : MonoBehaviour
             return;
         }
 
-        object converted;
+        object result;
 
         if (this.field.FieldType == typeof(int))
         {
-            converted = Mathf.RoundToInt(value);
+            int rounded = Mathf.RoundToInt(value);
+            result = rounded;
+            this.UpdateSliderValueLabel(rounded);
         }
         else
         {
-            converted = value;
+            result = value;
+            this.UpdateSliderValueLabel(value);
         }
 
-        this.UpdateSliderValueLabel(value);
-        this.ApplyValue(converted);
+        this.ApplyValue(result);
     }
 
     private void ApplyValue(object value)
     {
-        if (this.usingBuilderValues)
-        {
-            if (this.builderTargets == null)
-            {
-                return;
-            }
-
-            foreach (BuilderEntity target in this.builderTargets)
-            {
-                if (target == null)
-                {
-                    continue;
-                }
-
-                target.SetRuntimeEditableValue(
-                    this.builderFieldName,
-                    value);
-            }
-
-            this.onValueChanged?.Invoke();
-            return;
-        }
-
         if (this.targets == null)
         {
             return;
+        }
+
+        if ((value is int || value is float) &&
+            this.TryGetRange(out float min, out float max))
+        {
+            float numericValue =
+                Mathf.Clamp(
+                    Convert.ToSingle(value),
+                    min,
+                    max);
+
+            value =
+                this.field.FieldType == typeof(int)
+                    ? Mathf.RoundToInt(numericValue)
+                    : (object)numericValue;
         }
 
         foreach (object target in this.targets)
@@ -609,17 +868,60 @@ public class RuntimePropertyField : MonoBehaviour
                 continue;
             }
 
-            this.field.SetValue(target, value);
+            this.SetValue(target, value);
         }
 
         this.onValueChanged?.Invoke();
     }
 
-    private void Refresh()
+    private void RefreshInput()
     {
-        this.Setup();
+        if (this.inputField == null)
+        {
+            return;
+        }
+
+        object value = this.GetCurrentValue();
+
+        this.updating = true;
+        this.inputField.SetTextWithoutNotify(
+            value != null
+                ? Convert.ToString(value, CultureInfo.InvariantCulture)
+                : string.Empty);
+        this.updating = false;
     }
 
+    private void RefreshSlider()
+    {
+        object value = this.GetCurrentValue();
+
+        if (this.slider == null ||
+            !(value is int || value is float))
+        {
+            return;
+        }
+
+        float sliderValue = Convert.ToSingle(value);
+
+        this.updating = true;
+        this.slider.SetValueWithoutNotify(sliderValue);
+        this.updating = false;
+
+        this.UpdateSliderValueLabel(sliderValue);
+    }
+
+    private void UpdateSliderValueLabel(float value)
+    {
+        if (this.sliderValueLabel != null)
+        {
+            this.sliderValueLabel.text = FormatNumber(value);
+        }
+    }
+
+    /// <summary>
+    /// Parses text with the invariant culture so "1.5" is 1.5 on every system.
+    /// A decimal comma is accepted as well.
+    /// </summary>
     private bool TryConvert(
             string value,
             Type type,
@@ -633,108 +935,35 @@ public class RuntimePropertyField : MonoBehaviour
             return true;
         }
 
-        if (type == typeof(int))
+        if (type == typeof(int) &&
+            int.TryParse(
+                value,
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out int intValue))
         {
-            if (int.TryParse(value, out int intValue))
-            {
-                result = intValue;
-                return true;
-            }
-
-            return false;
+            result = intValue;
+            return true;
         }
 
-        if (type == typeof(float))
+        if (type == typeof(float) &&
+            float.TryParse(
+                value.Replace(',', '.'),
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture,
+                out float floatValue))
         {
-            if (float.TryParse(value, out float floatValue))
-            {
-                result = floatValue;
-                return true;
-            }
-
-            return false;
+            result = floatValue;
+            return true;
         }
 
-        if (type == typeof(bool))
+        if (type == typeof(bool) &&
+            bool.TryParse(value, out bool boolValue))
         {
-            if (bool.TryParse(value, out bool boolValue))
-            {
-                result = boolValue;
-                return true;
-            }
+            result = boolValue;
+            return true;
         }
 
         return false;
-    }
-
-    private void BeginReferenceSelection()
-    {
-        if (RuntimePropertyEditor.Instance == null)
-        {
-            return;
-        }
-
-        RuntimePropertyEditor.Instance.BeginReferenceSelection(this);
-    }
-
-    private void BeginReferenceSelection(int index)
-    {
-        if (RuntimePropertyEditor.Instance == null)
-        {
-            return;
-        }
-
-        RuntimePropertyEditor.Instance.BeginReferenceSelection(
-            this,
-            index);
-    }
-
-    private void UpdateReferenceButton()
-    {
-        if (this.referenceButton == null ||
-            this.field == null)
-        {
-            return;
-        }
-
-        SaveableEntity reference =
-            this.GetCurrentValue() as SaveableEntity;
-
-        TextMeshProUGUI buttonText =
-            this.referenceButton.GetComponentInChildren<TextMeshProUGUI>();
-
-        if (buttonText == null)
-        {
-            return;
-        }
-
-        if (reference == null)
-        {
-            buttonText.text = "Select Reference";
-        }
-        else
-        {
-            buttonText.text = reference.name;
-        }
-    }
-
-    private void UpdateReferenceButtons()
-    {
-        this.SetupReferenceList();
-    }
-
-    private bool IsReferenceList()
-    {
-        if (this.field == null ||
-            !typeof(IList).IsAssignableFrom(this.field.FieldType) ||
-            !this.field.FieldType.IsGenericType)
-        {
-            return false;
-        }
-
-        Type elementType =
-            this.field.FieldType.GetGenericArguments()[0];
-
-        return typeof(SaveableEntity).IsAssignableFrom(elementType);
     }
 }
