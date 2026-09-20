@@ -11,6 +11,9 @@ using UnityEngine;
 [RequireComponent(typeof(PrefabIdentity))]
 public abstract class SaveableEntity : MonoBehaviour
 {
+    private readonly List<PendingReference> pendingReferences =
+        new List<PendingReference>();
+
     [SerializeField]
     private string uniqueID;
 
@@ -26,6 +29,11 @@ public abstract class SaveableEntity : MonoBehaviour
     {
         get { return this.spriteRenderer; }
     }
+
+    /// <summary>
+    /// Gets a value indicating whether there are references that still wait to be resolved.
+    /// </summary>
+    protected bool HasPendingReferences => this.pendingReferences.Count > 0;
 
     /// <summary>
     /// Gets the entity that owns this entity.
@@ -113,6 +121,8 @@ public abstract class SaveableEntity : MonoBehaviour
     {
         this.ReadTransformData(reader);
 
+        this.pendingReferences.Clear();
+
         int fieldCount = reader.ReadInt32();
 
         FieldInfo[] fields = this.GetSaveFields();
@@ -129,10 +139,8 @@ public abstract class SaveableEntity : MonoBehaviour
 
             if (fieldMap.TryGetValue(fieldName, out FieldInfo field))
             {
-                object value = this.ReadValue(reader, field.FieldType);
+                object value = this.ReadFieldValue(reader, field, field.Name);
                 field.SetValue(this, value);
-
-                this.ClaimReferencedEntities(field, value);
             }
             else
             {
@@ -142,10 +150,13 @@ public abstract class SaveableEntity : MonoBehaviour
     }
 
     /// <summary>
-    /// Called when the map is finished loading.
+    /// Called when the map is finished loading. All entities exist now, so
+    /// the references that were read as ids are resolved here. Overrides must
+    /// call the base method.
     /// </summary>
     public virtual void OnFinishMapLoad()
     {
+        this.ResolvePendingReferences();
     }
 
     /// <summary>
@@ -184,6 +195,19 @@ public abstract class SaveableEntity : MonoBehaviour
         {
             SaveManager.Register(this);
         }
+    }
+
+    /// <summary>
+    /// Whether a type is a list of entities.
+    /// </summary>
+    /// <param name="type">The type to check.</param>
+    /// <returns>True when the type is a list of entities.</returns>
+    protected static bool IsEntityList(Type type)
+    {
+        return typeof(IList).IsAssignableFrom(type) &&
+               type.IsGenericType &&
+               typeof(SaveableEntity).IsAssignableFrom(
+                   type.GetGenericArguments()[0]);
     }
 
     /// <summary>
@@ -373,36 +397,207 @@ public abstract class SaveableEntity : MonoBehaviour
     }
 
     /// <summary>
-    /// Makes this entity the owner of the entities in a reference field,
-    /// unless the field is marked as reference only. This is what restores
-    /// ownership on load, both for single references and for lists.
+    /// Reads one saved field. Entity references are stored as ids and are
+    /// only filled in when the map is finished loading, because the entity
+    /// they point to may not have been loaded yet.
     /// </summary>
-    /// <param name="field">The field that was read.</param>
-    /// <param name="value">The value that was read into it.</param>
-    private void ClaimReferencedEntities(FieldInfo field, object value)
+    /// <param name="reader">The reader to use.</param>
+    /// <param name="field">The field that is read.</param>
+    /// <param name="key">The name the value is stored under.</param>
+    /// <returns>The value, with empty slots for references.</returns>
+    protected object ReadFieldValue(
+        BinaryReader reader,
+        FieldInfo field,
+        string key)
     {
-        SaveFieldAttribute attribute =
-            field.GetCustomAttribute<SaveFieldAttribute>();
+        Type type = field.FieldType;
 
-        if (attribute == null ||
-            attribute.ReferenceOnly)
+        if (typeof(SaveableEntity).IsAssignableFrom(type))
+        {
+            this.AddPendingReference(
+                field,
+                key,
+                -1,
+                reader.ReadString());
+
+            return null;
+        }
+
+        if (IsEntityList(type))
+        {
+            int count = reader.ReadInt32();
+            IList list = this.CreateReferenceList(type);
+
+            for (int i = 0; i < count; i++)
+            {
+                // Keep the slot, so indices stay the same.
+                list.Add(null);
+
+                this.AddPendingReference(
+                    field,
+                    key,
+                    i,
+                    reader.ReadString());
+            }
+
+            return list;
+        }
+
+        return this.ReadValue(reader, type);
+    }
+
+    /// <summary>
+    /// Forgets the references that were still waiting to be resolved.
+    /// </summary>
+    protected void ClearPendingReferences()
+    {
+        this.pendingReferences.Clear();
+    }
+
+    /// <summary>
+    /// Creates the list that holds references while loading.
+    /// </summary>
+    /// <param name="listType">The type of the field.</param>
+    /// <returns>An empty list.</returns>
+    protected virtual IList CreateReferenceList(Type listType)
+    {
+        return (IList)Activator.CreateInstance(listType);
+    }
+
+    /// <summary>
+    /// Finds an entity by its id.
+    /// </summary>
+    /// <param name="id">The id to look for.</param>
+    /// <returns>The entity, or null when it does not exist.</returns>
+    protected virtual SaveableEntity FindEntityByID(string id)
+    {
+        return SaveManager.GetEntityByID(id) as SaveableEntity;
+    }
+
+    /// <summary>
+    /// Stores a resolved reference in the field it belongs to.
+    /// </summary>
+    /// <param name="pending">The reference that was resolved.</param>
+    /// <param name="entity">The entity it points to.</param>
+    /// <returns>True when the reference was stored.</returns>
+    protected virtual bool AssignReference(
+        PendingReference pending,
+        SaveableEntity entity)
+    {
+        if (pending.Index < 0)
+        {
+            if (!pending.Field.FieldType.IsInstanceOfType(entity))
+            {
+                return false;
+            }
+
+            pending.Field.SetValue(this, entity);
+            return true;
+        }
+
+        IList list = pending.Field.GetValue(this) as IList;
+
+        Type elementType =
+            pending.Field.FieldType.GetGenericArguments()[0];
+
+        if (list == null ||
+            pending.Index >= list.Count ||
+            !elementType.IsInstanceOfType(entity))
+        {
+            return false;
+        }
+
+        list[pending.Index] = entity;
+        return true;
+    }
+
+    private void AddPendingReference(
+        FieldInfo field,
+        string key,
+        int index,
+        string id)
+    {
+        if (string.IsNullOrEmpty(id))
         {
             return;
         }
 
-        if (value is SaveableEntity entity)
-        {
-            entity.SetOwner(this);
-        }
-        else if (value is IList list)
-        {
-            foreach (object item in list)
+        this.pendingReferences.Add(
+            new PendingReference
             {
-                if (item is SaveableEntity listed)
-                {
-                    listed.SetOwner(this);
-                }
+                Key = key,
+                Index = index,
+                ID = id,
+                Field = field,
+            });
+    }
+
+    /// <summary>
+    /// Fills in the references that were read as ids, and makes this entity
+    /// the owner of the referenced ones, unless the field is reference only.
+    /// </summary>
+    private void ResolvePendingReferences()
+    {
+        foreach (PendingReference pending in this.pendingReferences)
+        {
+            SaveableEntity found =
+                this.FindEntityByID(pending.ID);
+
+            if (found == null)
+            {
+                Debug.LogWarning(
+                    $"{this.name}: could not find the entity with id " +
+                    $"'{pending.ID}' referenced by '{pending.Key}'.");
+
+                continue;
+            }
+
+            if (!this.AssignReference(pending, found))
+            {
+                Debug.LogWarning(
+                    $"{this.name}: could not store the reference " +
+                    $"'{pending.Key}' (wrong type or missing slot).");
+
+                continue;
+            }
+
+            SaveFieldAttribute attribute =
+                pending.Field.GetCustomAttribute<SaveFieldAttribute>();
+
+            if (attribute != null &&
+                !attribute.ReferenceOnly)
+            {
+                found.SetOwner(this);
             }
         }
+
+        this.pendingReferences.Clear();
+    }
+
+    /// <summary>
+    /// A reference that was read from the map file as an id. The entity it
+    /// points to may not exist yet, so it is resolved when the map is loaded.
+    /// </summary>
+    protected class PendingReference
+    {
+        /// <summary>
+        /// Gets or sets the name the value is stored under.
+        /// </summary>
+        public string Key { get; set; }
+
+        /// <summary>
+        /// Gets or sets the list index, or -1 for a single reference.
+        /// </summary>
+        public int Index { get; set; }
+
+        /// <summary>
+        /// Gets or sets the id of the referenced entity.
+        /// </summary>
+        public string ID { get; set; }
+
+        /// <summary>
+        /// Gets or sets the field that holds the reference.
+        /// </summary>
+        public FieldInfo Field { get; set; }
     }
 }

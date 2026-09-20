@@ -198,8 +198,6 @@ public static class SaveManager
                 entity.Read(payloadReader);
                 Register(entity);
                 loadedCount++;
-
-                entity.OnFinishMapLoad();
             }
             else
             {
@@ -207,6 +205,10 @@ public static class SaveManager
             }
         }
 
+        foreach (SaveableEntity entity in saveables.Values)
+        {
+            entity.OnFinishMapLoad();
+        }
     }
 
     /// <summary>

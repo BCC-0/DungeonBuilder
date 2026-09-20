@@ -1,9 +1,13 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using UnityEngine;
 
+/// <summary>
+/// A light-weight replacement of the actual entity behaviour.
+/// </summary>
 public class BuilderEntity : SaveableEntity
 {
     private readonly Dictionary<string, RuntimeEditableValue> runtimeEditableFields =
@@ -11,10 +15,20 @@ public class BuilderEntity : SaveableEntity
 
     private Item originalItem;
 
+    /// <summary>
+    /// Gets the ID of the entity's prefab.
+    /// </summary>
     public string PrefabID { get; private set; }
 
+    /// <summary>
+    /// Gets the editable fields on this entity.
+    /// </summary>
     public IReadOnlyDictionary<string, RuntimeEditableValue> RuntimeEditableFields => this.runtimeEditableFields;
 
+    /// <summary>
+    /// Initializes the builder entity.
+    /// </summary>
+    /// <param name="prefabID">The id of the actual entity.</param>
     public void Initialize(string prefabID)
     {
         this.PrefabID = prefabID;
@@ -53,6 +67,12 @@ public class BuilderEntity : SaveableEntity
         this.DisableOtherBehaviours();
     }
 
+    /// <summary>
+    /// Tries to get a given editable field.
+    /// </summary>
+    /// <param name="fieldName">The name of the field to get.</param>
+    /// <param name="editableValue">The value to get.</param>
+    /// <returns>A value indicating whether this action was succesful.</returns>
     public bool TryGetRuntimeEditableField(
         string fieldName,
         out RuntimeEditableValue editableValue)
@@ -62,6 +82,11 @@ public class BuilderEntity : SaveableEntity
             out editableValue);
     }
 
+    /// <summary>
+    /// Sets an editable field.
+    /// </summary>
+    /// <param name="fieldName">The name of the field to edit.</param>
+    /// <param name="value">The value to set.</param>
     public void SetRuntimeEditableValue(
         string fieldName,
         object value)
@@ -82,22 +107,21 @@ public class BuilderEntity : SaveableEntity
         Type fieldType =
             editableValue.Field.FieldType;
 
-        if (value != null &&
-            !fieldType.IsInstanceOfType(value))
-        {
-            return;
-        }
-
         bool fitsFieldType =
             value == null ||
             fieldType.IsInstanceOfType(value);
 
-        // Builder proxies stand in for entities of the real type.
         bool isEntityProxy =
             value is BuilderEntity &&
             typeof(SaveableEntity).IsAssignableFrom(fieldType);
 
-        if (!fitsFieldType && !isEntityProxy)
+        bool isProxyList =
+            value is List<SaveableEntity> &&
+            IsEntityList(fieldType);
+
+        if (!fitsFieldType &&
+            !isEntityProxy &&
+            !isProxyList)
         {
             return;
         }
@@ -119,6 +143,11 @@ public class BuilderEntity : SaveableEntity
         }
     }
 
+    /// <summary>
+    /// Gets the editable field's value.
+    /// </summary>
+    /// <param name="fieldName">The name of the field to get.</param>
+    /// <returns>The found value.</returns>
     public object GetRuntimeEditableValue(string fieldName)
     {
         if (!this.runtimeEditableFields.TryGetValue(
@@ -131,6 +160,11 @@ public class BuilderEntity : SaveableEntity
         return editableValue.Value;
     }
 
+    /// <summary>
+    /// Writes the entity to the map file.
+    /// </summary>
+    /// <param name="writer">The writer to use.</param>
+    /// <exception cref="InvalidOperationException">The exception that can be found.</exception>
     public override void Write(BinaryWriter writer)
     {
         this.WriteTransformData(writer);
@@ -192,11 +226,16 @@ public class BuilderEntity : SaveableEntity
         }
     }
 
+    /// <summary>
+    /// Reads the entity from the map file.
+    /// </summary>
+    /// <param name="reader">The reader to use.</param>
     public override void Read(BinaryReader reader)
     {
         this.ReadTransformData(reader);
 
         this.runtimeEditableFields.Clear();
+        this.ClearPendingReferences();
 
         int fieldCount =
             reader.ReadInt32();
@@ -213,9 +252,10 @@ public class BuilderEntity : SaveableEntity
             if (field != null)
             {
                 object value =
-                    this.ReadValue(
+                    this.ReadFieldValue(
                         reader,
-                        field.FieldType);
+                        field,
+                        fieldName);
 
                 this.runtimeEditableFields[fieldName] =
                     new RuntimeEditableValue(
@@ -263,20 +303,88 @@ public class BuilderEntity : SaveableEntity
         }
     }
 
+    /// <summary>
+    /// Registers this builder entity and disables the entities behaviour.
+    /// </summary>
     protected override void Awake()
     {
         base.Awake();
 
         BuilderRegistry.Register(this);
 
-        foreach (MonoBehaviour mb in
-                 this.GetComponents<MonoBehaviour>())
+        foreach (MonoBehaviour mb in this.GetComponents<MonoBehaviour>())
         {
             if (mb != this)
             {
                 mb.enabled = false;
             }
         }
+    }
+
+    /// <summary>
+    /// Builder entities are not known to the SaveManager, so referenced
+    /// entities are looked up among the builder entities.
+    /// </summary>
+    /// <param name="id">The id to look for.</param>
+    /// <returns>The builder entity, or null when it does not exist.</returns>
+    protected override SaveableEntity FindEntityByID(string id)
+    {
+        foreach (BuilderEntity candidate in
+                 FindObjectsByType<BuilderEntity>())
+        {
+            if (candidate != null &&
+                candidate != this &&
+                candidate.GetUniqueID() == id)
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// A list of builder proxies cannot be a List of the real type.
+    /// </summary>
+    /// <param name="listType">The type of the field.</param>
+    /// <returns>An empty list of entities.</returns>
+    protected override IList CreateReferenceList(Type listType)
+    {
+        return new List<SaveableEntity>();
+    }
+
+    /// <summary>
+    /// Stores a resolved reference in the runtime editable values.
+    /// </summary>
+    /// <param name="pending">The reference that was resolved.</param>
+    /// <param name="entity">The entity it points to.</param>
+    /// <returns>True when the reference was stored.</returns>
+    protected override bool AssignReference(
+        PendingReference pending,
+        SaveableEntity entity)
+    {
+        if (!this.runtimeEditableFields.TryGetValue(
+                pending.Key,
+                out RuntimeEditableValue editableValue) ||
+            editableValue == null)
+        {
+            return false;
+        }
+
+        if (pending.Index < 0)
+        {
+            editableValue.Value = entity;
+            return true;
+        }
+
+        if (editableValue.Value is List<SaveableEntity> list &&
+            pending.Index < list.Count)
+        {
+            list[pending.Index] = entity;
+            return true;
+        }
+
+        return false;
     }
 
     private void InitializeSourceData(SaveableEntity source)
@@ -286,8 +394,7 @@ public class BuilderEntity : SaveableEntity
             FieldInfo originalItemField =
                 typeof(ItemObject).GetField(
                     "originalItem",
-                    BindingFlags.NonPublic |
-                    BindingFlags.Instance);
+                    BindingFlags.NonPublic | BindingFlags.Instance);
 
             if (originalItemField != null)
             {
@@ -503,6 +610,14 @@ public class BuilderEntity : SaveableEntity
             {
                 mb.enabled = false;
             }
+        }
+    }
+
+    private void Start()
+    {
+        if (this.HasPendingReferences)
+        {
+            this.OnFinishMapLoad();
         }
     }
 

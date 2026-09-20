@@ -50,7 +50,6 @@ public class RuntimePropertyEditor : MonoBehaviour
             return;
         }
 
-        // Remember what we built for, so Update does not rebuild it again.
         this.lastSelectionKey = this.BuildSelectionKey();
 
         if (MapEditorManager.Instance.SelectedEntities.Count > 0)

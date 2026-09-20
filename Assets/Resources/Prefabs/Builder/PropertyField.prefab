@@ -1076,7 +1076,7 @@ MonoBehaviour:
   sliderMaxLabel: {fileID: 2423063863617025594}
   referenceButton: {fileID: 8589083357823903463}
   referenceContainer: {fileID: 4175475746557511339}
-  referenceButtonPrefab: {fileID: 8589083357823903463}
+  referenceButtonPrefab: {fileID: 5134579508978356889, guid: 8195b74e3c6986142b4444aee2645535, type: 3}
   addReferenceButton: {fileID: 2575735811073082324}
 --- !u!114 &7892395780979715361
 MonoBehaviour:

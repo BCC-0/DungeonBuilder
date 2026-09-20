@@ -31,6 +31,16 @@ public class CrawlerPlayerData : SaveableEntity
     [SaveField(referenceOnly: false)]
     private SaveableEntity referenceTest;
 
+    [SerializeField]
+    [SaveField(referenceOnly: true)]
+    private SaveableEntity referenceOnlyTest;
+
+    [SaveField(referenceOnly: false)]
+    private List<SaveableEntity> referenceList;
+
+    [SaveField(referenceOnly: true)]
+    private List<SaveableEntity> referenceOnlyList;
+
     [Header("Inventory")]
     [SerializeField]
     private List<Item> inventory = new List<Item>();
@@ -236,6 +246,8 @@ public class CrawlerPlayerData : SaveableEntity
     /// </summary>
     public override void OnFinishMapLoad()
     {
+        base.OnFinishMapLoad();
+
         this.currentHealth = this.maxHealth;
 
         this.healthSlider.maxValue = this.maxHealth;
