@@ -1844,6 +1844,7 @@ MonoBehaviour:
   selectionBoxParent: {fileID: 1617474114}
   selectionButtons: {fileID: 828048498}
   moveButtons: {fileID: 35598982}
+  referenceSelectionButtons: {fileID: 0}
   saveableTilemap: {fileID: 547713615080710944}
   movementPreviewTilemap: {fileID: 746435619}
 --- !u!114 &322721818
@@ -7750,6 +7751,7 @@ MonoBehaviour:
   selectionBoxParent: {fileID: 1617474114}
   selectionButtons: {fileID: 828048498}
   moveButtons: {fileID: 35598982}
+  referenceSelectionButtons: {fileID: 0}
   entitySelectRadius: 0.5
 --- !u!1 &1177462950
 GameObject:

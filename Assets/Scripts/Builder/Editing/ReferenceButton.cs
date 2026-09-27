@@ -1,4 +1,5 @@
-﻿using TMPro;
+﻿using System;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -17,10 +18,7 @@ public class ReferenceButton : MonoBehaviour
     private Image modeIndicator;
 
     [SerializeField]
-    private Sprite sharedIcon;
-
-    [SerializeField]
-    private Sprite consumingIcon;
+    private Button removeButton;
 
     /// <summary>
     /// Sets the entity displayed by this button.
@@ -45,16 +43,25 @@ public class ReferenceButton : MonoBehaviour
     }
 
     /// <summary>
-    /// Sets the visual indicator for the reference mode.
+    /// Sets whether the entity is consumed.
     /// </summary>
-    /// <param name="mode">The reference mode.</param>
-    public void SetReferenceMode(ReferenceMode mode)
+    /// <param name="consumed">Whether the entity is consumed.</param>
+    public void SetConsumed(bool consumed)
     {
-        this.modeIndicator.sprite =
-            mode == ReferenceMode.Consuming
-                ? this.consumingIcon
-                : this.sharedIcon;
+        this.modeIndicator.gameObject.SetActive(consumed);
+    }
 
-        this.modeIndicator.gameObject.SetActive(true);
+    /// <summary>
+    /// Sets the action that is called when the remove button is pressed.
+    /// </summary>
+    /// <param name="action">The action to call.</param>
+    public void SetRemoveAction(Action action)
+    {
+        this.removeButton.onClick.RemoveAllListeners();
+
+        if (action != null)
+        {
+            this.removeButton.onClick.AddListener(() => action());
+        }
     }
 }

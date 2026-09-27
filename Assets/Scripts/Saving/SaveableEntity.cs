@@ -90,6 +90,7 @@ public abstract class SaveableEntity : MonoBehaviour
         }
 
         this.consumedBy = consumer;
+        this.RemoveOtherReferences(consumer);
         this.SetWorldPresence(false);
         return true;
     }
@@ -179,6 +180,19 @@ public abstract class SaveableEntity : MonoBehaviour
     }
 
     /// <summary>
+    /// Whether a type is a list of entities.
+    /// </summary>
+    /// <param name="type">The type to check.</param>
+    /// <returns>True when the type is a list of entities.</returns>
+    protected static bool IsEntityList(Type type)
+    {
+        return typeof(IList).IsAssignableFrom(type) &&
+               type.IsGenericType &&
+               typeof(SaveableEntity).IsAssignableFrom(
+                   type.GetGenericArguments()[0]);
+    }
+
+    /// <summary>
     /// Sets whether this entity exists in the world.
     /// </summary>
     /// <param name="exists">Whether this entity should exist in the world.</param>
@@ -214,19 +228,6 @@ public abstract class SaveableEntity : MonoBehaviour
         {
             SaveManager.Register(this);
         }
-    }
-
-    /// <summary>
-    /// Whether a type is a list of entities.
-    /// </summary>
-    /// <param name="type">The type to check.</param>
-    /// <returns>True when the type is a list of entities.</returns>
-    protected static bool IsEntityList(Type type)
-    {
-        return typeof(IList).IsAssignableFrom(type) &&
-               type.IsGenericType &&
-               typeof(SaveableEntity).IsAssignableFrom(
-                   type.GetGenericArguments()[0]);
     }
 
     /// <summary>
@@ -287,7 +288,7 @@ public abstract class SaveableEntity : MonoBehaviour
             BindingFlags.Public |
             BindingFlags.NonPublic);
 
-        List<FieldInfo> saveFields = new();
+        List<FieldInfo> saveFields = new ();
 
         foreach (FieldInfo field in allFields)
         {
@@ -528,6 +529,66 @@ public abstract class SaveableEntity : MonoBehaviour
 
         list[pending.Index] = entity;
         return true;
+    }
+
+    /// <summary>
+    /// Removes this entity from all reference fields on other entities.
+    /// The consumer that just consumed this entity keeps its reference.
+    /// </summary>
+    /// <param name="consumer">The entity that now consumes this entity.</param>
+    private void RemoveOtherReferences(SaveableEntity consumer)
+    {
+        SaveableEntity[] entities = FindObjectsByType<SaveableEntity>();
+
+        foreach (SaveableEntity entity in entities)
+        {
+            if (entity == null ||
+                entity == consumer ||
+                entity == this)
+            {
+                continue;
+            }
+
+            FieldInfo[] fields = entity.GetSaveFields();
+
+            foreach (FieldInfo field in fields)
+            {
+                Type fieldType = field.FieldType;
+
+                if (typeof(SaveableEntity).IsAssignableFrom(fieldType))
+                {
+                    SaveableEntity reference =
+                        field.GetValue(entity) as SaveableEntity;
+
+                    if (reference == this)
+                    {
+                        field.SetValue(entity, null);
+                    }
+
+                    continue;
+                }
+
+                if (!IsEntityList(fieldType))
+                {
+                    continue;
+                }
+
+                IList list = field.GetValue(entity) as IList;
+
+                if (list == null)
+                {
+                    continue;
+                }
+
+                for (int i = list.Count - 1; i >= 0; i--)
+                {
+                    if ((UnityEngine.Object)list[i] == this)
+                    {
+                        list.RemoveAt(i);
+                    }
+                }
+            }
+        }
     }
 
     private void AddPendingReference(

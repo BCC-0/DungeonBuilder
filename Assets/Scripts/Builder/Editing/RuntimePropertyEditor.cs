@@ -380,7 +380,8 @@ public class RuntimePropertyEditor : MonoBehaviour
             property.Initialize(
                 this.GetDisplayName(fieldName),
                 fieldName,
-                builderEntities);
+                builderEntities,
+                this.Rebuild);
         }
     }
 
@@ -495,7 +496,7 @@ public class RuntimePropertyEditor : MonoBehaviour
                 this.GetDisplayName(field.Name),
                 field,
                 targets,
-                null);
+                this.Rebuild);
         }
     }
 

@@ -198,10 +198,96 @@ public class PlaytestManager : MonoBehaviour
             errors.Add($"Map must contain exactly one player spawn point. Currently there are {playerCount}.");
         }
 
+        this.VerifyAttributes(errors);
+
         // TODO: Call more check methods for checking if the map is legal.
         if (errors.Count > 0)
         {
             throw new PlaytestException(errors);
+        }
+    }
+
+    private void VerifyAttributes(List<string> errors)
+    {
+        foreach (BuilderEntity entity in BuilderRegistry.GetAll())
+        {
+            FieldInfo[] fields = entity.GetType().GetFields(
+                BindingFlags.Instance |
+                BindingFlags.Public |
+                BindingFlags.NonPublic);
+
+            foreach (FieldInfo field in fields)
+            {
+                SaveFieldAttribute attribute =
+                    field.GetCustomAttribute<SaveFieldAttribute>();
+
+                if (attribute == null)
+                {
+                    continue;
+                }
+
+                // Reference validation.
+                if (typeof(SaveableEntity).IsAssignableFrom(field.FieldType))
+                {
+                    SaveableEntity reference =
+                        field.GetValue(entity) as SaveableEntity;
+
+                    int referenceCount =
+                        reference != null ? 1 : 0;
+
+                    this.VerifyReferenceCount(
+                        entity,
+                        field,
+                        attribute,
+                        referenceCount,
+                        errors);
+
+                    continue;
+                }
+
+                if (typeof(IList).IsAssignableFrom(field.FieldType))
+                {
+                    IList list =
+                        field.GetValue(entity) as IList;
+
+                    int referenceCount =
+                        list != null ? list.Count : 0;
+
+                    this.VerifyReferenceCount(
+                        entity,
+                        field,
+                        attribute,
+                        referenceCount,
+                        errors);
+                }
+
+                // Other attribute checks can go here later.
+            }
+        }
+    }
+
+    private void VerifyReferenceCount(
+        BuilderEntity entity,
+        FieldInfo field,
+        SaveFieldAttribute attribute,
+        int referenceCount,
+        List<string> errors)
+    {
+        if (referenceCount < attribute.MinReferences)
+        {
+            errors.Add(
+                $"Entity '{entity.name}' requires at least " +
+                $"{attribute.MinReferences} reference(s) for " +
+                $"'{field.Name}', but has {referenceCount}.");
+        }
+
+        if (attribute.MaxReferences >= 0 &&
+            referenceCount > attribute.MaxReferences)
+        {
+            errors.Add(
+                $"Entity '{entity.name}' allows at most " +
+                $"{attribute.MaxReferences} reference(s) for " +
+                $"'{field.Name}', but has {referenceCount}.");
         }
     }
 
