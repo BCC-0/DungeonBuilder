@@ -28,17 +28,17 @@ public class CrawlerPlayerData : SaveableEntity
     private float moveSpeed = 5f;
 
     [SerializeField]
-    [SaveField(referenceOnly: false)]
-    private SaveableEntity referenceTest;
+    [SaveField(referenceMode: ReferenceMode.Shared)]
+    private SaveableEntity sharedReference;
 
     [SerializeField]
-    [SaveField(referenceOnly: true)]
-    private SaveableEntity referenceOnlyTest;
+    [SaveField(referenceMode: ReferenceMode.Consuming)]
+    private SaveableEntity consumedReference;
 
-    [SaveField(referenceOnly: false)]
+    [SaveField(referenceMode: ReferenceMode.Shared)]
     private List<SaveableEntity> referenceList;
 
-    [SaveField(referenceOnly: true)]
+    [SaveField(referenceMode: ReferenceMode.Consuming)]
     private List<SaveableEntity> referenceOnlyList;
 
     [Header("Inventory")]

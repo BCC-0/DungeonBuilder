@@ -20,7 +20,7 @@ public abstract class SaveableEntity : MonoBehaviour
     [SerializeField]
     private SpriteRenderer spriteRenderer;
 
-    private SaveableEntity ownedBy;
+    private SaveableEntity consumedBy;
 
     /// <summary>
     /// Gets the spriteRenderer of this entity.
@@ -36,14 +36,14 @@ public abstract class SaveableEntity : MonoBehaviour
     protected bool HasPendingReferences => this.pendingReferences.Count > 0;
 
     /// <summary>
-    /// Gets the entity that owns this entity.
+    /// Gets the entity that consumes this entity.
     /// </summary>
-    public SaveableEntity OwnedBy => this.ownedBy;
+    public SaveableEntity ConsumedBy => this.consumedBy;
 
     /// <summary>
     /// Gets whether this entity currently exists in the world.
     /// </summary>
-    public bool ExistsInWorld => this.ownedBy == null;
+    public bool ExistsInWorld => this.consumedBy == null;
 
     /// <summary>
     /// Gets the unique id of this entity.
@@ -72,29 +72,48 @@ public abstract class SaveableEntity : MonoBehaviour
     }
 
     /// <summary>
-    /// Makes this entity owned by another entity.
+    /// Makes this entity consumed by another entity.
     /// </summary>
-    /// <param name="owner">The entity that owns this entity.</param>
-    public void SetOwner(SaveableEntity owner)
+    /// <param name="consumer">The entity that consumes this entity.</param>
+    /// <returns>True when this entity was successfully consumed.</returns>
+    public bool SetConsumedBy(SaveableEntity consumer)
     {
-        this.ownedBy = owner;
+        if (consumer == null)
+        {
+            return false;
+        }
+
+        if (this.consumedBy != null &&
+            this.consumedBy != consumer)
+        {
+            return false;
+        }
+
+        this.consumedBy = consumer;
         this.SetWorldPresence(false);
+        return true;
     }
 
     /// <summary>
-    /// Releases this entity from its owner.
+    /// Releases this entity from its consumer.
     /// </summary>
-    public void ReleaseOwner()
+    /// <param name="consumer">The entity that consumes this entity.</param>
+    public void ReleaseConsumedBy(SaveableEntity consumer)
     {
-        this.ownedBy = null;
+        if (this.consumedBy != consumer)
+        {
+            return;
+        }
+
+        this.consumedBy = null;
         this.SetWorldPresence(true);
     }
 
     /// <summary>
     /// Writes this entity to the map file.
     /// The layout is the same as before ownership was added: the transform
-    /// first, then the save fields. Ownership is not stored, it is restored
-    /// on load from the reference fields of the owner.
+    /// first, then the save fields. Consumption is not stored, it is restored
+    /// on load from the reference fields of the consumer.
     /// </summary>
     /// <param name="writer">The writer to use.</param>
     public virtual void Write(BinaryWriter writer)
@@ -401,7 +420,7 @@ public abstract class SaveableEntity : MonoBehaviour
     /// only filled in when the map is finished loading, because the entity
     /// they point to may not have been loaded yet.
     /// </summary>
-    /// <param name="reader">The reader to use.</param>
+    /// <param name="reader">The reader that is read.</param>
     /// <param name="field">The field that is read.</param>
     /// <param name="key">The name the value is stored under.</param>
     /// <returns>The value, with empty slots for references.</returns>
@@ -534,7 +553,8 @@ public abstract class SaveableEntity : MonoBehaviour
 
     /// <summary>
     /// Fills in the references that were read as ids, and makes this entity
-    /// the owner of the referenced ones, unless the field is reference only.
+    /// the consumer of the referenced ones when the field uses a consuming
+    /// reference mode.
     /// </summary>
     private void ResolvePendingReferences()
     {
@@ -565,9 +585,12 @@ public abstract class SaveableEntity : MonoBehaviour
                 pending.Field.GetCustomAttribute<SaveFieldAttribute>();
 
             if (attribute != null &&
-                !attribute.ReferenceOnly)
+                attribute.ReferenceMode == ReferenceMode.Consuming &&
+                !found.SetConsumedBy(this))
             {
-                found.SetOwner(this);
+                Debug.LogWarning(
+                    $"{this.name}: could not consume the entity " +
+                    $"'{found.name}' because it is already consumed.");
             }
         }
 

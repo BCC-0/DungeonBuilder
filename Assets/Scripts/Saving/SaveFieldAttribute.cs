@@ -2,6 +2,15 @@
 using UnityEngine;
 
 /// <summary>
+/// Defines how a SaveableEntity reference behaves.
+/// </summary>
+public enum ReferenceMode
+{
+    Shared,
+    Consuming
+}
+
+/// <summary>
 /// Marks a field as savable and optionally defines its valid range.
 /// </summary>
 [AttributeUsage(AttributeTargets.Field)]
@@ -12,16 +21,16 @@ public class SaveFieldAttribute : PropertyAttribute
     /// </summary>
     /// <param name="min">The minimum value.</param>
     /// <param name="max">The maximum value.</param>
-    /// <param name="referenceOnly">Whether a SaveableEntity reference should remain in the world.</param>
+    /// <param name="referenceMode">How a SaveableEntity reference should behave.</param>
     public SaveFieldAttribute(
         float min = float.MinValue,
         float max = float.MaxValue,
-        bool referenceOnly = false)
+        ReferenceMode referenceMode = ReferenceMode.Consuming)
     {
         this.HasRange = min != float.MinValue || max != float.MaxValue;
         this.Min = min;
         this.Max = max;
-        this.ReferenceOnly = referenceOnly;
+        this.ReferenceMode = referenceMode;
     }
 
     /// <summary>
@@ -40,7 +49,7 @@ public class SaveFieldAttribute : PropertyAttribute
     public float Max { get; }
 
     /// <summary>
-    /// Gets a value indicating whether a SaveableEntity reference should remain in the world.
+    /// Gets how a SaveableEntity reference should behave.
     /// </summary>
-    public bool ReferenceOnly { get; }
+    public ReferenceMode ReferenceMode { get; }
 }

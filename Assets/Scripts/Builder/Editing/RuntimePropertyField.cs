@@ -193,23 +193,31 @@ public class RuntimePropertyField : MonoBehaviour
 
             SaveableEntity owner = ResolveOwner(target);
 
+            if (attribute != null &&
+                attribute.ReferenceMode == ReferenceMode.Consuming &&
+                entity.ConsumedBy != null &&
+                entity.ConsumedBy != owner)
+            {
+                continue;
+            }
+
             SaveableEntity previous =
                 this.GetFieldValue(target) as SaveableEntity;
 
             if (previous != null &&
                 owner != null &&
-                previous.OwnedBy == owner)
+                previous.ConsumedBy == owner)
             {
-                previous.ReleaseOwner();
+                previous.ReleaseConsumedBy(owner);
             }
 
             this.SetValue(target, entity);
 
             if (attribute != null &&
-                !attribute.ReferenceOnly &&
+                attribute.ReferenceMode == ReferenceMode.Consuming &&
                 owner != null)
             {
-                entity.SetOwner(owner);
+                entity.SetConsumedBy(owner);
             }
         }
 
@@ -258,23 +266,31 @@ public class RuntimePropertyField : MonoBehaviour
 
             SaveableEntity owner = ResolveOwner(target);
 
+            if (attribute != null &&
+                attribute.ReferenceMode == ReferenceMode.Consuming &&
+                entity.ConsumedBy != null &&
+                entity.ConsumedBy != owner)
+            {
+                continue;
+            }
+
             SaveableEntity previous =
                 list[index] as SaveableEntity;
 
             if (previous != null &&
                 owner != null &&
-                previous.OwnedBy == owner)
+                previous.ConsumedBy == owner)
             {
-                previous.ReleaseOwner();
+                previous.ReleaseConsumedBy(owner);
             }
 
             list[index] = entity;
 
             if (attribute != null &&
-                !attribute.ReferenceOnly &&
+                attribute.ReferenceMode == ReferenceMode.Consuming &&
                 owner != null)
             {
-                entity.SetOwner(owner);
+                entity.SetConsumedBy(owner);
             }
         }
 
@@ -331,13 +347,21 @@ public class RuntimePropertyField : MonoBehaviour
                     continue;
                 }
 
+                if (attribute != null &&
+                    attribute.ReferenceMode == ReferenceMode.Consuming &&
+                    entity.ConsumedBy != null &&
+                    entity.ConsumedBy != owner)
+                {
+                    continue;
+                }
+
                 list.Add(entity);
 
                 if (attribute != null &&
-                    !attribute.ReferenceOnly &&
+                    attribute.ReferenceMode == ReferenceMode.Consuming &&
                     owner != null)
                 {
-                    entity.SetOwner(owner);
+                    entity.SetConsumedBy(owner);
                 }
             }
         }
@@ -351,6 +375,9 @@ public class RuntimePropertyField : MonoBehaviour
     /// are <see cref="BuilderEntity"/> proxies, so for those the class of the
     /// prefab they stand for is checked instead of the proxy itself.
     /// </summary>
+    /// <param name="required">The required type.</param>
+    /// <param name="entity">The entity to check.</param>
+    /// <returns>True when the entity fits the required type.</returns>
     private static bool FitsType(Type required, SaveableEntity entity)
     {
         if (required == null ||
