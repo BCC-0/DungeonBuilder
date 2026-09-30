@@ -3921,9 +3921,9 @@ MonoBehaviour:
   m_ChildAlignment: 4
   m_Spacing: 5
   m_ChildForceExpandWidth: 1
-  m_ChildForceExpandHeight: 1
-  m_ChildControlWidth: 0
-  m_ChildControlHeight: 0
+  m_ChildForceExpandHeight: 0
+  m_ChildControlWidth: 1
+  m_ChildControlHeight: 1
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
@@ -7387,7 +7387,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RuntimePropertyEditor
   propertyContainer: {fileID: 595929095}
-  propertyRowPrefab: {fileID: 3011177141004706493, guid: 4f667c1380eac164fb31dc55682b4bd5, type: 3}
+  propertyRowPrefab: {fileID: 3374574749389402575, guid: 4f667c1380eac164fb31dc55682b4bd5, type: 3}
   positionRowPrefab: {fileID: 3487035033670572255, guid: b19a5ac75f1f31a4c8f2de9edafd7fe7, type: 3}
 --- !u!114 &1096714804
 MonoBehaviour:

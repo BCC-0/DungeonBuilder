@@ -75,8 +75,12 @@ public abstract class SaveableEntity : MonoBehaviour
     /// Makes this entity consumed by another entity.
     /// </summary>
     /// <param name="consumer">The entity that consumes this entity.</param>
+    /// <param name="consumingField">
+    /// The name of the field on the consumer that holds this entity. That field
+    /// keeps its reference, all other references to this entity are removed.
+    /// </param>
     /// <returns>True when this entity was successfully consumed.</returns>
-    public bool SetConsumedBy(SaveableEntity consumer)
+    public bool SetConsumedBy(SaveableEntity consumer, string consumingField = null)
     {
         if (consumer == null)
         {
@@ -90,7 +94,7 @@ public abstract class SaveableEntity : MonoBehaviour
         }
 
         this.consumedBy = consumer;
-        this.RemoveOtherReferences(consumer);
+        this.RemoveOtherReferences(consumer, consumingField);
         this.SetWorldPresence(false);
         return true;
     }
@@ -532,64 +536,86 @@ public abstract class SaveableEntity : MonoBehaviour
     }
 
     /// <summary>
+    /// Removes every reference to the target from this entity's reference
+    /// fields, except from the field with the given name.
+    /// </summary>
+    /// <param name="target">The entity that should no longer be referenced.</param>
+    /// <param name="exceptField">The field name to leave untouched, or null.</param>
+    protected virtual void RemoveReferencesTo(
+        SaveableEntity target,
+        string exceptField)
+    {
+        foreach (FieldInfo field in this.GetSaveFields())
+        {
+            if (field.Name == exceptField)
+            {
+                continue;
+            }
+
+            if (typeof(SaveableEntity).IsAssignableFrom(field.FieldType))
+            {
+                if (field.GetValue(this) as SaveableEntity == target)
+                {
+                    field.SetValue(this, null);
+                }
+
+                continue;
+            }
+
+            if (!IsEntityList(field.FieldType))
+            {
+                continue;
+            }
+
+            IList list = field.GetValue(this) as IList;
+
+            if (list == null)
+            {
+                continue;
+            }
+
+            for (int i = list.Count - 1; i >= 0; i--)
+            {
+                if (list[i] as SaveableEntity == target)
+                {
+                    list.RemoveAt(i);
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// Removes this entity from all reference fields on other entities.
-    /// The consumer that just consumed this entity keeps its reference.
+    /// The consuming field of the consumer keeps its reference.
     /// </summary>
     /// <param name="consumer">The entity that now consumes this entity.</param>
-    private void RemoveOtherReferences(SaveableEntity consumer)
+    /// <param name="consumingField">The field on the consumer that keeps the reference.</param>
+    private void RemoveOtherReferences(
+        SaveableEntity consumer,
+        string consumingField)
     {
+        Debug.Log($"Consume {this.name} by {consumer.name}, keep field: '{consumingField}'");
+
         SaveableEntity[] entities = FindObjectsByType<SaveableEntity>();
 
         foreach (SaveableEntity entity in entities)
         {
             if (entity == null ||
-                entity == consumer ||
                 entity == this)
             {
                 continue;
             }
 
-            FieldInfo[] fields = entity.GetSaveFields();
+            // Only the consuming field of the consumer is exempt.
+            string exceptField =
+                entity == consumer
+                    ? consumingField
+                    : null;
 
-            foreach (FieldInfo field in fields)
-            {
-                Type fieldType = field.FieldType;
-
-                if (typeof(SaveableEntity).IsAssignableFrom(fieldType))
-                {
-                    SaveableEntity reference =
-                        field.GetValue(entity) as SaveableEntity;
-
-                    if (reference == this)
-                    {
-                        field.SetValue(entity, null);
-                    }
-
-                    continue;
-                }
-
-                if (!IsEntityList(fieldType))
-                {
-                    continue;
-                }
-
-                IList list = field.GetValue(entity) as IList;
-
-                if (list == null)
-                {
-                    continue;
-                }
-
-                for (int i = list.Count - 1; i >= 0; i--)
-                {
-                    if ((UnityEngine.Object)list[i] == this)
-                    {
-                        list.RemoveAt(i);
-                    }
-                }
-            }
+            entity.RemoveReferencesTo(this, exceptField);
         }
     }
+
 
     private void AddPendingReference(
         FieldInfo field,
@@ -647,7 +673,7 @@ public abstract class SaveableEntity : MonoBehaviour
 
             if (attribute != null &&
                 attribute.ReferenceMode == ReferenceMode.Consuming &&
-                !found.SetConsumedBy(this))
+                !found.SetConsumedBy(this, pending.Key))
             {
                 Debug.LogWarning(
                     $"{this.name}: could not consume the entity " +

@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using UnityEngine;
 
@@ -387,6 +388,49 @@ public class BuilderEntity : SaveableEntity
         return false;
     }
 
+    /// <summary>
+    /// Removes references to a target except for the given field.
+    /// </summary>
+    /// <param name="target">The target to remove.</param>
+    /// <param name="exceptField">The field to keep it in.</param>
+    protected override void RemoveReferencesTo(
+    SaveableEntity target,
+    string exceptField)
+    {
+        foreach (KeyValuePair<string, RuntimeEditableValue> entry in
+                 this.runtimeEditableFields)
+        {
+            if (entry.Key == exceptField ||
+                entry.Value == null)
+            {
+                continue;
+            }
+
+            object value = entry.Value.Value;
+
+            if (value is SaveableEntity single)
+            {
+                if (single == target)
+                {
+                    entry.Value.Value = null;
+                }
+
+                continue;
+            }
+
+            if (value is IList list)
+            {
+                for (int i = list.Count - 1; i >= 0; i--)
+                {
+                    if (list[i] as SaveableEntity == target)
+                    {
+                        list.RemoveAt(i);
+                    }
+                }
+            }
+        }
+    }
+
     private void InitializeSourceData(SaveableEntity source)
     {
         if (source is ItemObject itemSource)
@@ -447,7 +491,9 @@ public class BuilderEntity : SaveableEntity
             }
 
             object value =
-                field.GetValue(source);
+                this.CopyIfEntityList(
+                    field,
+                    field.GetValue(source));
 
             this.runtimeEditableFields[field.Name] =
                 new RuntimeEditableValue(
@@ -476,13 +522,34 @@ public class BuilderEntity : SaveableEntity
             }
 
             object value =
-                field.GetValue(source);
+                this.CopyIfEntityList(
+                    field,
+                    field.GetValue(source));
 
             this.runtimeEditableFields[field.Name] =
                 new RuntimeEditableValue(
                     field,
                     value);
         }
+    }
+
+    /// <summary>
+    /// Gives every builder entity its own list, so entities made from the same
+    /// prefab do not share one list instance with the prefab.
+    /// </summary>
+    /// <param name="field">The field the value belongs to.</param>
+    /// <param name="value">The value read from the source.</param>
+    /// <returns>A copy when the value is a list of entities, otherwise the value.</returns>
+    private object CopyIfEntityList(FieldInfo field, object value)
+    {
+        if (IsEntityList(field.FieldType) &&
+            value is IList original)
+        {
+            return new List<SaveableEntity>(
+                original.Cast<SaveableEntity>());
+        }
+
+        return value;
     }
 
     private List<FieldInfo> GetAllFields(Type type)

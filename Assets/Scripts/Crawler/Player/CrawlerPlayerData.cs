@@ -35,10 +35,10 @@ public class CrawlerPlayerData : SaveableEntity
     [SaveField(referenceMode: ReferenceMode.Consuming)]
     private SaveableEntity consumedReference;
 
-    [SaveField(referenceMode: ReferenceMode.Shared)]
+    [SaveField(referenceMode: ReferenceMode.Shared, maxReferences: 2)]
     private List<SaveableEntity> referenceList;
 
-    [SaveField(referenceMode: ReferenceMode.Consuming)]
+    [SaveField(referenceMode: ReferenceMode.Consuming, maxReferences: 3)]
     private List<SaveableEntity> referenceOnlyList;
 
     [Header("Inventory")]

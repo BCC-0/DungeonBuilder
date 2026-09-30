@@ -31,8 +31,6 @@ public class RuntimePropertyField : MonoBehaviour
 
     [Header("References (optional)")]
     [SerializeField]
-    private Transform referenceContainer;
-    [SerializeField]
     private ReferenceButton referenceButtonPrefab;
     [SerializeField]
     private Button addReferenceButton;
@@ -41,13 +39,13 @@ public class RuntimePropertyField : MonoBehaviour
     private List<object> targets;
     private Action onValueChanged;
     private bool updating;
+    private string builderFieldName;
 
     /// <summary>
-    /// When set, the values live on <see cref="BuilderEntity"/> runtime editable
-    /// values and are read and written through the entity instead of the field.
-    /// The field then only describes the type, it is not a field of the target.
+    /// Gets the name of the field as the owner knows it. Builder entities use the
+    /// runtime editable name, everything else uses the real field name.
     /// </summary>
-    private string builderFieldName;
+    private string ConsumingFieldName => this.builderFieldName ?? this.field.Name;
 
     /// <summary>
     /// Initialize the property field.
@@ -239,7 +237,7 @@ public class RuntimePropertyField : MonoBehaviour
                 attribute.ReferenceMode == ReferenceMode.Consuming &&
                 owner != null)
             {
-                entity.SetConsumedBy(owner);
+                entity.SetConsumedBy(owner, this.ConsumingFieldName);
             }
         }
 
@@ -249,8 +247,10 @@ public class RuntimePropertyField : MonoBehaviour
 
     /// <summary>
     /// Replaces one element of the referenced list.
+    /// The supplied index is the visible/UI index, not necessarily the
+    /// underlying list index because consumed references may be hidden.
     /// </summary>
-    /// <param name="index">The list index to replace.</param>
+    /// <param name="index">The visible list index to replace.</param>
     /// <param name="entity">The new entity.</param>
     public void SetReference(int index, SaveableEntity entity)
     {
@@ -274,9 +274,16 @@ public class RuntimePropertyField : MonoBehaviour
             IList list =
                 this.GetFieldValue(target) as IList;
 
-            if (list == null ||
-                index < 0 ||
-                index >= list.Count)
+            if (list == null)
+            {
+                continue;
+            }
+
+            int actualIndex =
+                this.GetActualReferenceIndex(target, index);
+
+            if (actualIndex < 0 ||
+                actualIndex >= list.Count)
             {
                 continue;
             }
@@ -292,7 +299,7 @@ public class RuntimePropertyField : MonoBehaviour
             }
 
             SaveableEntity previous =
-                list[index] as SaveableEntity;
+                list[actualIndex] as SaveableEntity;
 
             if (previous != null &&
                 owner != null &&
@@ -301,7 +308,7 @@ public class RuntimePropertyField : MonoBehaviour
                 previous.ReleaseConsumedBy(owner);
             }
 
-            list[index] = entity;
+            list[actualIndex] = entity;
 
             if (attribute != null &&
                 attribute.ReferenceMode == ReferenceMode.Consuming &&
@@ -320,8 +327,7 @@ public class RuntimePropertyField : MonoBehaviour
     /// and entities of the wrong type are skipped.
     /// </summary>
     /// <param name="entities">The entities to add.</param>
-    public void AddReferences(
-        IReadOnlyList<SaveableEntity> entities)
+    public void AddReferences(IReadOnlyList<SaveableEntity> entities)
     {
         if (entities == null ||
             entities.Count == 0 ||
@@ -359,7 +365,7 @@ public class RuntimePropertyField : MonoBehaviour
                     if (!this.CanReference(entity) ||
                         list.Contains(entity) ||
                         (maxReferences >= 0 &&
-                         list.Count >= maxReferences))
+                         this.GetVisibleReferenceCount(target) >= maxReferences))
                     {
                         continue;
                     }
@@ -378,7 +384,7 @@ public class RuntimePropertyField : MonoBehaviour
                         attribute.ReferenceMode == ReferenceMode.Consuming &&
                         owner != null)
                     {
-                        entity.SetConsumedBy(owner);
+                        entity.SetConsumedBy(owner, this.ConsumingFieldName);
                     }
                 }
             }
@@ -413,7 +419,7 @@ public class RuntimePropertyField : MonoBehaviour
                     attribute.ReferenceMode == ReferenceMode.Consuming &&
                     owner != null)
                 {
-                    entity.SetConsumedBy(owner);
+                    entity.SetConsumedBy(owner, this.ConsumingFieldName);
                 }
             }
         }
@@ -422,10 +428,18 @@ public class RuntimePropertyField : MonoBehaviour
         this.onValueChanged?.Invoke();
     }
 
+    private static string FormatNumber(float value)
+    {
+        return value.ToString(
+            "0.##",
+            CultureInfo.InvariantCulture);
+    }
+
     /// <summary>
     /// Removes one reference.
+    /// The supplied index is the visible/UI index.
     /// </summary>
-    /// <param name="index">The reference index.</param>
+    /// <param name="index">The visible reference index.</param>
     private void RemoveReference(int index)
     {
         if (this.targets == null ||
@@ -451,17 +465,24 @@ public class RuntimePropertyField : MonoBehaviour
                 IList list =
                     this.GetFieldValue(target) as IList;
 
-                if (list == null ||
-                    index < 0 ||
-                    index >= list.Count)
+                if (list == null)
+                {
+                    continue;
+                }
+
+                int actualIndex =
+                    this.GetActualReferenceIndex(target, index);
+
+                if (actualIndex < 0 ||
+                    actualIndex >= list.Count)
                 {
                     continue;
                 }
 
                 SaveableEntity entity =
-                    list[index] as SaveableEntity;
+                    list[actualIndex] as SaveableEntity;
 
-                list.RemoveAt(index);
+                list.RemoveAt(actualIndex);
 
                 if (entity != null &&
                     attribute != null &&
@@ -545,11 +566,134 @@ public class RuntimePropertyField : MonoBehaviour
         return null;
     }
 
-    private static string FormatNumber(float value)
+    /// <summary>
+    /// Determines whether a reference should be visible in this property field.
+    ///
+    /// An unconsumed reference is visible.
+    /// A reference consumed by this field's owner is also visible.
+    /// A reference consumed by a different owner is hidden.
+    /// </summary>
+    private bool IsReferenceVisible(
+        SaveableEntity entity,
+        SaveableEntity owner)
     {
-        return value.ToString(
-            "0.##",
-            CultureInfo.InvariantCulture);
+        if (entity == null)
+        {
+            return false;
+        }
+
+        if (entity.ConsumedBy == null)
+        {
+            return true;
+        }
+
+        return entity.ConsumedBy == owner;
+    }
+
+    /// <summary>
+    /// Gets the number of references that should actually be displayed.
+    /// Consumed references belonging to another owner are excluded.
+    /// </summary>
+    private int GetVisibleReferenceCount(object target)
+    {
+        if (target == null)
+        {
+            return 0;
+        }
+
+        SaveableEntity owner =
+            ResolveOwner(target);
+
+        if (!this.IsReferenceList())
+        {
+            SaveableEntity entity =
+                this.GetFieldValue(target) as SaveableEntity;
+
+            return this.IsReferenceVisible(entity, owner)
+                ? 1
+                : 0;
+        }
+
+        IList list =
+            this.GetFieldValue(target) as IList;
+
+        if (list == null)
+        {
+            return 0;
+        }
+
+        int count = 0;
+
+        foreach (object value in list)
+        {
+            SaveableEntity entity =
+                value as SaveableEntity;
+
+            if (this.IsReferenceVisible(entity, owner))
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    /// <summary>
+    /// Converts a visible/UI reference index into the actual index in the
+    /// underlying list.
+    ///
+    /// For example, if the real list is:
+    ///
+    ///     [A, B, C]
+    ///
+    /// and B is consumed elsewhere, the UI contains:
+    ///
+    ///     [A, C]
+    ///
+    /// Therefore visible index 1 maps to actual index 2.
+    /// </summary>
+    private int GetActualReferenceIndex(
+        object target,
+        int visibleIndex)
+    {
+        if (target == null ||
+            visibleIndex < 0)
+        {
+            return -1;
+        }
+
+        SaveableEntity owner =
+            ResolveOwner(target);
+
+        IList list =
+            this.GetFieldValue(target) as IList;
+
+        if (list == null)
+        {
+            return -1;
+        }
+
+        int currentVisibleIndex = 0;
+
+        for (int i = 0; i < list.Count; i++)
+        {
+            SaveableEntity entity =
+                list[i] as SaveableEntity;
+
+            if (!this.IsReferenceVisible(entity, owner))
+            {
+                continue;
+            }
+
+            if (currentVisibleIndex == visibleIndex)
+            {
+                return i;
+            }
+
+            currentVisibleIndex++;
+        }
+
+        return -1;
     }
 
     /// <summary>
@@ -557,8 +701,6 @@ public class RuntimePropertyField : MonoBehaviour
     /// </summary>
     private bool TryGetRange(out float min, out float max)
     {
-        // TODO: if BuilderEntity runtime editable values carry their own
-        // min/max, read them here as well.
         SaveFieldAttribute attribute =
             this.field != null
                 ? this.field.GetCustomAttribute<SaveFieldAttribute>()
@@ -595,11 +737,6 @@ public class RuntimePropertyField : MonoBehaviour
         {
             this.slider.gameObject.SetActive(false);
             this.slider.onValueChanged.RemoveAllListeners();
-        }
-
-        if (this.referenceContainer != null)
-        {
-            this.referenceContainer.gameObject.SetActive(false);
         }
 
         if (this.addReferenceButton != null)
@@ -696,21 +833,20 @@ public class RuntimePropertyField : MonoBehaviour
 
     private void SetupReferenceList()
     {
-        if (this.referenceContainer == null ||
-            this.referenceButtonPrefab == null ||
+        if (this.referenceButtonPrefab == null ||
             this.targets == null ||
             this.targets.Count == 0)
         {
             return;
         }
 
-        this.referenceContainer.gameObject.SetActive(true);
-
         this.ClearReferenceButtons();
 
-        int referenceCount = this.GetReferenceCount();
+        int referenceCount =
+            this.GetReferenceCount();
 
-        int maxReferences = this.GetMaxReferences();
+        int maxReferences =
+            this.GetMaxReferences();
 
         if (this.addReferenceButton != null)
         {
@@ -730,16 +866,24 @@ public class RuntimePropertyField : MonoBehaviour
             SaveableEntity entity =
                 this.GetReference(i);
 
+            // This should normally never happen because GetReference()
+            // already filters invisible references, but guard against it
+            // so no empty ReferenceButton is created.
+            if (entity == null)
+            {
+                continue;
+            }
+
             ReferenceButton button =
                 Instantiate(
                     this.referenceButtonPrefab,
-                    this.referenceContainer);
+                    this.transform);
 
             int index = i;
 
             button.SetEntity(entity);
+
             button.SetConsumed(
-                entity != null &&
                 entity.ConsumedBy != null);
 
             button.SetRemoveAction(
@@ -772,62 +916,69 @@ public class RuntimePropertyField : MonoBehaviour
             return 0;
         }
 
-        if (!this.IsReferenceList())
-        {
-            return this.GetFieldValue(this.targets[0]) != null
-                ? 1
-                : 0;
-        }
-
-        IList list =
-            this.GetFieldValue(this.targets[0]) as IList;
-
-        return list != null
-            ? list.Count
-            : 0;
+        return this.GetVisibleReferenceCount(
+            this.targets[0]);
     }
 
     private SaveableEntity GetReference(int index)
     {
         if (this.targets == null ||
-            this.targets.Count == 0)
+            this.targets.Count == 0 ||
+            index < 0)
         {
             return null;
         }
+
+        object target =
+            this.targets[0];
 
         if (!this.IsReferenceList())
         {
-            return index == 0
-                ? this.GetFieldValue(this.targets[0])
-                    as SaveableEntity
-                : null;
+            if (index != 0)
+            {
+                return null;
+            }
+
+            SaveableEntity entity =
+                this.GetFieldValue(target) as SaveableEntity;
+
+            return this.IsReferenceVisible(
+                entity,
+                ResolveOwner(target))
+                    ? entity
+                    : null;
         }
 
         IList list =
-            this.GetFieldValue(this.targets[0]) as IList;
+            this.GetFieldValue(target) as IList;
 
-        if (list == null ||
-            index < 0 ||
-            index >= list.Count)
+        if (list == null)
         {
             return null;
         }
 
-        return list[index] as SaveableEntity;
+        int actualIndex =
+            this.GetActualReferenceIndex(
+                target,
+                index);
+
+        if (actualIndex < 0 ||
+            actualIndex >= list.Count)
+        {
+            return null;
+        }
+
+        return list[actualIndex] as SaveableEntity;
     }
 
     private void ClearReferenceButtons()
     {
-        if (this.referenceContainer == null)
-        {
-            return;
-        }
-
-        for (int i = this.referenceContainer.childCount - 1;
+        for (int i = this.transform.childCount - 1;
              i >= 0;
              i--)
         {
-            Transform child = this.referenceContainer.GetChild(i);
+            Transform child =
+                this.transform.GetChild(i);
 
             if (this.addReferenceButton != null &&
                 child == this.addReferenceButton.transform)
@@ -846,7 +997,8 @@ public class RuntimePropertyField : MonoBehaviour
     /// </summary>
     private void RebuildLayout()
     {
-        RectTransform row = this.transform as RectTransform;
+        RectTransform row =
+            this.transform as RectTransform;
 
         if (row == null)
         {
@@ -855,7 +1007,8 @@ public class RuntimePropertyField : MonoBehaviour
 
         LayoutRebuilder.ForceRebuildLayoutImmediate(row);
 
-        RectTransform parent = row.parent as RectTransform;
+        RectTransform parent =
+            row.parent as RectTransform;
 
         if (parent != null)
         {
@@ -875,7 +1028,9 @@ public class RuntimePropertyField : MonoBehaviour
     {
         if (RuntimePropertyEditor.Instance != null)
         {
-            RuntimePropertyEditor.Instance.BeginReferenceSelection(this, index);
+            RuntimePropertyEditor.Instance.BeginReferenceSelection(
+                this,
+                index);
         }
     }
 
@@ -912,7 +1067,8 @@ public class RuntimePropertyField : MonoBehaviour
             return null;
         }
 
-        return this.GetFieldValue(this.targets[0]);
+        return this.GetFieldValue(
+            this.targets[0]);
     }
 
     /// <summary>
@@ -929,7 +1085,9 @@ public class RuntimePropertyField : MonoBehaviour
             return;
         }
 
-        this.field.SetValue(target, value);
+        this.field.SetValue(
+            target,
+            value);
     }
 
     private void OnInputChanged(string value)
@@ -974,14 +1132,20 @@ public class RuntimePropertyField : MonoBehaviour
 
         if (this.field.FieldType == typeof(int))
         {
-            int rounded = Mathf.RoundToInt(value);
+            int rounded =
+                Mathf.RoundToInt(value);
+
             result = rounded;
-            this.UpdateSliderValueLabel(rounded);
+
+            this.UpdateSliderValueLabel(
+                rounded);
         }
         else
         {
             result = value;
-            this.UpdateSliderValueLabel(value);
+
+            this.UpdateSliderValueLabel(
+                value);
         }
 
         this.ApplyValue(result);
@@ -995,7 +1159,9 @@ public class RuntimePropertyField : MonoBehaviour
         }
 
         if ((value is int || value is float) &&
-            this.TryGetRange(out float min, out float max))
+            this.TryGetRange(
+                out float min,
+                out float max))
         {
             float numericValue =
                 Mathf.Clamp(
@@ -1016,7 +1182,9 @@ public class RuntimePropertyField : MonoBehaviour
                 continue;
             }
 
-            this.SetValue(target, value);
+            this.SetValue(
+                target,
+                value);
         }
 
         this.onValueChanged?.Invoke();
@@ -1029,19 +1197,25 @@ public class RuntimePropertyField : MonoBehaviour
             return;
         }
 
-        object value = this.GetCurrentValue();
+        object value =
+            this.GetCurrentValue();
 
         this.updating = true;
+
         this.inputField.SetTextWithoutNotify(
             value != null
-                ? Convert.ToString(value, CultureInfo.InvariantCulture)
+                ? Convert.ToString(
+                    value,
+                    CultureInfo.InvariantCulture)
                 : string.Empty);
+
         this.updating = false;
     }
 
     private void RefreshSlider()
     {
-        object value = this.GetCurrentValue();
+        object value =
+            this.GetCurrentValue();
 
         if (this.slider == null ||
             !(value is int || value is float))
@@ -1049,20 +1223,26 @@ public class RuntimePropertyField : MonoBehaviour
             return;
         }
 
-        float sliderValue = Convert.ToSingle(value);
+        float sliderValue =
+            Convert.ToSingle(value);
 
         this.updating = true;
-        this.slider.SetValueWithoutNotify(sliderValue);
+
+        this.slider.SetValueWithoutNotify(
+            sliderValue);
+
         this.updating = false;
 
-        this.UpdateSliderValueLabel(sliderValue);
+        this.UpdateSliderValueLabel(
+            sliderValue);
     }
 
     private void UpdateSliderValueLabel(float value)
     {
         if (this.sliderValueLabel != null)
         {
-            this.sliderValueLabel.text = FormatNumber(value);
+            this.sliderValueLabel.text =
+                FormatNumber(value);
         }
     }
 
@@ -1106,7 +1286,9 @@ public class RuntimePropertyField : MonoBehaviour
         }
 
         if (type == typeof(bool) &&
-            bool.TryParse(value, out bool boolValue))
+            bool.TryParse(
+                value,
+                out bool boolValue))
         {
             result = boolValue;
             return true;
