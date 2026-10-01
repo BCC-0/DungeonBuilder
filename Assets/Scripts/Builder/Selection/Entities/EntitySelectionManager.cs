@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using DG.Tweening;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
@@ -13,6 +15,13 @@ public class EntitySelectionManager : SelectionManagerBase
     /// </summary>
     [SerializeField]
     private float entitySelectRadius = 0.5f;
+
+    [SerializeField]
+    private GameObject referenceOverlay;
+
+    private RectTransform referenceTextBlock;
+
+    private TextMeshProUGUI referenceOverlayText;
 
     /// <summary>
     /// Visualizer that outlines the current entity selection.
@@ -380,5 +389,10 @@ public class EntitySelectionManager : SelectionManagerBase
                 this.GetBoundingRect(
                     entities.Select(e => (Vector2)e.transform.position)));
         }
+    }
+
+    private void ShowReferenceOverlay()
+    {
+        
     }
 }
