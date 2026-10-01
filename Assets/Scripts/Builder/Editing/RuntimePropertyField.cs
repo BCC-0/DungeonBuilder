@@ -132,6 +132,16 @@ public class RuntimePropertyField : MonoBehaviour
             return false;
         }
 
+        foreach (object target in this.targets)
+        {
+            SaveableEntity owner = ResolveOwner(target);
+
+            if (owner == entity)
+            {
+                return false;
+            }
+        }
+
         if (this.IsReferenceList())
         {
             return FitsType(
@@ -980,8 +990,10 @@ public class RuntimePropertyField : MonoBehaviour
             Transform child =
                 this.transform.GetChild(i);
 
-            if (this.addReferenceButton != null &&
-                child == this.addReferenceButton.transform)
+            if ((this.addReferenceButton != null &&
+                 child == this.addReferenceButton.transform) ||
+                (this.label != null &&
+                 child == this.label.transform))
             {
                 continue;
             }

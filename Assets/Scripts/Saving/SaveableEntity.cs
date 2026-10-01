@@ -11,8 +11,7 @@ using UnityEngine;
 [RequireComponent(typeof(PrefabIdentity))]
 public abstract class SaveableEntity : MonoBehaviour
 {
-    private readonly List<PendingReference> pendingReferences =
-        new List<PendingReference>();
+    private readonly List<PendingReference> pendingReferences = new List<PendingReference>();
 
     [SerializeField]
     private string uniqueID;
@@ -23,12 +22,14 @@ public abstract class SaveableEntity : MonoBehaviour
     private SaveableEntity consumedBy;
 
     /// <summary>
-    /// Gets the spriteRenderer of this entity.
+    /// Gets the entity that consumes this entity.
     /// </summary>
-    protected SpriteRenderer SpriteRenderer
-    {
-        get { return this.spriteRenderer; }
-    }
+    public SaveableEntity ConsumedBy => this.consumedBy;
+
+    /// <summary>
+    /// Gets a value indicating whether this entity currently exists in the world.
+    /// </summary>
+    public bool ExistsInWorld => this.consumedBy == null;
 
     /// <summary>
     /// Gets a value indicating whether there are references that still wait to be resolved.
@@ -36,14 +37,12 @@ public abstract class SaveableEntity : MonoBehaviour
     protected bool HasPendingReferences => this.pendingReferences.Count > 0;
 
     /// <summary>
-    /// Gets the entity that consumes this entity.
+    /// Gets the spriteRenderer of this entity.
     /// </summary>
-    public SaveableEntity ConsumedBy => this.consumedBy;
-
-    /// <summary>
-    /// Gets whether this entity currently exists in the world.
-    /// </summary>
-    public bool ExistsInWorld => this.consumedBy == null;
+    protected SpriteRenderer SpriteRenderer
+    {
+        get { return this.spriteRenderer; }
+    }
 
     /// <summary>
     /// Gets the unique id of this entity.
@@ -590,12 +589,8 @@ public abstract class SaveableEntity : MonoBehaviour
     /// </summary>
     /// <param name="consumer">The entity that now consumes this entity.</param>
     /// <param name="consumingField">The field on the consumer that keeps the reference.</param>
-    private void RemoveOtherReferences(
-        SaveableEntity consumer,
-        string consumingField)
+    private void RemoveOtherReferences(SaveableEntity consumer, string consumingField)
     {
-        Debug.Log($"Consume {this.name} by {consumer.name}, keep field: '{consumingField}'");
-
         SaveableEntity[] entities = FindObjectsByType<SaveableEntity>();
 
         foreach (SaveableEntity entity in entities)
@@ -615,7 +610,6 @@ public abstract class SaveableEntity : MonoBehaviour
             entity.RemoveReferencesTo(this, exceptField);
         }
     }
-
 
     private void AddPendingReference(
         FieldInfo field,

@@ -95,8 +95,7 @@ public class RuntimePropertyEditor : MonoBehaviour
         RuntimePropertyField propertyField,
         int index)
     {
-        EntitySelectionManager selectionManager =
-            FindAnyObjectByType<EntitySelectionManager>();
+        EntitySelectionManager selectionManager = FindAnyObjectByType<EntitySelectionManager>();
 
         if (selectionManager == null)
         {

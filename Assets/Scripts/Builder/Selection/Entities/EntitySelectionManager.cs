@@ -146,11 +146,9 @@ public class EntitySelectionManager : SelectionManagerBase
             return;
         }
 
-        List<SaveableEntity> selectedEntities =
-            MapEditorManager.Instance.SelectedEntities;
+        List<SaveableEntity> selectedEntities = MapEditorManager.Instance.SelectedEntities;
 
-        HashSet<SaveableEntity> movingEntities =
-            new HashSet<SaveableEntity>(selectedEntities);
+        HashSet<SaveableEntity> movingEntities = new HashSet<SaveableEntity>(selectedEntities);
 
         foreach (KeyValuePair<SaveableEntity, Vector2Int> entry in this.extraMoveStartCells)
         {
@@ -234,7 +232,6 @@ public class EntitySelectionManager : SelectionManagerBase
     /// <inheritdoc/>
     protected override void OnReferenceSelectionEnded()
     {
-        // The selection was never changed, so just bring the buttons back.
         this.SetSelection(MapEditorManager.Instance.SelectedEntities);
     }
 
@@ -242,12 +239,13 @@ public class EntitySelectionManager : SelectionManagerBase
     protected override List<SaveableEntity> PickEntitiesAt(Vector2 position)
     {
         SaveableEntity closestEntity = FindObjectsByType<SaveableEntity>()
-            .Where(e => !IsTilemapEntity(e))
+            .Where(e => e.ExistsInWorld && !IsTilemapEntity(e))
             .OrderBy(e => Vector2.Distance(e.transform.position, position))
             .FirstOrDefault();
 
         if (closestEntity != null &&
-            Vector2.Distance(closestEntity.transform.position, position) <= this.entitySelectRadius)
+            Vector2.Distance(closestEntity.transform.position, position) <=
+            this.entitySelectRadius)
         {
             return new List<SaveableEntity> { closestEntity };
         }
@@ -260,6 +258,7 @@ public class EntitySelectionManager : SelectionManagerBase
     {
         return FindObjectsByType<SaveableEntity>()
             .Where(e =>
+                e.ExistsInWorld &&
                 !IsTilemapEntity(e) &&
                 rect.Contains(e.transform.position))
             .ToList();
@@ -358,6 +357,11 @@ public class EntitySelectionManager : SelectionManagerBase
     /// <param name="entities">The entities to select.</param>
     private void SetSelection(List<SaveableEntity> entities)
     {
+        entities = entities?
+            .Where(e => e != null && e.ExistsInWorld)
+            .ToList()
+            ?? new List<SaveableEntity>();
+
         MapEditorManager.Instance.SelectedEntities = entities;
         this.selectionVisualizer.Refresh();
 

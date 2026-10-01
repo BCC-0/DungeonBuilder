@@ -65,7 +65,7 @@ public class EntityEditorController : EditorControllerBase
 
         foreach (BuilderEntity buildEntity in BuilderRegistry.GetAll())
         {
-            if (Vector3.Distance(buildEntity.transform.position, snappedPos) < 0.1f)
+            if (buildEntity.ExistsInWorld && Vector3.Distance(buildEntity.transform.position, snappedPos) < 0.1f )
             {
                 return;
             }
@@ -90,11 +90,11 @@ public class EntityEditorController : EditorControllerBase
     /// </summary>
     private void TryErase()
     {
-        foreach (BuilderEntity builder in BuilderRegistry.GetAll())
+        foreach (BuilderEntity buildEntity in BuilderRegistry.GetAll())
         {
-            if (Vector3.Distance(builder.transform.position, this.CurrentPos) < 0.5f)
+            if (buildEntity.ExistsInWorld && Vector3.Distance(buildEntity.transform.position, this.CurrentPos) < 0.5f)
             {
-                Destroy(builder.gameObject);
+                Destroy(buildEntity.gameObject);
                 return;
             }
         }
