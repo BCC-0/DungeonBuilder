@@ -20,8 +20,8 @@ public class BuilderDesktopInputHandler : MonoBehaviour
 
     private bool isPrimaryHeld;
     private bool isMiddleMouseHeld;
-    private bool command;
 
+    // private bool command;
     private EditorControllerBase ActiveController => MapEditorManager.Instance.ActiveController;
 
     /// <summary>
@@ -269,11 +269,11 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     {
         if (ctx.started)
         {
-            this.command = true;
+            // this.command = true;
         }
         else if (ctx.canceled)
         {
-            this.command = false;
+            // this.command = false;
         }
     }
 

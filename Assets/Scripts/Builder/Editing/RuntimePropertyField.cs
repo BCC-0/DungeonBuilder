@@ -876,9 +876,6 @@ public class RuntimePropertyField : MonoBehaviour
             SaveableEntity entity =
                 this.GetReference(i);
 
-            // This should normally never happen because GetReference()
-            // already filters invisible references, but guard against it
-            // so no empty ReferenceButton is created.
             if (entity == null)
             {
                 continue;
@@ -898,16 +895,6 @@ public class RuntimePropertyField : MonoBehaviour
 
             button.SetRemoveAction(
                 () => this.RemoveReference(index));
-
-            Button buttonComponent =
-                button.GetComponent<Button>();
-
-            if (buttonComponent != null)
-            {
-                buttonComponent.onClick.RemoveAllListeners();
-                buttonComponent.onClick.AddListener(
-                    () => this.BeginReferenceSelection(index));
-            }
         }
 
         if (this.addReferenceButton != null)

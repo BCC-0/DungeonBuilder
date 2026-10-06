@@ -57,12 +57,12 @@ public class EntitySelectionManager : SelectionManagerBase
     /// <summary>
     /// Cell positions of the selected entities when movement started.
     /// </summary>
-    private Dictionary<SaveableEntity, Vector2Int> moveStartCells = new();
+    private Dictionary<SaveableEntity, Vector2Int> moveStartCells = new ();
 
     /// <summary>
     /// Cell positions of the selected entities when movement is continued on mobile.
     /// </summary>
-    private Dictionary<SaveableEntity, Vector2Int> extraMoveStartCells = new();
+    private Dictionary<SaveableEntity, Vector2Int> extraMoveStartCells = new ();
 
     /// <summary>
     /// Cell under the pointer when movement started.
@@ -77,6 +77,11 @@ public class EntitySelectionManager : SelectionManagerBase
     /// <inheritdoc/>
     public override void DeleteSelected()
     {
+        if (this.IsReferenceSelectionMode)
+        {
+            return;
+        }
+
         foreach (SaveableEntity entity in MapEditorManager.Instance.SelectedEntities)
         {
             if (entity != null)
@@ -91,7 +96,7 @@ public class EntitySelectionManager : SelectionManagerBase
     /// <inheritdoc/>
     public override void MoveSelected()
     {
-        if (this.IsMovementMode)
+        if (this.IsMovementMode || this.IsReferenceSelectionMode)
         {
             return;
         }
@@ -352,8 +357,7 @@ public class EntitySelectionManager : SelectionManagerBase
             return;
         }
 
-        this.moveStartPointerCell =
-            (Vector2Int)this.Grid.WorldToCell(worldPos);
+        this.moveStartPointerCell = (Vector2Int)this.Grid.WorldToCell(worldPos);
 
         foreach (SaveableEntity entity
             in this.extraMoveStartCells.Keys.ToList())
@@ -363,9 +367,7 @@ public class EntitySelectionManager : SelectionManagerBase
                 continue;
             }
 
-            this.extraMoveStartCells[entity] =
-                (Vector2Int)this.Grid.WorldToCell(
-                    entity.transform.position);
+            this.extraMoveStartCells[entity] = (Vector2Int)this.Grid.WorldToCell(entity.transform.position);
         }
 
         this.CurrentPos = worldPos;
@@ -412,15 +414,13 @@ public class EntitySelectionManager : SelectionManagerBase
     /// <param name="rect">The world-space rectangle of the drag.</param>
     protected override void OnBoxSelect(Rect rect)
     {
-        this.SetSelection(
-            this.PickEntitiesIn(rect));
+        this.SetSelection(this.PickEntitiesIn(rect));
     }
 
     /// <inheritdoc/>
     protected override void Awake()
     {
-        this.selectionVisualizer =
-            FindAnyObjectByType<EntitySelectionVisualizer>();
+        this.selectionVisualizer = FindAnyObjectByType<EntitySelectionVisualizer>();
 
         this.SetupReferenceOverlay();
         this.HideReferenceOverlay();

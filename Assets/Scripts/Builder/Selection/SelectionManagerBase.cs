@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 /// <summary>
@@ -249,11 +250,20 @@ public abstract class SelectionManagerBase : MonoBehaviour
 
         if (this.IsReferenceSelectionMode)
         {
-            // Picks go to the reference field, the selection stays as it is.
-            this.HandleReferencePick(
-                this.hasDragged
-                    ? this.PickEntitiesIn(this.GetWorldRect(this.dragStart, this.dragEnd))
-                    : this.PickEntitiesAt(this.dragEnd));
+            List<SaveableEntity> picked;
+
+            if (this.hasDragged)
+            {
+                picked = this.PickEntitiesIn(this.GetWorldRect(this.dragStart, this.dragEnd))
+                    .OrderBy(e => Vector2.SqrMagnitude((Vector2)e.transform.position - this.dragStart))
+                    .ToList();
+            }
+            else
+            {
+                picked = this.PickEntitiesAt(this.dragEnd);
+            }
+
+            this.HandleReferencePick(picked);
         }
         else if (this.hasDragged)
         {

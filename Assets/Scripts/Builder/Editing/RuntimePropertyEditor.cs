@@ -44,6 +44,13 @@ public class RuntimePropertyEditor : MonoBehaviour
     /// </summary>
     public void Rebuild()
     {
+        string selectionKey = this.BuildSelectionKey();
+
+        if (selectionKey == this.lastSelectionKey)
+        {
+            return;
+        }
+
         this.Clear();
 
         if (MapEditorManager.Instance == null)
@@ -51,7 +58,7 @@ public class RuntimePropertyEditor : MonoBehaviour
             return;
         }
 
-        this.lastSelectionKey = this.BuildSelectionKey();
+        this.lastSelectionKey = selectionKey;
 
         if (MapEditorManager.Instance.SelectedEntities.Count > 0)
         {
@@ -170,12 +177,10 @@ public class RuntimePropertyEditor : MonoBehaviour
     /// e.g. for lists where more entities can be added, or when the pick did
     /// not fit the field.
     /// </returns>
-    public bool TryApplyReferences(
-        IReadOnlyList<SaveableEntity> entities)
+    public bool TryApplyReferences(IReadOnlyList<SaveableEntity> entities)
     {
         RuntimePropertyField propertyField = this.referenceField;
 
-        // The row was destroyed (inspector rebuilt), nothing to apply to.
         if (propertyField == null)
         {
             return true;
@@ -195,27 +200,14 @@ public class RuntimePropertyEditor : MonoBehaviour
         {
             if (this.referenceIndex >= 0)
             {
-                // Replacing one existing element needs exactly one entity.
-                if (valid.Count != 1)
-                {
-                    return false;
-                }
-
-                propertyField.SetReference(
-                    this.referenceIndex,
-                    valid[0]);
-
-                return true;
+                propertyField.SetReference(this.referenceIndex, valid[0]);
+            }
+            else
+            {
+                propertyField.AddReferences(valid);
             }
 
-            // Adding: keep going, the user can add more.
-            propertyField.AddReferences(valid);
-            return false;
-        }
-
-        if (valid.Count != 1)
-        {
-            return false;
+            return true;
         }
 
         propertyField.SetReference(valid[0]);
