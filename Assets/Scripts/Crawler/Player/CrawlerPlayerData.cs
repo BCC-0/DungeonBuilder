@@ -12,7 +12,7 @@ public class CrawlerPlayerData : SaveableEntity
 {
     [Header("Player Attributes")]
     [SerializeField]
-    [SaveField]
+    [SaveField(1, 200)]
     private int maxHealth = 100;
 
     [SerializeField]
@@ -24,8 +24,22 @@ public class CrawlerPlayerData : SaveableEntity
     private TextMeshProUGUI healthText;
 
     [SerializeField]
-    [SaveField]
+    [SaveField(1, 12)]
     private float moveSpeed = 5f;
+
+    [SerializeField]
+    [SaveField(referenceMode: ReferenceMode.Shared)]
+    private SaveableEntity sharedReference;
+
+    [SerializeField]
+    [SaveField(referenceMode: ReferenceMode.Consuming)]
+    private SaveableEntity consumedReference;
+
+    [SaveField(referenceMode: ReferenceMode.Shared, maxReferences: 2)]
+    private List<SaveableEntity> referenceList;
+
+    [SaveField(referenceMode: ReferenceMode.Consuming, maxReferences: 3)]
+    private List<SaveableEntity> referenceOnlyList;
 
     [Header("Inventory")]
     [SerializeField]
@@ -232,6 +246,8 @@ public class CrawlerPlayerData : SaveableEntity
     /// </summary>
     public override void OnFinishMapLoad()
     {
+        base.OnFinishMapLoad();
+
         this.currentHealth = this.maxHealth;
 
         this.healthSlider.maxValue = this.maxHealth;

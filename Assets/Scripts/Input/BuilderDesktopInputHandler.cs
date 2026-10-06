@@ -20,8 +20,8 @@ public class BuilderDesktopInputHandler : MonoBehaviour
 
     private bool isPrimaryHeld;
     private bool isMiddleMouseHeld;
-    private bool command;
 
+    // private bool command;
     private EditorControllerBase ActiveController => MapEditorManager.Instance.ActiveController;
 
     /// <summary>
@@ -166,9 +166,17 @@ public class BuilderDesktopInputHandler : MonoBehaviour
             return;
         }
 
-        float delta = ctx.ReadValue<float>();
         Vector2 pointerPos = Mouse.current.position.ReadValue();
-        this.cameraController.OnZoom(delta * this.desktopZoomSpeed, pointerPos);
+
+        if (this.IsPointerOverUI(pointerPos))
+        {
+            return;
+        }
+
+        float delta = ctx.ReadValue<float>();
+        this.cameraController.OnZoom(
+            delta * this.desktopZoomSpeed,
+            pointerPos);
     }
 
     /// <summary>
@@ -261,11 +269,11 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     {
         if (ctx.started)
         {
-            this.command = true;
+            // this.command = true;
         }
         else if (ctx.canceled)
         {
-            this.command = false;
+            // this.command = false;
         }
     }
 

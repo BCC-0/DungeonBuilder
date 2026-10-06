@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 /// <summary>
@@ -47,6 +48,7 @@ public abstract class SelectionManagerBase : MonoBehaviour
     private bool hasDragged;
     private bool isMovementMode;
     private bool isMoving;
+    private bool isReferenceSelectionMode;
     private Grid grid;
 
     private Vector2 dragStart;
@@ -57,6 +59,11 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// Gets a value indicating whether a selection drag is currently in progress.
     /// </summary>
     public bool IsDragging => this.isDragging;
+
+    /// <summary>
+    /// Gets a value indicating whether reference selection mode is active.
+    /// </summary>
+    public bool IsReferenceSelectionMode => this.isReferenceSelectionMode;
 
     /// <summary>
     /// Gets or sets the current position of the used pointer.
@@ -95,11 +102,56 @@ public abstract class SelectionManagerBase : MonoBehaviour
     }
 
     /// <summary>
+    /// Begins picking entities for a reference field. The current selection is
+    /// left untouched, clicks and box-selects are applied to the field instead.
+    /// </summary>
+    public void BeginReferenceSelection()
+    {
+        if (this.IsMovementMode)
+        {
+            return;
+        }
+
+        this.isReferenceSelectionMode = true;
+        this.isDragging = false;
+        this.hasDragged = false;
+
+        this.DisableSelectionButtons();
+        this.DisableMoveButtons();
+        this.selectionBox.StopSelection();
+
+        this.OnReferenceSelectionStarted();
+    }
+
+    /// <summary>
+    /// Finishes reference selection ("Done" button). Everything that was picked
+    /// has already been applied to the field.
+    /// </summary>
+    public void ConfirmReferenceSelection()
+    {
+        this.EndReferenceSelection();
+    }
+
+    /// <summary>
+    /// Stops reference selection ("Cancel" button). Picks that were already
+    /// applied stay applied.
+    /// </summary>
+    public void CancelReferenceSelection()
+    {
+        this.EndReferenceSelection();
+    }
+
+    /// <summary>
     /// Resets the selection manager when switching away from the selection tool.
     /// Cancels any active movement, clears the selection, and hides all buttons.
     /// </summary>
     public void ResetSelectionTool()
     {
+        if (this.isReferenceSelectionMode)
+        {
+            this.CancelReferenceSelection();
+        }
+
         if (this.IsMovementMode)
         {
             this.CancelMovingSelected();
@@ -186,15 +238,33 @@ public abstract class SelectionManagerBase : MonoBehaviour
 
         this.isDragging = false;
 
-        if (this.hasDragged)
+        if (this.IsReferenceSelectionMode)
+        {
+            List<SaveableEntity> picked;
+
+            if (this.hasDragged)
+            {
+                picked = this.PickEntitiesIn(this.GetWorldRect(this.dragStart, this.dragEnd))
+                    .OrderBy(e => Vector2.SqrMagnitude((Vector2)e.transform.position - this.dragStart))
+                    .ToList();
+            }
+            else
+            {
+                picked = this.PickEntitiesAt(this.dragEnd);
+            }
+
+            this.HandleReferencePick(picked);
+        }
+        else if (this.hasDragged)
         {
             this.OnBoxSelect(this.GetWorldRect(this.dragStart, this.dragEnd));
-            this.selectionBox.StopSelection();
         }
         else
         {
             this.OnClickSelect(this.dragEnd);
         }
+
+        this.selectionBox.StopSelection();
     }
 
     /// <summary>
@@ -252,6 +322,45 @@ public abstract class SelectionManagerBase : MonoBehaviour
     protected abstract void OnBoxSelect(Rect rect);
 
     /// <summary>
+    /// Finds the entities that would be picked by a click at a position.
+    /// Used for reference selection, where the selection itself must not change.
+    /// Managers that do not select entities return nothing.
+    /// </summary>
+    /// <param name="position">The clicked world position.</param>
+    /// <returns>The entities at that position.</returns>
+    protected virtual List<SaveableEntity> PickEntitiesAt(Vector2 position)
+    {
+        return new List<SaveableEntity>();
+    }
+
+    /// <summary>
+    /// Finds the entities that would be picked by a box-select.
+    /// Used for reference selection, where the selection itself must not change.
+    /// Managers that do not select entities return nothing.
+    /// </summary>
+    /// <param name="rect">The world-space rectangle of the box-select.</param>
+    /// <returns>The entities inside the rectangle.</returns>
+    protected virtual List<SaveableEntity> PickEntitiesIn(Rect rect)
+    {
+        return new List<SaveableEntity>();
+    }
+
+    /// <summary>
+    /// Called when reference selection starts.
+    /// </summary>
+    protected virtual void OnReferenceSelectionStarted()
+    {
+    }
+
+    /// <summary>
+    /// Called after reference selection ended, so the manager can bring back
+    /// the buttons that were hidden during it.
+    /// </summary>
+    protected virtual void OnReferenceSelectionEnded()
+    {
+    }
+
+    /// <summary>
     /// Finds the camera used to convert world positions to UI positions.
     /// </summary>
     protected virtual void Awake()
@@ -265,7 +374,7 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// <summary>
     /// Enables the selection buttons.
     /// </summary>
-    /// <param name="selectionRect">The rect of all selected objects,</param>
+    /// <param name="selectionRect">The rect of all selected objects.</param>
     protected void EnableSelectionButtons(Rect selectionRect)
     {
         this.PositionButtonsAboveRect(this.selectionButtons, selectionRect);
@@ -283,7 +392,7 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// <summary>
     /// Enables the move buttons.
     /// </summary>
-    /// <param name="selectionRect">The rect of all selected objects,</param>
+    /// <param name="selectionRect">The rect of all selected objects.</param>
     protected void EnableMoveButtons(Rect selectionRect)
     {
         if (BuilderInputSelector.Instance.IsUsingDesktop)
@@ -325,6 +434,51 @@ public abstract class SelectionManagerBase : MonoBehaviour
     }
 
     /// <summary>
+    /// Applies picked entities to the reference field being edited.
+    /// Ends reference selection when the field is satisfied (single references),
+    /// and stays open otherwise (lists) so more can be added.
+    /// </summary>
+    /// <param name="picked">The entities that were clicked or boxed.</param>
+    private void HandleReferencePick(List<SaveableEntity> picked)
+    {
+        if (picked == null || picked.Count == 0)
+        {
+            return;
+        }
+
+        RuntimePropertyEditor editor = RuntimePropertyEditor.Instance;
+
+        if (editor == null || editor.TryApplyReferences(picked))
+        {
+            this.EndReferenceSelection();
+        }
+    }
+
+    /// <summary>
+    /// Leaves reference selection mode.
+    /// </summary>
+    private void EndReferenceSelection()
+    {
+        if (!this.isReferenceSelectionMode)
+        {
+            return;
+        }
+
+        this.isReferenceSelectionMode = false;
+        this.isDragging = false;
+        this.hasDragged = false;
+
+        this.selectionBox.StopSelection();
+
+        if (RuntimePropertyEditor.Instance != null)
+        {
+            RuntimePropertyEditor.Instance.CancelReferenceSelection();
+        }
+
+        this.OnReferenceSelectionEnded();
+    }
+
+    /// <summary>
     /// Gets the world rectangle of a selection drag.
     /// </summary>
     /// <param name="a">Position 1.</param>
@@ -345,8 +499,13 @@ public abstract class SelectionManagerBase : MonoBehaviour
     private Vector2 WorldToLocalUiPoint(Vector2 worldPos)
     {
         Vector2 screenPoint = this.cam.WorldToScreenPoint(worldPos);
+
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            this.selectionBoxParent, screenPoint, this.cam, out Vector2 localPoint);
+            this.selectionBoxParent,
+            screenPoint,
+            this.cam,
+            out Vector2 localPoint);
+
         return localPoint;
     }
 
@@ -355,13 +514,18 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// </summary>
     /// <param name="buttons">The button panel's RectTransform to position.</param>
     /// <param name="worldRect">The world-space rect (e.g. selection bounds) to anchor above.</param>
-    private void PositionButtonsAboveRect(RectTransform buttons, Rect worldRect)
+    private void PositionButtonsAboveRect(
+        RectTransform buttons,
+        Rect worldRect)
     {
-        Vector2 topCenterWorld = new Vector2(worldRect.center.x, worldRect.yMax);
+        Vector2 topCenterWorld =
+            new Vector2(worldRect.center.x, worldRect.yMax);
 
-        Vector2 localPoint = this.WorldToLocalUiPoint(topCenterWorld);
+        Vector2 localPoint =
+            this.WorldToLocalUiPoint(topCenterWorld);
 
-        buttons.anchoredPosition = localPoint + new Vector2(0f, ButtonVerticalPadding);
+        buttons.anchoredPosition =
+            localPoint + new Vector2(0f, ButtonVerticalPadding);
     }
 
     /// <summary>

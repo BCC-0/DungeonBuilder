@@ -1,7 +1,8 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
-using Unity.VisualScripting;
 using UnityEngine;
 
 /// <summary>
@@ -24,8 +25,14 @@ public class RuntimePropertyEditor : MonoBehaviour
 
     private string lastSelectionKey;
 
+    private RuntimePropertyField referenceField;
+    private int referenceIndex = -1;
+
+    private RuntimePositionField positionField;
+    private EntitySelectionManager selectionManager;
+
     /// <summary>
-    /// Gets the instance of the property editor.
+    /// Gets the instance of the runtime property editor.
     /// </summary>
     public static RuntimePropertyEditor Instance
     {
@@ -37,12 +44,21 @@ public class RuntimePropertyEditor : MonoBehaviour
     /// </summary>
     public void Rebuild()
     {
+        string selectionKey = this.BuildSelectionKey();
+
+        if (selectionKey == this.lastSelectionKey)
+        {
+            return;
+        }
+
         this.Clear();
 
         if (MapEditorManager.Instance == null)
         {
             return;
         }
+
+        this.lastSelectionKey = selectionKey;
 
         if (MapEditorManager.Instance.SelectedEntities.Count > 0)
         {
@@ -56,14 +72,176 @@ public class RuntimePropertyEditor : MonoBehaviour
         }
     }
 
-    private void Start()
+    /// <summary>
+    /// Refreshes the shown position without rebuilding the whole inspector.
+    /// Used while entities are being moved.
+    /// </summary>
+    public void RefreshPosition()
     {
+        if (this.positionField != null)
+        {
+            this.positionField.Refresh();
+        }
+    }
+
+    /// <summary>
+    /// Begins reference selection.
+    /// </summary>
+    /// <param name="propertyField">The field to set the reference to.</param>
+    public void BeginReferenceSelection(
+        RuntimePropertyField propertyField)
+    {
+        this.BeginReferenceSelection(propertyField, -1);
+    }
+
+    /// <summary>
+    /// Begins reference selection with a specified index.
+    /// </summary>
+    /// <param name="propertyField">The field to set the reference to.</param>
+    /// <param name="index">The index of the field.</param>
+    public void BeginReferenceSelection(
+        RuntimePropertyField propertyField,
+        int index)
+    {
+        
+
+        if (selectionManager == null)
+        {
+            return;
+        }
+
+        this.referenceField = propertyField;
+        this.referenceIndex = index;
+
+        selectionManager.BeginReferenceSelection();
+
+        if (!selectionManager.IsReferenceSelectionMode)
+        {
+            this.referenceField = null;
+            this.referenceIndex = -1;
+        }
+    }
+
+    /// <summary>
+    /// Confirms the reference selection and sets the property field.
+    /// </summary>
+    /// <param name="entities">The entities that were referenced.</param>
+    public void ConfirmReferenceSelection(
+        IReadOnlyList<SaveableEntity> entities)
+    {
+        RuntimePropertyField propertyField = this.referenceField;
+        int index = this.referenceIndex;
+
+        this.referenceField = null;
+        this.referenceIndex = -1;
+
+        if (propertyField != null)
+        {
+            if (propertyField.IsReferenceList())
+            {
+                if (index >= 0)
+                {
+                    if (entities != null &&
+                        entities.Count == 1)
+                    {
+                        propertyField.SetReference(
+                            index,
+                            entities[0]);
+                    }
+                }
+                else
+                {
+                    propertyField.AddReferences(
+                        entities);
+                }
+            }
+            else if (entities != null &&
+                     entities.Count == 1)
+            {
+                propertyField.SetReference(
+                    entities[0]);
+            }
+        }
+
+        this.Rebuild();
+    }
+
+    /// <summary>
+    /// Applies picked entities to the reference field that started the
+    /// reference selection.
+    /// </summary>
+    /// <param name="entities">The entities that were picked.</param>
+    /// <returns>
+    /// True when reference selection is finished (single reference set, list
+    /// element replaced, or the field is gone). False when it should stay open,
+    /// e.g. for lists where more entities can be added, or when the pick did
+    /// not fit the field.
+    /// </returns>
+    public bool TryApplyReferences(IReadOnlyList<SaveableEntity> entities)
+    {
+        RuntimePropertyField propertyField = this.referenceField;
+
+        if (propertyField == null)
+        {
+            return true;
+        }
+
+        List<SaveableEntity> valid =
+            entities
+                .Where(e => e != null && propertyField.CanReference(e))
+                .ToList();
+
+        if (valid.Count == 0)
+        {
+            return false;
+        }
+
+        if (propertyField.IsReferenceList())
+        {
+            if (this.referenceIndex >= 0)
+            {
+                propertyField.SetReference(this.referenceIndex, valid[0]);
+            }
+            else
+            {
+                propertyField.AddReferences(valid);
+            }
+
+            return true;
+        }
+
+        propertyField.SetReference(valid[0]);
+        return true;
+    }
+
+    /// <summary>
+    /// Cancel the reference selection, doesn't set a reference to the property field.
+    /// </summary>
+    public void CancelReferenceSelection()
+    {
+        this.referenceField = null;
+        this.referenceIndex = -1;
+
+        this.selectionManager.CancelReferenceSelection();
+    }
+
+    private void Awake()
+    {
+        this.selectionManager = FindAnyObjectByType<EntitySelectionManager>();
         Instance = this;
     }
 
     private void Update()
     {
         if (MapEditorManager.Instance == null)
+        {
+            return;
+        }
+
+        // While the user picks references the selection changes on purpose.
+        // The inspector must stay as it is, otherwise the field that started
+        // the reference selection would be destroyed.
+        if (this.referenceField != null)
         {
             return;
         }
@@ -76,7 +254,6 @@ public class RuntimePropertyEditor : MonoBehaviour
             return;
         }
 
-        this.lastSelectionKey = selectionKey;
         this.Rebuild();
     }
 
@@ -91,6 +268,7 @@ public class RuntimePropertyEditor : MonoBehaviour
         }
 
         this.generatedRows.Clear();
+        this.positionField = null;
     }
 
     private void BuildEntityInspector()
@@ -103,14 +281,17 @@ public class RuntimePropertyEditor : MonoBehaviour
             return;
         }
 
-        RuntimePositionField positionEditor = this.CreateRow<RuntimePositionField>(this.positionRowPrefab);
+        this.positionField =
+            this.CreateRow<RuntimePositionField>(
+                this.positionRowPrefab);
 
-        if (positionEditor != null)
+        if (this.positionField != null)
         {
-            positionEditor.Initialize(selected);
+            this.positionField.Initialize(selected);
         }
 
-        List<BuilderEntity> builderEntities = new List<BuilderEntity>();
+        List<BuilderEntity> builderEntities =
+            new List<BuilderEntity>();
 
         foreach (SaveableEntity entity in selected)
         {
@@ -127,7 +308,8 @@ public class RuntimePropertyEditor : MonoBehaviour
 
         BuilderEntity firstEntity = builderEntities[0];
 
-        IReadOnlyDictionary<string, RuntimeEditableValue> fields = firstEntity.RuntimeEditableFields;
+        IReadOnlyDictionary<string, RuntimeEditableValue> fields =
+            firstEntity.RuntimeEditableFields;
 
         if (fields == null || fields.Count == 0)
         {
@@ -153,6 +335,8 @@ public class RuntimePropertyEditor : MonoBehaviour
                 continue;
             }
 
+            // The field must be editable on every selected entity and have
+            // the same type everywhere.
             bool validForAll = true;
 
             foreach (BuilderEntity entity in builderEntities)
@@ -191,13 +375,15 @@ public class RuntimePropertyEditor : MonoBehaviour
             property.Initialize(
                 this.GetDisplayName(fieldName),
                 fieldName,
-                builderEntities);
+                builderEntities,
+                this.Rebuild);
         }
     }
 
     private void BuildTileInspector()
     {
-        IReadOnlyList<Vector2Int> selected = MapEditorManager.Instance.SelectedTiles;
+        IReadOnlyList<Vector2Int> selected =
+            MapEditorManager.Instance.SelectedTiles;
 
         if (selected == null || selected.Count == 0)
         {
@@ -206,29 +392,33 @@ public class RuntimePropertyEditor : MonoBehaviour
 
         if (MapEditorManager.Instance.ActiveController == null)
         {
+            Debug.LogWarning(
+                "RuntimePropertyEditor: MapEditorManager has no " +
+                "ActiveController, tile fields cannot be shown.");
+
             return;
         }
 
-        SaveableTilemap tilemap =
-            MapEditorManager.Instance.ActiveController.Tilemap;
+        SaveableTilemap tilemap = MapEditorManager.Instance.ActiveController.Tilemap;
 
         if (tilemap == null)
         {
+            Debug.LogWarning(
+                "RuntimePropertyEditor: The active controller has " +
+                "no Tilemap, tile fields cannot be shown.");
+
             return;
         }
 
         // Position is always available for selected tiles.
-        RuntimePositionField positionEditor =
-            this.CreateRow<RuntimePositionField>(
-                this.positionRowPrefab);
+        this.positionField = this.CreateRow<RuntimePositionField>(this.positionRowPrefab);
 
-        if (positionEditor != null)
+        if (this.positionField != null)
         {
-            positionEditor.Initialize(selected, tilemap);
+            this.positionField.Initialize(selected, tilemap);
         }
 
-        List<TileBehaviour> behaviours =
-            new List<TileBehaviour>();
+        List<TileBehaviour> behaviours = new List<TileBehaviour>();
 
         foreach (Vector2Int position in selected)
         {
@@ -246,15 +436,14 @@ public class RuntimePropertyEditor : MonoBehaviour
             return;
         }
 
+        List<object> targets =
+            new List<object>(behaviours);
+
         // Only properties common to every selected behaviour
         // should be displayed.
-        Type firstType =
-            behaviours[0].GetType();
+        List<FieldInfo> fields = this.GetSaveFields(behaviours[0].GetType());
 
-        List<System.Reflection.FieldInfo> fields =
-            this.GetSaveFields(firstType);
-
-        foreach (System.Reflection.FieldInfo field in fields)
+        foreach (FieldInfo field in fields)
         {
             if (!this.IsSupportedType(field.FieldType))
             {
@@ -265,7 +454,7 @@ public class RuntimePropertyEditor : MonoBehaviour
 
             foreach (TileBehaviour behaviour in behaviours)
             {
-                System.Reflection.FieldInfo matchingField =
+                FieldInfo matchingField =
                     this.FindField(behaviour.GetType(), field.Name);
 
                 if (matchingField == null ||
@@ -296,26 +485,8 @@ public class RuntimePropertyEditor : MonoBehaviour
             property.Initialize(
                 this.GetDisplayName(field.Name),
                 field,
-                new List<object>(behaviours),
-                null);
-        }
-    }
-
-    private void RefreshTiles(
-        SaveableTilemap tilemap,
-        IReadOnlyList<Vector2Int> positions)
-    {
-        foreach (Vector2Int position in positions)
-        {
-            TileData data =
-                tilemap.GetTileData(position);
-
-            if (data != null)
-            {
-                tilemap.UpdateTileData(
-                    position,
-                    data);
-            }
+                targets,
+                this.Rebuild);
         }
     }
 
@@ -348,12 +519,51 @@ public class RuntimePropertyEditor : MonoBehaviour
         return fields;
     }
 
+    private FieldInfo FindField(Type type, string fieldName)
+    {
+        while (type != null)
+        {
+            FieldInfo field = type.GetField(
+                fieldName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+
+            if (field != null)
+            {
+                return field;
+            }
+
+            type = type.BaseType;
+        }
+
+        return null;
+    }
+
     private bool IsSupportedType(Type type)
     {
-        return type == typeof(int) ||
-               type == typeof(float) ||
-               type == typeof(bool) ||
-               type == typeof(string);
+        if (type == typeof(int) ||
+            type == typeof(float) ||
+            type == typeof(bool) ||
+            type == typeof(string))
+        {
+            return true;
+        }
+
+        if (typeof(SaveableEntity).IsAssignableFrom(type))
+        {
+            return true;
+        }
+
+        if (typeof(IList).IsAssignableFrom(type) &&
+            type.IsGenericType)
+        {
+            Type elementType =
+                type.GetGenericArguments()[0];
+
+            return typeof(SaveableEntity).IsAssignableFrom(
+                elementType);
+        }
+
+        return false;
     }
 
     private string GetDisplayName(string fieldName)
@@ -400,6 +610,7 @@ public class RuntimePropertyEditor : MonoBehaviour
                 $"RuntimePropertyEditor: Prefab does not contain " +
                 $"{typeof(T).Name}.");
 
+            this.generatedRows.Remove(row);
             Destroy(row);
             return null;
         }
@@ -419,18 +630,19 @@ public class RuntimePropertyEditor : MonoBehaviour
 
         if (entities != null && entities.Count > 0)
         {
-            string key = "E:";
+            List<string> ids = new List<string>();
 
             foreach (SaveableEntity entity in entities)
             {
                 if (entity != null)
                 {
-                    key +=
-                        entity.GetUniqueID() + ";";
+                    ids.Add(entity.GetUniqueID());
                 }
             }
 
-            return key;
+            ids.Sort();
+
+            return "E:" + string.Join("|", ids);
         }
 
         IReadOnlyList<Vector2Int> tiles =
@@ -438,36 +650,18 @@ public class RuntimePropertyEditor : MonoBehaviour
 
         if (tiles != null && tiles.Count > 0)
         {
-            string key = "T:";
+            List<string> positions = new List<string>();
 
             foreach (Vector2Int tile in tiles)
             {
-                key +=
-                    $"{tile.x},{tile.y};";
+                positions.Add(tile.x + "," + tile.y);
             }
 
-            return key;
+            positions.Sort();
+
+            return "T:" + string.Join("|", positions);
         }
 
         return string.Empty;
-    }
-
-    private FieldInfo FindField(Type type, string fieldName)
-    {
-        while (type != null)
-        {
-            FieldInfo field = type.GetField(
-                fieldName,
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
-
-            if (field != null)
-            {
-                return field;
-            }
-
-            type = type.BaseType;
-        }
-
-        return null;
     }
 }
