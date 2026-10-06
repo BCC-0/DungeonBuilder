@@ -166,9 +166,17 @@ public class BuilderDesktopInputHandler : MonoBehaviour
             return;
         }
 
-        float delta = ctx.ReadValue<float>();
         Vector2 pointerPos = Mouse.current.position.ReadValue();
-        this.cameraController.OnZoom(delta * this.desktopZoomSpeed, pointerPos);
+
+        if (this.IsPointerOverUI(pointerPos))
+        {
+            return;
+        }
+
+        float delta = ctx.ReadValue<float>();
+        this.cameraController.OnZoom(
+            delta * this.desktopZoomSpeed,
+            pointerPos);
     }
 
     /// <summary>

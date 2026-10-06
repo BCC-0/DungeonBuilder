@@ -29,6 +29,7 @@ public class RuntimePropertyEditor : MonoBehaviour
     private int referenceIndex = -1;
 
     private RuntimePositionField positionField;
+    private EntitySelectionManager selectionManager;
 
     /// <summary>
     /// Gets the instance of the runtime property editor.
@@ -95,7 +96,7 @@ public class RuntimePropertyEditor : MonoBehaviour
         RuntimePropertyField propertyField,
         int index)
     {
-        EntitySelectionManager selectionManager = FindAnyObjectByType<EntitySelectionManager>();
+        
 
         if (selectionManager == null)
         {
@@ -228,10 +229,13 @@ public class RuntimePropertyEditor : MonoBehaviour
     {
         this.referenceField = null;
         this.referenceIndex = -1;
+
+        this.selectionManager.CancelReferenceSelection();
     }
 
     private void Awake()
     {
+        this.selectionManager = FindAnyObjectByType<EntitySelectionManager>();
         Instance = this;
     }
 
@@ -403,8 +407,7 @@ public class RuntimePropertyEditor : MonoBehaviour
             return;
         }
 
-        SaveableTilemap tilemap =
-            MapEditorManager.Instance.ActiveController.Tilemap;
+        SaveableTilemap tilemap = MapEditorManager.Instance.ActiveController.Tilemap;
 
         if (tilemap == null)
         {
@@ -416,17 +419,14 @@ public class RuntimePropertyEditor : MonoBehaviour
         }
 
         // Position is always available for selected tiles.
-        this.positionField =
-            this.CreateRow<RuntimePositionField>(
-                this.positionRowPrefab);
+        this.positionField = this.CreateRow<RuntimePositionField>(this.positionRowPrefab);
 
         if (this.positionField != null)
         {
             this.positionField.Initialize(selected, tilemap);
         }
 
-        List<TileBehaviour> behaviours =
-            new List<TileBehaviour>();
+        List<TileBehaviour> behaviours = new List<TileBehaviour>();
 
         foreach (Vector2Int position in selected)
         {
@@ -449,8 +449,7 @@ public class RuntimePropertyEditor : MonoBehaviour
 
         // Only properties common to every selected behaviour
         // should be displayed.
-        List<FieldInfo> fields =
-            this.GetSaveFields(behaviours[0].GetType());
+        List<FieldInfo> fields = this.GetSaveFields(behaviours[0].GetType());
 
         foreach (FieldInfo field in fields)
         {
@@ -534,10 +533,7 @@ public class RuntimePropertyEditor : MonoBehaviour
         {
             FieldInfo field = type.GetField(
                 fieldName,
-                BindingFlags.Instance |
-                BindingFlags.Public |
-                BindingFlags.NonPublic |
-                BindingFlags.DeclaredOnly);
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
 
             if (field != null)
             {

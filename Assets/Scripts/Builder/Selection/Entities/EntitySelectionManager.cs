@@ -16,12 +16,38 @@ public class EntitySelectionManager : SelectionManagerBase
     [SerializeField]
     private float entitySelectRadius = 0.5f;
 
+    [Header("Reference Overlay")]
     [SerializeField]
     private GameObject referenceOverlay;
 
+    [SerializeField]
     private RectTransform referenceTextBlock;
 
+    [SerializeField]
     private TextMeshProUGUI referenceOverlayText;
+
+    [SerializeField]
+    private float referenceOverlayFadeDuration = 0.25f;
+
+    [SerializeField]
+    private float referenceTextSlideDuration = 0.4f;
+
+    [SerializeField]
+    private float referenceTextAnimationInterval = 0.5f;
+
+    [Tooltip("How far below the screen the text block starts before sliding in.")]
+    [SerializeField]
+    private float referenceTextStartOffset = 300f;
+
+    private CanvasGroup referenceOverlayCanvasGroup;
+
+    private Sequence referenceTextSequence;
+
+    /// <summary>
+    /// The position of the reference text block as configured in the scene.
+    /// This position is used whenever the reference overlay is visible.
+    /// </summary>
+    private Vector2 referenceTextVisiblePosition;
 
     /// <summary>
     /// Visualizer that outlines the current entity selection.
@@ -31,12 +57,12 @@ public class EntitySelectionManager : SelectionManagerBase
     /// <summary>
     /// Cell positions of the selected entities when movement started.
     /// </summary>
-    private Dictionary<SaveableEntity, Vector2Int> moveStartCells = new ();
+    private Dictionary<SaveableEntity, Vector2Int> moveStartCells = new();
 
     /// <summary>
     /// Cell positions of the selected entities when movement is continued on mobile.
     /// </summary>
-    private Dictionary<SaveableEntity, Vector2Int> extraMoveStartCells = new ();
+    private Dictionary<SaveableEntity, Vector2Int> extraMoveStartCells = new();
 
     /// <summary>
     /// Cell under the pointer when movement started.
@@ -70,7 +96,8 @@ public class EntitySelectionManager : SelectionManagerBase
             return;
         }
 
-        List<SaveableEntity> selectedEntities = MapEditorManager.Instance.SelectedEntities;
+        List<SaveableEntity> selectedEntities =
+            MapEditorManager.Instance.SelectedEntities;
 
         if (selectedEntities == null || selectedEntities.Count == 0)
         {
@@ -84,17 +111,27 @@ public class EntitySelectionManager : SelectionManagerBase
 
         this.moveStartCells.Clear();
 
-        this.moveStartPointerCell = (Vector2Int)this.Grid.WorldToCell(this.CurrentPos);
+        this.moveStartPointerCell =
+            (Vector2Int)this.Grid.WorldToCell(this.CurrentPos);
 
         foreach (SaveableEntity entity in selectedEntities)
         {
-            Vector2Int cell = (Vector2Int)this.Grid.WorldToCell(entity.transform.position);
+            Vector2Int cell =
+                (Vector2Int)this.Grid.WorldToCell(entity.transform.position);
+
             this.moveStartCells[entity] = cell;
         }
 
-        this.extraMoveStartCells = new Dictionary<SaveableEntity, Vector2Int>(this.moveStartCells);
+        this.extraMoveStartCells =
+            new Dictionary<SaveableEntity, Vector2Int>(
+                this.moveStartCells);
+
         this.DisableSelectionButtons();
-        this.EnableMoveButtons(this.GetBoundingRect(selectedEntities.Select(e => (Vector2)e.transform.position)));
+
+        this.EnableMoveButtons(
+            this.GetBoundingRect(
+                selectedEntities.Select(
+                    e => (Vector2)e.transform.position)));
     }
 
     /// <summary>
@@ -113,11 +150,14 @@ public class EntitySelectionManager : SelectionManagerBase
             return;
         }
 
-        Vector2Int currentPointerCell = (Vector2Int)this.Grid.WorldToCell(this.CurrentPos);
+        Vector2Int currentPointerCell =
+            (Vector2Int)this.Grid.WorldToCell(this.CurrentPos);
 
-        Vector2Int cellDelta = currentPointerCell - this.moveStartPointerCell;
+        Vector2Int cellDelta =
+            currentPointerCell - this.moveStartPointerCell;
 
-        foreach (KeyValuePair<SaveableEntity, Vector2Int> entry in this.extraMoveStartCells)
+        foreach (KeyValuePair<SaveableEntity, Vector2Int> entry
+            in this.extraMoveStartCells)
         {
             SaveableEntity entity = entry.Key;
 
@@ -126,15 +166,15 @@ public class EntitySelectionManager : SelectionManagerBase
                 continue;
             }
 
-            Vector3Int previewCell = (Vector3Int)(entry.Value + cellDelta);
+            Vector3Int previewCell =
+                (Vector3Int)(entry.Value + cellDelta);
 
-            entity.transform.position = this.Grid.GetCellCenterWorld(previewCell);
+            entity.transform.position =
+                this.Grid.GetCellCenterWorld(previewCell);
         }
 
         this.selectionVisualizer.Refresh();
 
-        // Only the position row changes while moving. Rebuilding the whole
-        // inspector every frame is wasteful and would destroy the rows.
         if (RuntimePropertyEditor.Instance != null)
         {
             RuntimePropertyEditor.Instance.RefreshPosition();
@@ -155,11 +195,14 @@ public class EntitySelectionManager : SelectionManagerBase
             return;
         }
 
-        List<SaveableEntity> selectedEntities = MapEditorManager.Instance.SelectedEntities;
+        List<SaveableEntity> selectedEntities =
+            MapEditorManager.Instance.SelectedEntities;
 
-        HashSet<SaveableEntity> movingEntities = new HashSet<SaveableEntity>(selectedEntities);
+        HashSet<SaveableEntity> movingEntities =
+            new HashSet<SaveableEntity>(selectedEntities);
 
-        foreach (KeyValuePair<SaveableEntity, Vector2Int> entry in this.extraMoveStartCells)
+        foreach (KeyValuePair<SaveableEntity, Vector2Int> entry
+            in this.extraMoveStartCells)
         {
             SaveableEntity entity = entry.Key;
 
@@ -168,7 +211,9 @@ public class EntitySelectionManager : SelectionManagerBase
                 continue;
             }
 
-            Vector2Int finalCell = (Vector2Int)this.Grid.WorldToCell(entity.transform.position);
+            Vector2Int finalCell =
+                (Vector2Int)this.Grid.WorldToCell(
+                    entity.transform.position);
 
             SaveableEntity entityAtDestination =
                 FindObjectsByType<SaveableEntity>()
@@ -176,7 +221,8 @@ public class EntitySelectionManager : SelectionManagerBase
                         other != entity &&
                         !movingEntities.Contains(other) &&
                         !IsTilemapEntity(other) &&
-                        (Vector2Int)this.Grid.WorldToCell(other.transform.position) == finalCell);
+                        (Vector2Int)this.Grid.WorldToCell(
+                            other.transform.position) == finalCell);
 
             if (entityAtDestination != null)
             {
@@ -190,7 +236,8 @@ public class EntitySelectionManager : SelectionManagerBase
         this.extraMoveStartCells.Clear();
 
         this.DisableMoveButtons();
-        this.SetSelection(MapEditorManager.Instance.SelectedEntities);
+        this.SetSelection(
+            MapEditorManager.Instance.SelectedEntities);
 
         if (RuntimePropertyEditor.Instance != null)
         {
@@ -206,7 +253,8 @@ public class EntitySelectionManager : SelectionManagerBase
             return;
         }
 
-        foreach (KeyValuePair<SaveableEntity, Vector2Int> entry in this.moveStartCells)
+        foreach (KeyValuePair<SaveableEntity, Vector2Int> entry
+            in this.moveStartCells)
         {
             SaveableEntity entity = entry.Key;
 
@@ -215,7 +263,9 @@ public class EntitySelectionManager : SelectionManagerBase
                 continue;
             }
 
-            entity.transform.position = this.Grid.GetCellCenterWorld((Vector3Int)entry.Value);
+            entity.transform.position =
+                this.Grid.GetCellCenterWorld(
+                    (Vector3Int)entry.Value);
         }
 
         this.IsMovementMode = false;
@@ -224,7 +274,8 @@ public class EntitySelectionManager : SelectionManagerBase
         this.extraMoveStartCells.Clear();
 
         this.DisableMoveButtons();
-        this.SetSelection(MapEditorManager.Instance.SelectedEntities);
+        this.SetSelection(
+            MapEditorManager.Instance.SelectedEntities);
 
         if (RuntimePropertyEditor.Instance != null)
         {
@@ -239,31 +290,51 @@ public class EntitySelectionManager : SelectionManagerBase
     }
 
     /// <inheritdoc/>
-    protected override void OnReferenceSelectionEnded()
+    protected override void OnReferenceSelectionStarted()
     {
-        this.SetSelection(MapEditorManager.Instance.SelectedEntities);
+        this.ShowReferenceOverlay();
     }
 
     /// <inheritdoc/>
-    protected override List<SaveableEntity> PickEntitiesAt(Vector2 position)
+    protected override void OnReferenceSelectionEnded()
     {
-        SaveableEntity closestEntity = FindObjectsByType<SaveableEntity>()
-            .Where(e => e.ExistsInWorld && !IsTilemapEntity(e))
-            .OrderBy(e => Vector2.Distance(e.transform.position, position))
-            .FirstOrDefault();
+        this.HideReferenceOverlay();
+        this.SetSelection(
+            MapEditorManager.Instance.SelectedEntities);
+    }
+
+    /// <inheritdoc/>
+    protected override List<SaveableEntity> PickEntitiesAt(
+        Vector2 position)
+    {
+        SaveableEntity closestEntity =
+            FindObjectsByType<SaveableEntity>()
+                .Where(e =>
+                    e.ExistsInWorld &&
+                    !IsTilemapEntity(e))
+                .OrderBy(e =>
+                    Vector2.Distance(
+                        e.transform.position,
+                        position))
+                .FirstOrDefault();
 
         if (closestEntity != null &&
-            Vector2.Distance(closestEntity.transform.position, position) <=
-            this.entitySelectRadius)
+            Vector2.Distance(
+                closestEntity.transform.position,
+                position) <= this.entitySelectRadius)
         {
-            return new List<SaveableEntity> { closestEntity };
+            return new List<SaveableEntity>
+            {
+                closestEntity,
+            };
         }
 
         return new List<SaveableEntity>();
     }
 
     /// <inheritdoc/>
-    protected override List<SaveableEntity> PickEntitiesIn(Rect rect)
+    protected override List<SaveableEntity> PickEntitiesIn(
+        Rect rect)
     {
         return FindObjectsByType<SaveableEntity>()
             .Where(e =>
@@ -281,16 +352,20 @@ public class EntitySelectionManager : SelectionManagerBase
             return;
         }
 
-        this.moveStartPointerCell = (Vector2Int)this.Grid.WorldToCell(worldPos);
+        this.moveStartPointerCell =
+            (Vector2Int)this.Grid.WorldToCell(worldPos);
 
-        foreach (SaveableEntity entity in this.extraMoveStartCells.Keys.ToList())
+        foreach (SaveableEntity entity
+            in this.extraMoveStartCells.Keys.ToList())
         {
             if (entity == null)
             {
                 continue;
             }
 
-            this.extraMoveStartCells[entity] = (Vector2Int)this.Grid.WorldToCell(entity.transform.position);
+            this.extraMoveStartCells[entity] =
+                (Vector2Int)this.Grid.WorldToCell(
+                    entity.transform.position);
         }
 
         this.CurrentPos = worldPos;
@@ -304,7 +379,8 @@ public class EntitySelectionManager : SelectionManagerBase
     /// <returns>A rect containing the selected entities.</returns>
     protected override Rect GetCurrentSelectionBounds()
     {
-        List<SaveableEntity> entities = MapEditorManager.Instance.SelectedEntities;
+        List<SaveableEntity> entities =
+            MapEditorManager.Instance.SelectedEntities;
 
         return this.GetBoundingRect(
             entities
@@ -336,15 +412,19 @@ public class EntitySelectionManager : SelectionManagerBase
     /// <param name="rect">The world-space rectangle of the drag.</param>
     protected override void OnBoxSelect(Rect rect)
     {
-        this.SetSelection(this.PickEntitiesIn(rect));
+        this.SetSelection(
+            this.PickEntitiesIn(rect));
     }
 
-    /// <summary>
-    /// Finds the correct visualizer.
-    /// </summary>
+    /// <inheritdoc/>
     protected override void Awake()
     {
-        this.selectionVisualizer = FindAnyObjectByType<EntitySelectionVisualizer>();
+        this.selectionVisualizer =
+            FindAnyObjectByType<EntitySelectionVisualizer>();
+
+        this.SetupReferenceOverlay();
+        this.HideReferenceOverlay();
+
         base.Awake();
     }
 
@@ -360,6 +440,166 @@ public class EntitySelectionManager : SelectionManagerBase
     }
 
     /// <summary>
+    /// Sets up the reference overlay references and initial state.
+    /// The current RectTransform position is saved as the visible position.
+    /// </summary>
+    private void SetupReferenceOverlay()
+    {
+        this.referenceOverlayCanvasGroup =
+            this.referenceOverlay.GetComponent<CanvasGroup>();
+
+        if (this.referenceOverlayCanvasGroup == null)
+        {
+            this.referenceOverlayCanvasGroup =
+                this.referenceOverlay.AddComponent<CanvasGroup>();
+        }
+
+        // Store the position configured in the Unity scene.
+        // This becomes the position used whenever the overlay is visible.
+        this.referenceTextVisiblePosition =
+            this.referenceTextBlock.anchoredPosition;
+
+        this.referenceOverlayCanvasGroup.alpha = 0f;
+        this.referenceOverlay.SetActive(false);
+
+        this.referenceTextBlock.anchoredPosition =
+            this.GetReferenceTextHiddenPosition();
+
+        this.referenceOverlayText.text =
+            "Select entities";
+    }
+
+    /// <summary>
+    /// Shows the reference-selection overlay and starts its animations.
+    /// </summary>
+    private void ShowReferenceOverlay()
+    {
+        this.referenceTextSequence?.Kill();
+
+        this.referenceOverlay.SetActive(true);
+
+        this.referenceOverlayCanvasGroup.DOKill();
+
+        this.referenceOverlayCanvasGroup.alpha = 0f;
+
+        this.referenceOverlayCanvasGroup
+            .DOFade(
+                1f,
+                this.referenceOverlayFadeDuration)
+            .SetEase(Ease.OutQuad);
+
+        this.referenceTextBlock.DOKill();
+
+        this.referenceTextBlock.anchoredPosition =
+            this.GetReferenceTextHiddenPosition();
+
+        this.referenceTextBlock
+            .DOAnchorPos(
+                this.GetReferenceTextVisiblePosition(),
+                this.referenceTextSlideDuration)
+            .SetEase(Ease.OutCubic);
+
+        this.StartReferenceTextAnimation();
+    }
+
+    /// <summary>
+    /// Hides the reference-selection overlay.
+    /// </summary>
+    private void HideReferenceOverlay()
+    {
+        this.referenceTextSequence?.Kill();
+        this.referenceTextSequence = null;
+
+        this.referenceTextBlock.DOKill();
+
+        this.referenceTextBlock
+            .DOAnchorPos(
+                this.GetReferenceTextHiddenPosition(),
+                this.referenceTextSlideDuration)
+            .SetEase(Ease.InCubic);
+
+        this.referenceOverlayCanvasGroup.DOKill();
+
+        this.referenceOverlayCanvasGroup
+            .DOFade(
+                0f,
+                this.referenceOverlayFadeDuration)
+            .SetEase(Ease.InQuad)
+            .OnComplete(() =>
+            {
+                this.referenceOverlay.SetActive(false);
+            });
+    }
+
+    /// <summary>
+    /// Starts the repeating "Select entities..." text animation.
+    /// </summary>
+    private void StartReferenceTextAnimation()
+    {
+        if (this.referenceOverlayText == null)
+        {
+            return;
+        }
+
+        this.referenceTextSequence?.Kill();
+
+        this.referenceOverlayText.text =
+            "Select entities";
+
+        this.referenceTextSequence =
+            DOTween.Sequence();
+
+        this.referenceTextSequence
+            .AppendInterval(
+                this.referenceTextAnimationInterval)
+            .AppendCallback(() =>
+            {
+                this.referenceOverlayText.text =
+                    "Select entities.";
+            })
+            .AppendInterval(
+                this.referenceTextAnimationInterval)
+            .AppendCallback(() =>
+            {
+                this.referenceOverlayText.text =
+                    "Select entities..";
+            })
+            .AppendInterval(
+                this.referenceTextAnimationInterval)
+            .AppendCallback(() =>
+            {
+                this.referenceOverlayText.text =
+                    "Select entities...";
+            })
+            .AppendInterval(
+                this.referenceTextAnimationInterval)
+            .AppendCallback(() =>
+            {
+                this.referenceOverlayText.text =
+                    "Select entities";
+            })
+            .SetLoops(-1);
+    }
+
+    /// <summary>
+    /// Gets the hidden anchored position of the reference text block.
+    /// The text is moved below the visible area of the screen.
+    /// </summary>
+    private Vector2 GetReferenceTextHiddenPosition()
+    {
+        return new Vector2(this.referenceTextVisiblePosition.x, -this.referenceTextBlock.rect.height - this.referenceTextStartOffset);
+    }
+
+    /// <summary>
+    /// Gets the visible anchored position of the reference text block.
+    /// This is the position configured on the RectTransform in the scene.
+    /// </summary>
+    private Vector2 GetReferenceTextVisiblePosition()
+    {
+        return this.referenceTextVisiblePosition;
+    }
+
+    /// <summary>
     /// Writes the given selection to <see cref="MapEditorManager"/> and refreshes
     /// the visualizer.
     /// </summary>
@@ -367,11 +607,15 @@ public class EntitySelectionManager : SelectionManagerBase
     private void SetSelection(List<SaveableEntity> entities)
     {
         entities = entities?
-            .Where(e => e != null && e.ExistsInWorld)
+            .Where(e =>
+                e != null &&
+                e.ExistsInWorld)
             .ToList()
             ?? new List<SaveableEntity>();
 
-        MapEditorManager.Instance.SelectedEntities = entities;
+        MapEditorManager.Instance.SelectedEntities =
+            entities;
+
         this.selectionVisualizer.Refresh();
 
         if (this.IsReferenceSelectionMode)
@@ -387,12 +631,8 @@ public class EntitySelectionManager : SelectionManagerBase
         {
             this.EnableSelectionButtons(
                 this.GetBoundingRect(
-                    entities.Select(e => (Vector2)e.transform.position)));
+                    entities.Select(
+                        e => (Vector2)e.transform.position)));
         }
-    }
-
-    private void ShowReferenceOverlay()
-    {
-        
     }
 }

@@ -129,6 +129,7 @@ public abstract class SelectionManagerBase : MonoBehaviour
         this.selectionBox.StopSelection();
 
         this.SetReferenceSelectionButtons(true);
+        this.OnReferenceSelectionStarted();
     }
 
     /// <summary>
@@ -337,11 +338,18 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// Used for reference selection, where the selection itself must not change.
     /// Managers that do not select entities return nothing.
     /// </summary>
-    /// <param name="rect">The world-space rectangle of the drag.</param>
+    /// <param name="rect">The world-space rectangle of the box-select.</param>
     /// <returns>The entities inside the rectangle.</returns>
     protected virtual List<SaveableEntity> PickEntitiesIn(Rect rect)
     {
         return new List<SaveableEntity>();
+    }
+
+    /// <summary>
+    /// Called when reference selection starts.
+    /// </summary>
+    protected virtual void OnReferenceSelectionStarted()
+    {
     }
 
     /// <summary>
@@ -367,7 +375,7 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// <summary>
     /// Enables the selection buttons.
     /// </summary>
-    /// <param name="selectionRect">The rect of all selected objects,</param>
+    /// <param name="selectionRect">The rect of all selected objects.</param>
     protected void EnableSelectionButtons(Rect selectionRect)
     {
         this.PositionButtonsAboveRect(this.selectionButtons, selectionRect);
@@ -385,7 +393,7 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// <summary>
     /// Enables the move buttons.
     /// </summary>
-    /// <param name="selectionRect">The rect of all selected objects,</param>
+    /// <param name="selectionRect">The rect of all selected objects.</param>
     protected void EnableMoveButtons(Rect selectionRect)
     {
         if (BuilderInputSelector.Instance.IsUsingDesktop)
@@ -506,8 +514,13 @@ public abstract class SelectionManagerBase : MonoBehaviour
     private Vector2 WorldToLocalUiPoint(Vector2 worldPos)
     {
         Vector2 screenPoint = this.cam.WorldToScreenPoint(worldPos);
+
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            this.selectionBoxParent, screenPoint, this.cam, out Vector2 localPoint);
+            this.selectionBoxParent,
+            screenPoint,
+            this.cam,
+            out Vector2 localPoint);
+
         return localPoint;
     }
 
@@ -516,13 +529,18 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// </summary>
     /// <param name="buttons">The button panel's RectTransform to position.</param>
     /// <param name="worldRect">The world-space rect (e.g. selection bounds) to anchor above.</param>
-    private void PositionButtonsAboveRect(RectTransform buttons, Rect worldRect)
+    private void PositionButtonsAboveRect(
+        RectTransform buttons,
+        Rect worldRect)
     {
-        Vector2 topCenterWorld = new Vector2(worldRect.center.x, worldRect.yMax);
+        Vector2 topCenterWorld =
+            new Vector2(worldRect.center.x, worldRect.yMax);
 
-        Vector2 localPoint = this.WorldToLocalUiPoint(topCenterWorld);
+        Vector2 localPoint =
+            this.WorldToLocalUiPoint(topCenterWorld);
 
-        buttons.anchoredPosition = localPoint + new Vector2(0f, ButtonVerticalPadding);
+        buttons.anchoredPosition =
+            localPoint + new Vector2(0f, ButtonVerticalPadding);
     }
 
     /// <summary>
