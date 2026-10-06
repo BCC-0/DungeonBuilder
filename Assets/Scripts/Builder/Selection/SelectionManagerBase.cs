@@ -42,15 +42,6 @@ public abstract class SelectionManagerBase : MonoBehaviour
     [SerializeField]
     private RectTransform moveButtons;
 
-    /// <summary>
-    /// The UI element containing the "Done" and "Cancel" buttons shown while
-    /// picking references. Wire Done to <see cref="ConfirmReferenceSelection"/>
-    /// and Cancel to <see cref="CancelReferenceSelection"/>. Both simply end
-    /// reference mode, picks are applied to the field immediately.
-    /// </summary>
-    [SerializeField]
-    private RectTransform referenceSelectionButtons;
-
     private Camera cam;
 
     private bool isDragging;
@@ -129,7 +120,6 @@ public abstract class SelectionManagerBase : MonoBehaviour
         this.DisableMoveButtons();
         this.selectionBox.StopSelection();
 
-        this.SetReferenceSelectionButtons(true);
         this.OnReferenceSelectionStarted();
     }
 
@@ -379,7 +369,6 @@ public abstract class SelectionManagerBase : MonoBehaviour
         this.grid = FindAnyObjectByType<Grid>();
         this.DisableSelectionButtons();
         this.DisableMoveButtons();
-        this.SetReferenceSelectionButtons(false);
     }
 
     /// <summary>
@@ -421,19 +410,6 @@ public abstract class SelectionManagerBase : MonoBehaviour
     protected void DisableMoveButtons()
     {
         this.moveButtons.gameObject.SetActive(false);
-    }
-
-    /// <summary>
-    /// Sets whether the reference selection buttons (Confirm / Cancel)
-    /// should be visible.
-    /// </summary>
-    /// <param name="visible">Whether the buttons should be visible.</param>
-    protected void SetReferenceSelectionButtons(bool visible)
-    {
-        if (this.referenceSelectionButtons != null)
-        {
-            this.referenceSelectionButtons.gameObject.SetActive(visible);
-        }
     }
 
     /// <summary>
@@ -493,7 +469,6 @@ public abstract class SelectionManagerBase : MonoBehaviour
         this.hasDragged = false;
 
         this.selectionBox.StopSelection();
-        this.SetReferenceSelectionButtons(false);
 
         if (RuntimePropertyEditor.Instance != null)
         {
