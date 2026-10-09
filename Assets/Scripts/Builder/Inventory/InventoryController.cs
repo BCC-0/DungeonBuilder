@@ -89,11 +89,6 @@ public class InventoryController : MonoBehaviour
     /// Selects the given inventory item.
     /// </summary>
     /// <param name="itemUI">The inventory item UI that was clicked.</param>
-
-    /// <summary>
-    /// Selects the given inventory item.
-    /// </summary>
-    /// <param name="itemUI">The inventory item UI that was clicked.</param>
     public void SelectItem(InventoryItemUI itemUI)
     {
         if (itemUI == null || itemUI.Item == null)
