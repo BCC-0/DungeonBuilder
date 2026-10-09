@@ -1845,7 +1845,6 @@ MonoBehaviour:
   selectionBoxParent: {fileID: 1617474114}
   selectionButtons: {fileID: 828048498}
   moveButtons: {fileID: 35598982}
-  referenceSelectionButtons: {fileID: 0}
   saveableTilemap: {fileID: 547713615080710944}
   movementPreviewTilemap: {fileID: 746435619}
 --- !u!114 &322721818
@@ -2304,7 +2303,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 307528835}
   m_Direction: 0
   m_Value: 1
-  m_Size: 1
+  m_Size: 0.9999999
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -3942,20 +3941,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.ContentSizeFitter
   m_HorizontalFit: 0
   m_VerticalFit: 2
---- !u!114 &602389042
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fc1515ab76e54f068e2f2207940fab32, type: 3}
-  m_Name: Builder/Point
-  m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.InputActionReference
-  m_Asset: {fileID: -944628639613478452, guid: 5dc31e06f7a5349448c512cb79147bc0, type: 3}
-  m_ActionId: 577b91b0-546b-42da-9740-c8dddc01707a
 --- !u!1 &618813304
 GameObject:
   m_ObjectHideFlags: 0
@@ -6712,7 +6697,7 @@ MonoBehaviour:
   m_MoveRepeatRate: 0.1
   m_XRTrackingOrigin: {fileID: 0}
   m_ActionsAsset: {fileID: -944628639613478452, guid: 5dc31e06f7a5349448c512cb79147bc0, type: 3}
-  m_PointAction: {fileID: 602389042}
+  m_PointAction: {fileID: -1654692200621890270, guid: 5dc31e06f7a5349448c512cb79147bc0, type: 3}
   m_MoveAction: {fileID: 1787954732}
   m_SubmitAction: {fileID: 725655008}
   m_CancelAction: {fileID: 519748385}
@@ -8099,7 +8084,6 @@ MonoBehaviour:
   selectionBoxParent: {fileID: 1617474114}
   selectionButtons: {fileID: 828048498}
   moveButtons: {fileID: 35598982}
-  referenceSelectionButtons: {fileID: 0}
   entitySelectRadius: 0.5
   referenceOverlay: {fileID: 1495497493}
   referenceTextBlock: {fileID: 1037560975}
@@ -14461,7 +14445,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2019441078}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b9b12dfe390b15046b402889de58c6bb, type: 3}
   m_Name: 
@@ -16086,7 +16070,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:

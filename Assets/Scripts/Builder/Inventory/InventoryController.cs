@@ -65,6 +65,7 @@ public class InventoryController : MonoBehaviour
         this.isOpen = true;
         this.inventory.SetActive(true);
         Time.timeScale = 0;
+
         this.lastSelectedSlot = this.selectedSlot;
         this.selectedSlot = -1;
         this.HideSelectionImage();
@@ -88,10 +89,22 @@ public class InventoryController : MonoBehaviour
     /// Selects the given inventory item.
     /// </summary>
     /// <param name="itemUI">The inventory item UI that was clicked.</param>
+
+    /// <summary>
+    /// Selects the given inventory item.
+    /// </summary>
+    /// <param name="itemUI">The inventory item UI that was clicked.</param>
     public void SelectItem(InventoryItemUI itemUI)
     {
         if (itemUI == null || itemUI.Item == null)
         {
+            return;
+        }
+
+        // If this item is already selected, deselect it.
+        if (this.selectedInventoryItem == itemUI)
+        {
+            this.ClearItemSelection();
             return;
         }
 
@@ -122,6 +135,17 @@ public class InventoryController : MonoBehaviour
     {
         if (index < 0 || index >= this.itemSlots.Length)
         {
+            return;
+        }
+
+        // If the same slot is clicked again while the inventory is open,
+        // deselect it.
+        if (this.isOpen &&
+            this.selectedSlot == index &&
+            this.selectedInventoryItem == null)
+        {
+            this.selectedSlot = -1;
+            this.HideSelectionImage();
             return;
         }
 
