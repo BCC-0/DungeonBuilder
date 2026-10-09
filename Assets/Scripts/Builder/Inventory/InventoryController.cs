@@ -65,6 +65,7 @@ public class InventoryController : MonoBehaviour
         this.isOpen = true;
         this.inventory.SetActive(true);
         Time.timeScale = 0;
+
         this.lastSelectedSlot = this.selectedSlot;
         this.selectedSlot = -1;
         this.HideSelectionImage();
@@ -95,6 +96,13 @@ public class InventoryController : MonoBehaviour
             return;
         }
 
+        // If this item is already selected, deselect it.
+        if (this.selectedInventoryItem == itemUI)
+        {
+            this.ClearItemSelection();
+            return;
+        }
+
         // A slot is already selected.
         // Assign this item directly to that slot.
         if (this.selectedSlot >= 0)
@@ -122,6 +130,17 @@ public class InventoryController : MonoBehaviour
     {
         if (index < 0 || index >= this.itemSlots.Length)
         {
+            return;
+        }
+
+        // If the same slot is clicked again while the inventory is open,
+        // deselect it.
+        if (this.isOpen &&
+            this.selectedSlot == index &&
+            this.selectedInventoryItem == null)
+        {
+            this.selectedSlot = -1;
+            this.HideSelectionImage();
             return;
         }
 
