@@ -19,21 +19,7 @@
 
 ## 1. WORLD & DUNGEON STRUCTURE
 
-### Dungeon Format
-
-- Grid-based
-- Doors separating rooms load new room and deload old room (for mobile performance)
-
-**Reasoning:**
-
-- Grid based is well-known and easy to work with
-- Not having standard rooms will give extra freedom
-
 ### Dungeon Components
-
-- Rooms:
-    - All rooms should be closed off by walls and/or doors
-    - Bombable walls count as doors
 - Tiles:
     - Player can place chosen tiles to replace the empty (black) grid
     - Should have collections of tiles belonging together
@@ -69,7 +55,7 @@
 
 ---
 
-## 2. CRAWLER MODE (Playable Core)
+## 2. CRAWLER MODE
 
 ### Weapons/tools:
 
@@ -81,40 +67,22 @@
 
 ---
 
-## 3. BUILDER MODE (Creation Tools)
+## 3. BUILDER MODE
 
 ### Builder Actions
 
 - Place
 - Delete
+- Copy/paste
 - Undo / Redo
 - Test dungeon
-
-### 🧱 Buildable Parts
-
-| Part | Category | Unlock Condition | Cost | Notes |
-| --- | --- | --- | --- | --- |
-
 ---
 
-## 4. PROGRESSION & UNLOCKS
-
-### Player Progression
-
-- What carries over between runs?
-    - In the story, absolutely nothing. Levels must be self-contained to make every level it’s own adventure.
-- How fast do players unlock tools?
-    - Depends on the level, they could get them in the first room, or have to fight 20 enemies to find them!
-- How do players unlock building blocks?
-    - Every level should unlock a new building block, it can be small, it can be big. At the end of the story of each theme, the player should have everything of it’s theme!
-
----
-
-## 5. ART DIRECTION
+## 4. ART DIRECTION
 
 ### Visual Style
 
-- Style: Pixelart 16x16 per tile.
+- Style: Pixelart 32x32 per tile.
 - Color rules: All outlines of enemies should be #303030 to give it a soft line and keep it consistent.
 - Readability rules: White pixel art text with outline in UI.
 
@@ -126,51 +94,3 @@
 - Floors: Hay, grass, wood.
 - Props: Wheelbarrow with hay, pitchfork standing against the wall, fences, etc.
 - Lighting mood: Overall, it should be lit everywhere (for now). We can add some simple lanterns/torches for atmosphere, but it should have no impact on the game.
-
----
-
-## 6. UI / UX DESIGN
-
-### Builder UI
-
-- Placement controls:
-- Menus:
-- Feedback:
-
-### Crawler HUD
-
-- Health/energy: (Is the same to keep the player simpler.)
-- Map:
-- Alerts:
-
-### Menus
-
-- Main menu:
-- Mode switching:
-- Save / Load:
-
----
-
-## 7. SOUND & FEEL
-
-### Sound Design
-
-- Player actions:
-- Enemies:
-- Traps:
-- UI sounds:
-
-### Game Feel
-
-- Screen shake:
-- Hit stop:
-- Particles:
-- Animations:
-
-Sub-pages:
-
-Enemy ideas per theme:
-
-Weapon ideas per theme:
-
-Tool ideas per theme:
