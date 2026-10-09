@@ -22,7 +22,6 @@
 ### Dungeon Format
 
 - Grid-based
-- Rooms of any format -> Builder should check if rooms are closed of!
 - Doors separating rooms load new room and deload old room (for mobile performance)
 
 **Reasoning:**
@@ -31,8 +30,6 @@
 - Not having standard rooms will give extra freedom
 
 ### Dungeon Components
-
-Describe the "language" of your dungeon.
 
 - Rooms:
     - All rooms should be closed off by walls and/or doors
@@ -61,7 +58,7 @@ Describe the "language" of your dungeon.
         - Those properties should be accessible when modifying tile.
         - MUST SET properties: If those aren’t set, we can’t playtest or save!
         - COULD SET properties: If those aren’t set, this behaviour simply does nothing
-        - Reference properties: When setting this, we go into select mode, wheere we must select another object in the dungeon. Objects we can select will be outgrined with a green dotted line.
+        - Reference properties: When setting this, we go into select mode, where we must select another object in the dungeon.
         - Variable properties: When setting this, we only need to fill in the variable value, e.g. seconds for a timer or damage/health for an enemy.
 - Themes / Biomes:
     - Farm theme
