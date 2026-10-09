@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// Builds and controls the inventory UI from the folders found in the resources folder and the tilelibraries.
@@ -52,7 +53,7 @@ public class InventoryController : MonoBehaviour
     public List<InventoryFolder> Folders => this.folders;
 
     /// <summary>
-    /// Opens the inventories UI.
+    /// Opens the inventory UI.
     /// </summary>
     public void OpenInventory()
     {
@@ -72,7 +73,7 @@ public class InventoryController : MonoBehaviour
     }
 
     /// <summary>
-    /// Closes the inventories UI.
+    /// Closes the inventory UI.
     /// </summary>
     public void CloseInventory()
     {
@@ -88,7 +89,7 @@ public class InventoryController : MonoBehaviour
     /// <summary>
     /// Selects the given inventory item.
     /// </summary>
-    /// <param name="itemUI">The inventory item UI that was clicked.</param>
+    /// <param name="itemUI">The inventory item UI element that was selected.</param>
     public void SelectItem(InventoryItemUI itemUI)
     {
         if (itemUI == null || itemUI.Item == null)
@@ -96,15 +97,12 @@ public class InventoryController : MonoBehaviour
             return;
         }
 
-        // If this item is already selected, deselect it.
         if (this.selectedInventoryItem == itemUI)
         {
             this.ClearItemSelection();
             return;
         }
 
-        // A slot is already selected.
-        // Assign this item directly to that slot.
         if (this.selectedSlot >= 0)
         {
             this.AssignItemToSlot(
@@ -115,17 +113,15 @@ public class InventoryController : MonoBehaviour
             return;
         }
 
-        // Otherwise select the inventory item.
         this.selectedInventoryItem = itemUI;
 
         this.SetSelectionImage(itemUI.gameObject);
     }
 
     /// <summary>
-    /// Selects the given toolbar slot, equipping whatever item currently
-    /// lives in it.
+    /// Selects the given toolbar slot, equipping its item.
     /// </summary>
-    /// <param name="index">The zero-based index of the slot.</param>
+    /// <param name="index">The index of the toolbar slot to select.</param>
     public void SelectSlot(int index)
     {
         if (index < 0 || index >= this.itemSlots.Length)
@@ -133,8 +129,6 @@ public class InventoryController : MonoBehaviour
             return;
         }
 
-        // If the same slot is clicked again while the inventory is open,
-        // deselect it.
         if (this.isOpen &&
             this.selectedSlot == index &&
             this.selectedInventoryItem == null)
@@ -144,7 +138,9 @@ public class InventoryController : MonoBehaviour
             return;
         }
 
-        if (this.isOpen && this.selectedSlot >= 0 && this.selectedSlot != index)
+        if (this.isOpen &&
+            this.selectedSlot >= 0 &&
+            this.selectedSlot != index)
         {
             this.SwapSlotItems(this.selectedSlot, index);
 
@@ -174,7 +170,130 @@ public class InventoryController : MonoBehaviour
     }
 
     /// <summary>
-    /// Adds a new inventory folder to the existing list.
+    /// Captures the items currently assigned to the toolbar slots.
+    /// Used when entering playtest mode.
+    /// </summary>
+    /// <returns>The item of each toolbar slot, in slot order. Empty slots are null.</returns>
+    public InventoryItem[] GetSlotItems()
+    {
+        InventoryItem[] items =
+            new InventoryItem[this.itemSlots.Length];
+
+        for (int i = 0; i < this.itemSlots.Length; i++)
+        {
+            items[i] = this.itemSlots[i].Item;
+        }
+
+        return items;
+    }
+
+    /// <summary>
+    /// Captures the toolbar inventory sizes.
+    /// These are used to restore item icons correctly.
+    /// </summary>
+    /// <returns>The inventory size of each toolbar slot, in slot order.</returns>
+    public Vector2[] GetSlotInventorySizes()
+    {
+        Vector2[] sizes = new Vector2[this.itemSlots.Length];
+
+        for (int i = 0; i < this.itemSlots.Length; i++)
+        {
+            sizes[i] = this.itemSlots[i].InventorySize;
+        }
+
+        return sizes;
+    }
+
+    /// <summary>
+    /// Gets the selected toolbar slot, including the previously selected
+    /// slot if the inventory is currently open.
+    /// </summary>
+    /// <returns>The selected slot index, or -1 if no slot is selected.</returns>
+    public int GetSelectedSlot()
+    {
+        return this.selectedSlot >= 0
+            ? this.selectedSlot
+            : this.lastSelectedSlot;
+    }
+
+    /// <summary>
+    /// Restores the toolbar contents and selected slot after a scene change.
+    /// </summary>
+    /// <param name="items">The items to place in the toolbar slots, in slot order. Null entries leave the slot empty.</param>
+    /// <param name="inventorySizes">The inventory size of each slot, in slot order. May be null.</param>
+    /// <param name="selectedSlotIndex">The slot to select afterwards. Negative values select nothing.</param>
+    public void RestoreSlotItems(
+        InventoryItem[] items,
+        Vector2[] inventorySizes,
+        int selectedSlotIndex)
+    {
+        if (items == null)
+        {
+            return;
+        }
+
+        this.RebuildSlotLayouts();
+
+        int count = Mathf.Min(
+            items.Length,
+            this.itemSlots.Length);
+
+        for (int i = 0; i < count; i++)
+        {
+            InventoryItem item = items[i];
+
+            // Empty slots do not need to be reconstructed.
+            if (item == null)
+            {
+                continue;
+            }
+
+            ItemBarSlot slot = this.itemSlots[i];
+
+            RectTransform imageRect = slot.ItemImageRect;
+
+            if (imageRect == null)
+            {
+                imageRect = slot.GetComponent<RectTransform>();
+            }
+
+            if (imageRect == null)
+            {
+                continue;
+            }
+
+            Vector3 screenPosition = GetScreenPoint(imageRect);
+
+            Vector2 inventorySize = slot.InventorySize;
+
+            if (inventorySizes != null &&
+                i < inventorySizes.Length)
+            {
+                inventorySize = inventorySizes[i];
+            }
+
+            slot.SetItem(
+                item,
+                screenPosition,
+                inventorySize);
+        }
+
+        // Clear any temporary selection left by initialization.
+        this.selectedInventoryItem = null;
+        this.selectedSlot = -1;
+        this.lastSelectedSlot = -1;
+        this.HideSelectionImage();
+
+        // Re-select and equip the slot that was active before playtesting.
+        if (selectedSlotIndex >= 0 &&
+            selectedSlotIndex < this.itemSlots.Length)
+        {
+            this.SelectSlot(selectedSlotIndex);
+        }
+    }
+
+    /// <summary>
+    /// Adds a new inventory folder.
     /// </summary>
     /// <param name="folder">The folder to add.</param>
     public void AddFolder(InventoryFolder folder)
@@ -214,10 +333,9 @@ public class InventoryController : MonoBehaviour
     }
 
     /// <summary>
-    /// Displays all items belonging to the selected folder
-    /// in the shared item container.
+    /// Displays all items belonging to the selected folder.
     /// </summary>
-    /// <param name="folder">The folder whose items should be displayed.</param>
+    /// <param name="folder">The folder whose items are shown.</param>
     public void ShowFolder(InventoryFolder folder)
     {
         if (folder == null)
@@ -233,7 +351,8 @@ public class InventoryController : MonoBehaviour
                 this.itemPrefab,
                 this.itemContainer);
 
-            InventoryItemUI itemUI = itemObject.GetComponent<InventoryItemUI>();
+            InventoryItemUI itemUI =
+                itemObject.GetComponent<InventoryItemUI>();
 
             if (itemUI == null)
             {
@@ -247,8 +366,8 @@ public class InventoryController : MonoBehaviour
     /// <summary>
     /// Swaps the items between two toolbar slots.
     /// </summary>
-    /// <param name="firstIndex">The first slot index.</param>
-    /// <param name="secondIndex">The second slot index.</param>
+    /// <param name="firstIndex">The index of the first slot.</param>
+    /// <param name="secondIndex">The index of the second slot.</param>
     private void SwapSlotItems(int firstIndex, int secondIndex)
     {
         if (firstIndex < 0 ||
@@ -277,23 +396,31 @@ public class InventoryController : MonoBehaviour
         Vector2 firstInventorySize = firstSlot.InventorySize;
         Vector2 secondInventorySize = secondSlot.InventorySize;
 
-        Vector3 firstScreenPos = RectTransformUtility.WorldToScreenPoint(null, firstImageRect.position);
-        Vector3 secondScreenPos = RectTransformUtility.WorldToScreenPoint(null, secondImageRect.position);
+        Vector3 firstScreenPos = GetScreenPoint(firstImageRect);
 
-        firstSlot.SetItem(secondItem, secondScreenPos, secondInventorySize);
-        secondSlot.SetItem(firstItem, firstScreenPos, firstInventorySize);
+        Vector3 secondScreenPos = GetScreenPoint(secondImageRect);
+
+        firstSlot.SetItem(
+            secondItem,
+            secondScreenPos,
+            secondInventorySize);
+
+        secondSlot.SetItem(
+            firstItem,
+            firstScreenPos,
+            firstInventorySize);
     }
 
     /// <summary>
     /// Assigns an inventory item to a toolbar slot, then equips it.
     /// </summary>
     /// <param name="item">The item to assign.</param>
-    /// <param name="slotIndex">The target slot index.</param>
-    /// <param name="sourceUI">The UI element the item came from.</param>
+    /// <param name="slotIndex">The index of the target toolbar slot.</param>
+    /// <param name="sourceUI">The inventory item UI element the item came from.</param>
     private void AssignItemToSlot(
-            InventoryItem item,
-            int slotIndex,
-            InventoryItemUI sourceUI)
+        InventoryItem item,
+        int slotIndex,
+        InventoryItemUI sourceUI)
     {
         if (item == null ||
             slotIndex < 0 ||
@@ -303,20 +430,22 @@ public class InventoryController : MonoBehaviour
             return;
         }
 
-        RectTransform itemRect = sourceUI.GetComponent<RectTransform>();
+        RectTransform itemRect =
+            sourceUI.GetComponent<RectTransform>();
 
         if (itemRect == null)
         {
             return;
         }
 
-        Vector3 screenPos = RectTransformUtility.WorldToScreenPoint(
-                null,
-                itemRect.position);
+        Vector3 screenPos = GetScreenPoint(itemRect);
 
         Vector2 inventorySize = itemRect.rect.size;
 
-        this.itemSlots[slotIndex].SetItem(item, screenPos, inventorySize);
+        this.itemSlots[slotIndex].SetItem(
+            item,
+            screenPos,
+            inventorySize);
 
         this.selectedSlot = -1;
         this.ClearItemSelection();
@@ -325,11 +454,9 @@ public class InventoryController : MonoBehaviour
     }
 
     /// <summary>
-    /// Detects whether the item is a tile or an entity, switches the map
-    /// editor to the matching layer, and assigns the item to that layer's
-    /// controller as the currently selected tile/prefab.
+    /// Equips the item and switches to the matching editor layer.
     /// </summary>
-    /// <param name="item">The item being equipped. May be null (empty slot).</param>
+    /// <param name="item">The item to equip. Null is ignored.</param>
     private void EquipItem(InventoryItem item)
     {
         if (item == null || MapEditorManager.Instance == null)
@@ -376,7 +503,7 @@ public class InventoryController : MonoBehaviour
     /// <summary>
     /// Moves the selection image to the supplied UI object.
     /// </summary>
-    /// <param name="target">The UI object to select.</param>
+    /// <param name="target">The UI object to highlight. Null hides the selection image.</param>
     private void SetSelectionImage(GameObject target)
     {
         if (this.selectionImage == null)
@@ -390,7 +517,8 @@ public class InventoryController : MonoBehaviour
             return;
         }
 
-        RectTransform targetRect = target.GetComponent<RectTransform>();
+        RectTransform targetRect =
+            target.GetComponent<RectTransform>();
 
         if (targetRect == null)
         {
@@ -398,7 +526,9 @@ public class InventoryController : MonoBehaviour
         }
 
         Vector2 targetSize = targetRect.rect.size;
+
         bool isSlot = target.TryGetComponent<ItemBarSlot>(out _);
+
         Vector2 selectionSize;
 
         if (isSlot)
@@ -407,9 +537,15 @@ public class InventoryController : MonoBehaviour
         }
         else
         {
-            float largestDimension = Mathf.Max(targetSize.x, targetSize.y);
-            float selectionDimension = largestDimension * this.selectionScale;
-            selectionSize = new Vector2(selectionDimension, selectionDimension);
+            float largestDimension =
+                Mathf.Max(targetSize.x, targetSize.y);
+
+            float selectionDimension =
+                largestDimension * this.selectionScale;
+
+            selectionSize = new Vector2(
+                selectionDimension,
+                selectionDimension);
         }
 
         this.selectionImage.SetParent(targetRect, false);
@@ -420,7 +556,7 @@ public class InventoryController : MonoBehaviour
     }
 
     /// <summary>
-    /// Clears only the pending inventory-item pick.
+    /// Clears only the pending inventory-item selection.
     /// </summary>
     private void ClearItemSelection()
     {
@@ -433,7 +569,8 @@ public class InventoryController : MonoBehaviour
 
         if (this.selectedSlot >= 0)
         {
-            this.SetSelectionImage(this.itemSlots[this.selectedSlot].gameObject);
+            this.SetSelectionImage(
+                this.itemSlots[this.selectedSlot].gameObject);
         }
         else
         {
@@ -442,7 +579,7 @@ public class InventoryController : MonoBehaviour
     }
 
     /// <summary>
-    /// Hides the selection image and restores it to its permanent parent.
+    /// Hides the selection image and restores its permanent parent.
     /// </summary>
     private void HideSelectionImage()
     {
@@ -486,13 +623,16 @@ public class InventoryController : MonoBehaviour
     }
 
     /// <summary>
-    /// Adds all folders found in the files.
+    /// Adds all folders found in Resources.
     /// </summary>
     private void ScanFolders()
     {
-        if (this.folderNames == null || this.folderNames.Length == 0)
+        if (this.folderNames == null ||
+            this.folderNames.Length == 0)
         {
-            Debug.LogWarning("No inventory folder names have been assigned.");
+            Debug.LogWarning(
+                "No inventory folder names have been assigned.");
+
             return;
         }
 
@@ -546,6 +686,55 @@ public class InventoryController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Converts the world position of a UI element to a screen point,
+    /// using the camera of the canvas it belongs to.
+    /// </summary>
+    /// <param name="rect">The UI element to convert.</param>
+    /// <returns>The screen position of the element.</returns>
+    private static Vector3 GetScreenPoint(RectTransform rect)
+    {
+        Canvas canvas = rect.GetComponentInParent<Canvas>();
+
+        Camera cam =
+            canvas != null &&
+            canvas.renderMode != RenderMode.ScreenSpaceOverlay
+                ? canvas.worldCamera
+                : null;
+
+        return RectTransformUtility.WorldToScreenPoint(
+            cam,
+            rect.position);
+    }
+
+    /// <summary>
+    /// Forces a layout rebuild of every canvas that contains a toolbar slot.
+    /// </summary>
+    private void RebuildSlotLayouts()
+    {
+        Canvas.ForceUpdateCanvases();
+
+        HashSet<Canvas> done = new();
+
+        foreach (ItemBarSlot slot in this.itemSlots)
+        {
+            Canvas root = slot.GetComponentInParent<Canvas>()?.rootCanvas;
+
+            if (root == null || !done.Add(root))
+            {
+                continue;
+            }
+
+            foreach (RectTransform rt in
+                root.GetComponentsInChildren<RectTransform>(true))
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(rt);
+            }
+        }
+
+        Canvas.ForceUpdateCanvases();
+    }
+
     private void Start()
     {
         if (this.selectionImage != null)
@@ -558,8 +747,7 @@ public class InventoryController : MonoBehaviour
         this.BuildUI();
         this.CloseInventory();
 
-        // A toolbar slot must always be equipped, even before the player
-        // has ever opened the inventory or touched the toolbar.
+        // Equip the first slot by default.
         if (this.itemSlots.Length > 0)
         {
             this.SelectSlot(0);
