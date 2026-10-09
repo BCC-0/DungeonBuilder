@@ -82,13 +82,32 @@ public class ItemBarSlot : MonoBehaviour
 
         RectTransform imageTransform = this.itemImage.rectTransform;
         Vector2 targetSize = this.GetAspectRatioSize(inventorySize, this.originalImageSize);
-        Vector3 targetPosition = this.transform.position;
 
-        imageTransform.position = screenPos;
+        Canvas canvas = this.itemImage.canvas;
+
+        Camera cam =
+            canvas.renderMode == RenderMode.ScreenSpaceOverlay
+                ? null
+                : canvas.worldCamera;
+
+        RectTransformUtility.ScreenPointToWorldPointInRectangle(
+            imageTransform.parent as RectTransform,
+            screenPos,
+            cam,
+            out Vector3 startPosition);
+
+        imageTransform.position = startPosition;
         imageTransform.sizeDelta = inventorySize;
 
-        this.itemTween = imageTransform
-            .DOMove(targetPosition, 0.25f)
+        this.itemTween = DOTween
+            .To(
+                () => 0f,
+                progress => imageTransform.position = Vector3.Lerp(
+                    startPosition,
+                    this.transform.position,
+                    progress),
+                1f,
+                0.25f)
             .SetEase(Ease.OutCubic)
             .SetUpdate(true);
 
