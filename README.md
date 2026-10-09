@@ -1,19 +1,11 @@
-- Game feel:
-    - Should feel light and breezy
-        - Kind of toon-like
-        - No realistic death/pain depictions
-        
-
 ### Core Gameplay Loop
 
 - Crawl (already made) dungeon → Unlock parts → Build dungeons → Test/Play → Repeat
-- Why is this loop fun?
     - Pros:
         - Solving puzzles made by someone else
         - Being creative with dungeons and animal mixes
         - Collecting all parts
         - 100% completing the set dungeons
-        - 
     - Cons:
         - Needs a smooth and fun dungeon building program!
         - Needs consistent artstyle/enemy design for mixing idea
@@ -23,33 +15,6 @@
         - The body has it’s own movement type and speed
     - Light/simple humor and story without any background
 
-### Player Actions (PC / Mobile)
-
-**Crawler Mode**
-
-- Move:
-    - WASD / Joystick
-- Combat:
-    - LMB / Left Button
-- Interaction:
-    - E / Clicking
-- Item:
-    - RMB / Right Button
-
-**Builder Mode**
-
-- Place:
-    - Select placable from bar
-    - LMB / Click on grid
-- Modify:
-    - RMB / hold certain block
-    - Shows options this grid: (examples)
-        - Rotate
-        - Connect to puzzle component (for doors or other movables)
-- Test:
-    - A big play and stop button topleft should activate crawler mode
-    - Should simply work like normal crawler mode until stop button is clicked
-
 ---
 
 ## 1. WORLD & DUNGEON STRUCTURE
@@ -57,7 +22,7 @@
 ### Dungeon Format
 
 - Grid-based
-- Rooms of any format → Builder should check if rooms are closed of!
+- Rooms of any format -> Builder should check if rooms are closed of!
 - Doors separating rooms load new room and deload old room (for mobile performance)
 
 **Reasoning:**
@@ -75,7 +40,7 @@ Describe the "language" of your dungeon.
 - Tiles:
     - Player can place chosen tiles to replace the empty (black) grid
     - Should have collections of tiles belonging together
-    - Water → If player wants to walk on it, it acts like a wall, but arrows fly over it etc.
+    - Water -> If player wants to walk on it, it acts like a wall, but arrows fly over it etc.
 - Connections:
     - Buttons
     - Levers
