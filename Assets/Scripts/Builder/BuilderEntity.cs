@@ -614,31 +614,24 @@ public class BuilderEntity : SaveableEntity
 
     private void CopyRenderer(GameObject prefab)
     {
-        SpriteRenderer prefabRenderer =
-            prefab.GetComponent<SpriteRenderer>();
+        SpriteRenderer prefabRenderer = prefab.GetComponent<SaveableEntity>().SpriteRenderer;
 
         if (prefabRenderer != null)
         {
-            SpriteRenderer sr =
-                this.GetComponent<SpriteRenderer>();
+            SpriteRenderer sr = this.GetComponent<SpriteRenderer>();
 
             if (sr == null)
             {
-                sr =
-                    this.gameObject.AddComponent<SpriteRenderer>();
+                sr = this.gameObject.AddComponent<SpriteRenderer>();
             }
 
-            sr.sprite =
-                prefabRenderer.sprite;
+            sr.sprite = prefabRenderer.sprite;
 
-            sr.color =
-                prefabRenderer.color;
+            sr.color = prefabRenderer.color;
 
-            sr.sortingLayerID =
-                prefabRenderer.sortingLayerID;
+            sr.sortingLayerID = prefabRenderer.sortingLayerID;
 
-            sr.sortingOrder =
-                prefabRenderer.sortingOrder;
+            sr.sortingOrder = prefabRenderer.sortingOrder;
         }
         else
         {
@@ -650,8 +643,7 @@ public class BuilderEntity : SaveableEntity
 
     private void CopySelectionOutline(GameObject prefab)
     {
-        Transform selectionOutline =
-            prefab.transform.Find("SelectionOutline");
+        Transform selectionOutline = prefab.transform.Find("SelectionOutline");
 
         if (selectionOutline == null)
         {
@@ -663,8 +655,7 @@ public class BuilderEntity : SaveableEntity
                 selectionOutline.gameObject,
                 this.transform);
 
-        outline.name =
-            selectionOutline.name;
+        outline.name = selectionOutline.name;
     }
 
     private void DisableOtherBehaviours()

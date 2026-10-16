@@ -32,17 +32,17 @@ public abstract class SaveableEntity : MonoBehaviour
     public bool ExistsInWorld => this.consumedBy == null;
 
     /// <summary>
-    /// Gets a value indicating whether there are references that still wait to be resolved.
-    /// </summary>
-    protected bool HasPendingReferences => this.pendingReferences.Count > 0;
-
-    /// <summary>
     /// Gets the spriteRenderer of this entity.
     /// </summary>
-    protected SpriteRenderer SpriteRenderer
+    public SpriteRenderer SpriteRenderer
     {
         get { return this.spriteRenderer; }
     }
+
+    /// <summary>
+    /// Gets a value indicating whether there are references that still wait to be resolved.
+    /// </summary>
+    protected bool HasPendingReferences => this.pendingReferences.Count > 0;
 
     /// <summary>
     /// Gets the unique id of this entity.
@@ -286,19 +286,31 @@ public abstract class SaveableEntity : MonoBehaviour
     /// <returns>The save fields.</returns>
     protected FieldInfo[] GetSaveFields()
     {
-        FieldInfo[] allFields = this.GetType().GetFields(
-            BindingFlags.Instance |
-            BindingFlags.Public |
-            BindingFlags.NonPublic);
+        List<FieldInfo> saveFields = new List<FieldInfo>();
 
-        List<FieldInfo> saveFields = new ();
+        Type type = this.GetType();
 
-        foreach (FieldInfo field in allFields)
+        while (type != null &&
+               typeof(SaveableEntity).IsAssignableFrom(type))
         {
-            if (Attribute.IsDefined(field, typeof(SaveFieldAttribute)))
+            FieldInfo[] fields = type.GetFields(
+                BindingFlags.Instance |
+                BindingFlags.Public |
+                BindingFlags.NonPublic |
+                BindingFlags.DeclaredOnly);
+
+            foreach (FieldInfo field in fields)
             {
-                saveFields.Add(field);
+                if (Attribute.IsDefined(
+                    field,
+                    typeof(SaveFieldAttribute),
+                    false))
+                {
+                    saveFields.Add(field);
+                }
             }
+
+            type = type.BaseType;
         }
 
         return saveFields.ToArray();

@@ -2,9 +2,9 @@
 
 /// <summary>
 /// Base class for enemy heads. A head is consumed by an <see cref="EnemyBody"/>
-/// and decides when and how that enemy acts: it picks a target, checks its
-/// trigger conditions and then executes its behaviour, at most once per
-/// <see cref="CooldownDuration"/>.
+/// and decides when and how that enemy acts. The base class only provides the
+/// link to the body and the hooks the body calls. Everything else, such as
+/// targeting, cooldowns and animation, is up to the head itself.
 /// </summary>
 /// <remarks>
 /// Fields marked with [SaveField] on a head can be private. Only the fields
@@ -14,7 +14,6 @@
 public abstract class EnemyHead : SaveableEntity
 {
     private EnemyBody body;
-    private float nextTriggerTime;
 
     /// <summary>
     /// Gets the body that uses this head. Null until attached.
@@ -22,23 +21,14 @@ public abstract class EnemyHead : SaveableEntity
     public EnemyBody Body => this.body;
 
     /// <summary>
+    /// Gets the direction the body is facing.
+    /// </summary>
+    public EnemyBody.Direction FacingDirection { get; private set; } = EnemyBody.Direction.Down;
+
+    /// <summary>
     /// Gets the sprite of this head, used by the body to draw it.
     /// </summary>
-    public Sprite Sprite =>
-        this.SpriteRenderer != null ? this.SpriteRenderer.sprite : null;
-
-    /// <summary>
-    /// Gets the time in seconds between two triggers.
-    /// Override this and return a [SaveField] field of the head, for
-    /// example the attack speed or a timer length.
-    /// </summary>
-    protected virtual float CooldownDuration => 0f;
-
-    /// <summary>
-    /// Gets how far this head can target. Override to return a [SaveField]
-    /// field such as the eyesight length.
-    /// </summary>
-    protected virtual float TargetRange => float.PositiveInfinity;
+    public Sprite Sprite => this.SpriteRenderer != null ? this.SpriteRenderer.sprite : null;
 
     /// <summary>
     /// Gets the position of the body this head sits on.
@@ -47,36 +37,36 @@ public abstract class EnemyHead : SaveableEntity
         this.body != null ? (Vector2)this.body.transform.position : (Vector2)this.transform.position;
 
     /// <summary>
+    /// Sets the direction this head should face.
+    /// </summary>
+    /// <param name="direction">The direction the body is facing.</param>
+    public void SetFacingDirection(EnemyBody.Direction direction)
+    {
+        if (this.FacingDirection == direction)
+        {
+            return;
+        }
+
+        this.FacingDirection = direction;
+        this.OnFacingDirectionChanged();
+    }
+
+    /// <summary>
     /// Attaches this head to the body that uses it.
     /// </summary>
     /// <param name="enemyBody">The body that uses this head.</param>
     public void Attach(EnemyBody enemyBody)
     {
         this.body = enemyBody;
+        this.SpriteRenderer.enabled = true;
         this.OnAttached();
     }
 
     /// <summary>
-    /// Runs the targeting, trigger and behaviour of this head. Called every
-    /// frame by the body while the enemy is alive.
+    /// Called every frame by the body while the enemy is alive. The head
+    /// decides what to do with it.
     /// </summary>
-    public void Tick()
-    {
-        if (Time.time < this.nextTriggerTime)
-        {
-            return;
-        }
-
-        Transform target = this.FindTarget();
-
-        if (!this.ShouldTrigger(target))
-        {
-            return;
-        }
-
-        this.nextTriggerTime = Time.time + this.CooldownDuration;
-        this.Execute(target);
-    }
+    public abstract void Tick();
 
     /// <summary>
     /// Called when the enemy is about to receive damage. Change the amount
@@ -102,35 +92,9 @@ public abstract class EnemyHead : SaveableEntity
     }
 
     /// <summary>
-    /// Targeting behaviour. By default the player, when within range.
+    /// Called when the direction this head faces changes.
     /// </summary>
-    /// <returns>The target, or null when there is none.</returns>
-    protected virtual Transform FindTarget()
+    protected virtual void OnFacingDirectionChanged()
     {
-        Transform player = this.body.PlayerTransform;
-
-        if (player == null)
-        {
-            return null;
-        }
-
-        float distance = Vector2.Distance(this.Origin, player.position);
-        return distance <= this.TargetRange ? player : null;
     }
-
-    /// <summary>
-    /// Trigger condition. By default the head triggers when it has a target.
-    /// </summary>
-    /// <param name="target">The target found by <see cref="FindTarget"/>.</param>
-    /// <returns>True when the behaviour should execute.</returns>
-    protected virtual bool ShouldTrigger(Transform target)
-    {
-        return target != null;
-    }
-
-    /// <summary>
-    /// The behaviour of this head.
-    /// </summary>
-    /// <param name="target">The target, which can be null for heads that trigger without one.</param>
-    protected abstract void Execute(Transform target);
 }

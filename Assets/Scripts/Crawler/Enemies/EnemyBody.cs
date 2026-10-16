@@ -6,14 +6,12 @@ using UnityEngine;
 /// health, moves, takes damage and reacts when the player touches it. It
 /// consumes an <see cref="EnemyHead"/> that decides when and how it acts.
 /// </summary>
-/// <remarks>
-/// Fields marked with [SaveField] on this class are protected, because
-/// SaveableEntity finds save fields with reflection on the runtime type, and
-/// that does not return private fields declared in a base class.
-/// </remarks>
 public abstract class EnemyBody : SaveableEntity
 {
     private static List<EnemyBody> activeEnemies = new List<EnemyBody>();
+
+    [SaveField]
+    private string displayName;
 
     /// <summary>
     /// The maximum health.
@@ -30,24 +28,72 @@ public abstract class EnemyBody : SaveableEntity
     private float moveSpeed = 2f;
 
     /// <summary>
-    /// The head of this enemy. It is consumed, so it disappears from the
-    /// world and is drawn on this body instead.
+    /// The head that is attached to this body.
     /// </summary>
-    [SerializeField]
     [SaveField(referenceMode: ReferenceMode.Consuming)]
     private EnemyHead head;
 
+    /// <summary>
+    /// The transform under which the head is instantiated.
+    /// </summary>
     [SerializeField]
-    private string displayName;
+    private Transform headAnchor;
+
+    [Header("Head Anchor Positions")]
+    [SerializeField]
+    private Vector3 headDownPosition;
 
     [SerializeField]
-    private SpriteRenderer headRenderer;
+    private Vector3 headRightPosition;
+
+    [SerializeField]
+    private Vector3 headUpPosition;
+
+    [SerializeField]
+    private Vector3 headLeftPosition;
+
+    [Header("Bobbing")]
+    [SerializeField]
+    private Transform visualRoot;
+    [SerializeField]
+    private float bobHeight = 0.05f;
+    [SerializeField]
+    private float bobSpeed = 12f;
+
+    private float bobTime;
 
     private int currentHealth;
     private float damageMultiplier = 1f;
-    private Rigidbody2D rigidBody;
     private CrawlerPlayerData player;
     private int playerDamageLayer;
+    private Direction direction = Direction.Down;
+
+    /// <summary>
+    /// The four directions an enemy can face.
+    /// Values correspond to the Animator direction parameter.
+    /// </summary>
+    public enum Direction
+    {
+        /// <summary>
+        /// The down direction.
+        /// </summary>
+        Down = 0,
+
+        /// <summary>
+        /// The right direction.
+        /// </summary>
+        Right = 1,
+
+        /// <summary>
+        /// The up direction.
+        /// </summary>
+        Up = 2,
+
+        /// <summary>
+        /// The left direction.
+        /// </summary>
+        Left = 3,
+    }
 
     /// <summary>
     /// Gets all enemies that are currently active, for range checks such as
@@ -59,26 +105,6 @@ public abstract class EnemyBody : SaveableEntity
     /// Gets the name of this enemy.
     /// </summary>
     public string DisplayName => string.IsNullOrEmpty(this.displayName) ? this.name : this.displayName;
-
-    /// <summary>
-    /// Gets the movement speed.
-    /// </summary>
-    public float MoveSpeed => this.moveSpeed;
-
-    /// <summary>
-    /// Gets the maximum health.
-    /// </summary>
-    public int MaxHealth => this.maxHealth;
-
-    /// <summary>
-    /// Gets the current health.
-    /// </summary>
-    public int CurrentHealth => this.currentHealth;
-
-    /// <summary>
-    /// Gets the head of this enemy.
-    /// </summary>
-    public EnemyHead Head => this.head;
 
     /// <summary>
     /// Gets or sets the multiplier applied to all damage this enemy deals.
@@ -97,12 +123,79 @@ public abstract class EnemyBody : SaveableEntity
     {
         get
         {
+            CrawlerPlayerData currentPlayer = this.Player;
+            return currentPlayer != null ? currentPlayer.transform : null;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the direction this enemy is facing.
+    /// </summary>
+    protected Direction FacingDirection
+    {
+        get => this.direction;
+        set
+        {
+            if (this.direction == value)
+            {
+                return;
+            }
+
+            this.direction = value;
+
+            this.UpdateHeadAnchorPosition();
+
+            if (this.head != null)
+            {
+                this.head.SetFacingDirection(value);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets the movement speed.
+    /// </summary>
+    protected float MoveSpeed => this.moveSpeed;
+
+    /// <summary>
+    /// Gets the maximum health.
+    /// </summary>
+    protected int MaxHealth => this.maxHealth;
+
+    /// <summary>
+    /// Gets the current health. Only the enemy itself can change it.
+    /// </summary>
+    protected int CurrentHealth => this.currentHealth;
+
+    /// <summary>
+    /// Gets the head of this enemy.
+    /// </summary>
+    protected EnemyHead Head => this.head;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether this enemy is moving.
+    /// </summary>
+    protected bool IsMoving { get; set; }
+
+    /// <summary>
+    /// Gets the rigidbody of this enemy.
+    /// </summary>
+    protected Rigidbody2D Rb { get; private set; }
+
+    /// <summary>
+    /// Gets the player data, or null when there is no player. It is looked
+    /// up the first time it is needed.
+    /// </summary>
+    protected CrawlerPlayerData Player
+    {
+        get
+        {
             if (this.player == null)
             {
                 this.player = FindAnyObjectByType<CrawlerPlayerData>();
             }
 
-            return this.player != null ? this.player.transform : null;
+            return this.player;
         }
     }
 
@@ -110,13 +203,6 @@ public abstract class EnemyBody : SaveableEntity
     /// Gets the position of this enemy.
     /// </summary>
     protected Vector2 Origin => this.transform.position;
-
-    /// <summary>
-    /// Decides how this enemy body moves and enables their animations.
-    /// </summary>
-    /// <param name="direction">The direction to move in.</param>
-    /// <param name="speed">The speed to move with.</param>
-    public abstract void Move();
 
     /// <summary>
     /// Damages the player, scaled by the damage multiplier.
@@ -160,6 +246,9 @@ public abstract class EnemyBody : SaveableEntity
     /// Called when the map is finished loading. Attaches the head and draws
     /// it on this enemy.
     /// </summary>
+    /// <summary>
+    /// Called when the map is finished loading. Attaches the head to this enemy.
+    /// </summary>
     public override void OnFinishMapLoad()
     {
         base.OnFinishMapLoad();
@@ -171,12 +260,19 @@ public abstract class EnemyBody : SaveableEntity
             return;
         }
 
-        this.head.Attach(this);
+        Transform parent = this.headAnchor != null
+            ? this.headAnchor
+            : this.transform;
 
-        if (this.headRenderer != null)
-        {
-            this.headRenderer.sprite = this.head.Sprite;
-        }
+        this.UpdateHeadAnchorPosition();
+
+        this.head.transform.SetParent(parent, false);
+        this.head.transform.localPosition = Vector3.zero;
+        this.head.transform.localRotation = Quaternion.identity;
+        this.head.transform.localScale = Vector3.one;
+
+        this.head.Attach(this);
+        this.head.SetFacingDirection(this.direction);
     }
 
     /// <summary>
@@ -189,24 +285,21 @@ public abstract class EnemyBody : SaveableEntity
     }
 
     /// <summary>
+    /// Each enemy implementation defines its own movement behaviour.
+    /// </summary>
+    protected abstract void UpdateMovement();
+
+    /// <summary>
     /// Gets the rigidbody and layer, and keeps health valid before the map is loaded.
     /// </summary>
     protected override void Awake()
     {
         base.Awake();
 
-        this.rigidBody = this.GetComponent<Rigidbody2D>();
+        this.Rb = this.GetComponent<Rigidbody2D>();
         this.playerDamageLayer = LayerMask.NameToLayer("PlayerDamage");
         this.currentHealth = this.maxHealth;
     }
-
-    /// <summary>
-    /// The movement of this enemy, called every frame while it is alive.
-    /// Every body decides for itself how it moves. Use
-    /// <see cref="Move"/> for simple movement, or move the enemy yourself,
-    /// for example for jumping.
-    /// </summary>
-    protected abstract void UpdateMovement();
 
     /// <summary>
     /// Called when this enemy is about to receive damage. Change the amount
@@ -259,12 +352,42 @@ public abstract class EnemyBody : SaveableEntity
             return;
         }
 
-        this.UpdateMovement();
-
         if (this.head != null)
         {
             this.head.Tick();
         }
+    }
+
+    private void FixedUpdate()
+    {
+        if (!this.ExistsInWorld)
+        {
+            return;
+        }
+
+        this.UpdateMovement();
+    }
+
+    private void LateUpdate()
+    {
+        if (this.visualRoot == null)
+        {
+            return;
+        }
+
+        float offset = 0f;
+
+        if (this.IsMoving)
+        {
+            this.bobTime += Time.deltaTime * this.bobSpeed;
+            offset = Mathf.Abs(Mathf.Sin(this.bobTime)) * this.bobHeight;
+        }
+        else
+        {
+            this.bobTime = 0f;
+        }
+
+        this.visualRoot.localPosition = new Vector3(0f, offset, 0f);
     }
 
     private void OnTriggerEnter2D(Collider2D other)
@@ -294,5 +417,22 @@ public abstract class EnemyBody : SaveableEntity
         {
             this.OnPlayerContact(touchedPlayer);
         }
+    }
+
+    private void UpdateHeadAnchorPosition()
+    {
+        if (this.headAnchor == null)
+        {
+            return;
+        }
+
+        this.headAnchor.localPosition = this.FacingDirection switch
+        {
+            Direction.Down => this.headDownPosition,
+            Direction.Right => this.headRightPosition,
+            Direction.Up => this.headUpPosition,
+            Direction.Left => this.headLeftPosition,
+            _ => Vector3.zero
+        };
     }
 }
