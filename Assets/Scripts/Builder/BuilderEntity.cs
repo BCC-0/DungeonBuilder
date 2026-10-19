@@ -14,7 +14,16 @@ public class BuilderEntity : SaveableEntity
     private readonly Dictionary<string, RuntimeEditableValue> runtimeEditableFields =
         new Dictionary<string, RuntimeEditableValue>();
 
+    /// <summary>
+    /// The renderer that draws the consumed head on an enemy body. It lives on
+    /// a child object that is created in code.
+    /// </summary>
+    private SpriteRenderer headSpriteRenderer;
+
     private Item originalItem;
+
+    private bool isEnemyBody;
+    private Vector3 headDownPosition;
 
     /// <summary>
     /// Gets the ID of the entity's prefab.
@@ -55,8 +64,7 @@ public class BuilderEntity : SaveableEntity
 
         this.gameObject.tag = prefab.tag;
 
-        SaveableEntity source =
-            prefab.GetComponent<SaveableEntity>();
+        SaveableEntity source = prefab.GetComponent<SaveableEntity>();
 
         if (source != null)
         {
@@ -433,6 +441,11 @@ public class BuilderEntity : SaveableEntity
 
     private void InitializeSourceData(SaveableEntity source)
     {
+        if (source is EnemyBody)
+        {
+            this.InitializeEnemyBody(source);
+        }
+
         if (source is ItemObject itemSource)
         {
             FieldInfo originalItemField =
@@ -469,6 +482,46 @@ public class BuilderEntity : SaveableEntity
         }
 
         this.CopySaveFields(source);
+    }
+
+    /// <summary>
+    /// Remembers that this entity is an enemy body, reads where its head is
+    /// drawn when the enemy faces down, and creates the child object that
+    /// renders the head.
+    /// </summary>
+    /// <param name="source">The enemy body on the prefab.</param>
+    private void InitializeEnemyBody(SaveableEntity source)
+    {
+        this.isEnemyBody = true;
+
+        FieldInfo downPositionField =
+            typeof(EnemyBody).GetField(
+                "headDownPosition",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+
+        if (downPositionField != null)
+        {
+            this.headDownPosition =
+                (Vector3)downPositionField.GetValue(source);
+        }
+        else
+        {
+            Debug.LogWarning(
+                $"BuilderEntity '{this.PrefabID}' could not read " +
+                $"'headDownPosition' from EnemyBody.");
+        }
+
+        if (this.headSpriteRenderer == null)
+        {
+            GameObject headObject = new GameObject("HeadRenderer");
+            headObject.transform.SetParent(this.transform, false);
+            headObject.transform.localPosition = this.headDownPosition;
+
+            this.headSpriteRenderer =
+                headObject.AddComponent<SpriteRenderer>();
+
+            this.headSpriteRenderer.enabled = false;
+        }
     }
 
     private void CopyRuntimeEditableFields(object source)
@@ -671,11 +724,111 @@ public class BuilderEntity : SaveableEntity
         }
     }
 
+    /// <summary>
+    /// Finds the head builder entity that this enemy body consumes.
+    /// </summary>
+    /// <returns>The consumed head, or null when there is none.</returns>
+    private BuilderEntity FindConsumedHead()
+    {
+        foreach (RuntimeEditableValue editable in
+                 this.runtimeEditableFields.Values)
+        {
+            FieldInfo field = editable?.Field;
+
+            if (field == null ||
+                !typeof(EnemyHead).IsAssignableFrom(field.FieldType))
+            {
+                continue;
+            }
+
+            SaveFieldAttribute attribute =
+                field.GetCustomAttribute<SaveFieldAttribute>();
+
+            if (attribute == null ||
+                attribute.ReferenceMode != ReferenceMode.Consuming)
+            {
+                continue;
+            }
+
+            BuilderEntity head = editable.Value as BuilderEntity;
+
+            if (head != null)
+            {
+                return head;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Draws the consumed head on the child object at the down anchor
+    /// position, one sorting order above this entity's own sprite, or hides
+    /// it when no head is consumed.
+    /// </summary>
+    private void UpdateHeadRenderer()
+    {
+        if (this.headSpriteRenderer == null)
+        {
+            return;
+        }
+
+        BuilderEntity head = this.FindConsumedHead();
+
+        SpriteRenderer headSource =
+            head != null
+                ? head.GetComponent<SpriteRenderer>()
+                : null;
+
+        if (headSource == null ||
+            headSource.sprite == null)
+        {
+            this.headSpriteRenderer.enabled = false;
+            return;
+        }
+
+        SpriteRenderer bodyRenderer =
+            this.GetComponent<SpriteRenderer>();
+
+        this.headSpriteRenderer.transform.localPosition =
+            this.headDownPosition;
+
+        this.headSpriteRenderer.sprite = headSource.sprite;
+        this.headSpriteRenderer.color = headSource.color;
+
+        if (bodyRenderer != null)
+        {
+            this.headSpriteRenderer.sortingLayerID =
+                bodyRenderer.sortingLayerID;
+
+            this.headSpriteRenderer.sortingOrder =
+                bodyRenderer.sortingOrder + 1;
+        }
+        else
+        {
+            this.headSpriteRenderer.sortingLayerID =
+                headSource.sortingLayerID;
+
+            this.headSpriteRenderer.sortingOrder =
+                headSource.sortingOrder;
+        }
+
+        this.headSpriteRenderer.enabled = true;
+    }
+
     private void Start()
     {
         if (this.HasPendingReferences)
         {
             this.OnFinishMapLoad();
+        }
+    }
+
+    private void LateUpdate()
+    {
+        if (this.isEnemyBody)
+        {
+            this.UpdateHeadRenderer();
         }
     }
 

@@ -21,7 +21,8 @@ public abstract class EnemyHead : SaveableEntity
     public EnemyBody Body => this.body;
 
     /// <summary>
-    /// Gets the direction the body is facing.
+    /// Gets the direction the body is facing. The body decides when this
+    /// changes, so the head always matches the visible body direction.
     /// </summary>
     public EnemyBody.Direction FacingDirection { get; private set; } = EnemyBody.Direction.Down;
 
@@ -58,6 +59,11 @@ public abstract class EnemyHead : SaveableEntity
     public void Attach(EnemyBody enemyBody)
     {
         this.body = enemyBody;
+
+        // Start with the direction the body shows, so OnAttached already
+        // sees the right direction.
+        this.FacingDirection = enemyBody.VisibleDirection;
+
         this.SpriteRenderer.enabled = true;
         this.OnAttached();
     }

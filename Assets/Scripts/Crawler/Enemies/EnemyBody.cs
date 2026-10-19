@@ -52,6 +52,10 @@ public abstract class EnemyBody : SaveableEntity
     [SerializeField]
     private Vector3 headLeftPosition;
 
+    [Header("Direction Switching")]
+    [SerializeField]
+    private float directionSwitchDelay = 0.2f;
+
     [Header("Bobbing")]
     [SerializeField]
     private Transform visualRoot;
@@ -67,6 +71,9 @@ public abstract class EnemyBody : SaveableEntity
     private CrawlerPlayerData player;
     private int playerDamageLayer;
     private Direction direction = Direction.Down;
+    private Direction visibleDirection = Direction.Down;
+    private bool directionSwitchPending;
+    private float directionSwitchTime;
 
     /// <summary>
     /// The four directions an enemy can face.
@@ -129,27 +136,21 @@ public abstract class EnemyBody : SaveableEntity
     }
 
     /// <summary>
-    /// Gets or sets the direction this enemy is facing.
+    /// Gets the direction that is actually shown by the body and the head.
+    /// It follows <see cref="FacingDirection"/> after a short delay, so the
+    /// enemy does not flicker between directions when the player is close to
+    /// the angle where two directions switch.
+    /// </summary>
+    public Direction VisibleDirection => this.visibleDirection;
+
+    /// <summary>
+    /// Gets or sets the direction this enemy wants to face. The visible
+    /// direction of the body and head follows this with a delay.
     /// </summary>
     protected Direction FacingDirection
     {
         get => this.direction;
-        set
-        {
-            if (this.direction == value)
-            {
-                return;
-            }
-
-            this.direction = value;
-
-            this.UpdateHeadAnchorPosition();
-
-            if (this.head != null)
-            {
-                this.head.SetFacingDirection(value);
-            }
-        }
+        set => this.direction = value;
     }
 
     /// <summary>
@@ -255,6 +256,10 @@ public abstract class EnemyBody : SaveableEntity
 
         this.currentHealth = this.maxHealth;
 
+        // Start with the wanted direction, without any delay.
+        this.visibleDirection = this.direction;
+        this.directionSwitchPending = false;
+
         if (this.head == null)
         {
             return;
@@ -272,7 +277,7 @@ public abstract class EnemyBody : SaveableEntity
         this.head.transform.localScale = Vector3.one;
 
         this.head.Attach(this);
-        this.head.SetFacingDirection(this.direction);
+        this.head.SetFacingDirection(this.visibleDirection);
     }
 
     /// <summary>
@@ -318,6 +323,14 @@ public abstract class EnemyBody : SaveableEntity
     }
 
     /// <summary>
+    /// Called when the visible direction changed, after the head anchor and
+    /// the head were updated. Use it to switch the body animation.
+    /// </summary>
+    protected virtual void OnVisibleDirectionChanged()
+    {
+    }
+
+    /// <summary>
     /// Removes the enemy, after the body and head had their say.
     /// </summary>
     protected virtual void Die()
@@ -351,6 +364,8 @@ public abstract class EnemyBody : SaveableEntity
         {
             return;
         }
+
+        this.UpdateVisibleDirection();
 
         if (this.head != null)
         {
@@ -419,6 +434,45 @@ public abstract class EnemyBody : SaveableEntity
         }
     }
 
+    /// <summary>
+    /// Makes the visible direction follow the wanted direction after the
+    /// switch delay. If the wanted direction returns to the visible one
+    /// before the delay is over, nothing changes.
+    /// </summary>
+    private void UpdateVisibleDirection()
+    {
+        if (this.direction == this.visibleDirection)
+        {
+            this.directionSwitchPending = false;
+            return;
+        }
+
+        if (!this.directionSwitchPending)
+        {
+            this.directionSwitchPending = true;
+            this.directionSwitchTime = Time.time + this.directionSwitchDelay;
+        }
+
+        if (Time.time < this.directionSwitchTime)
+        {
+            return;
+        }
+
+        // Apply the latest wanted direction. The body moves the head anchor
+        // and the head in the same moment, so they never disagree.
+        this.directionSwitchPending = false;
+        this.visibleDirection = this.direction;
+
+        this.UpdateHeadAnchorPosition();
+
+        if (this.head != null)
+        {
+            this.head.SetFacingDirection(this.visibleDirection);
+        }
+
+        this.OnVisibleDirectionChanged();
+    }
+
     private void UpdateHeadAnchorPosition()
     {
         if (this.headAnchor == null)
@@ -426,7 +480,7 @@ public abstract class EnemyBody : SaveableEntity
             return;
         }
 
-        this.headAnchor.localPosition = this.FacingDirection switch
+        this.headAnchor.localPosition = this.visibleDirection switch
         {
             Direction.Down => this.headDownPosition,
             Direction.Right => this.headRightPosition,

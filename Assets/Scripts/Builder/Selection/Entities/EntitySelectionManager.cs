@@ -57,12 +57,12 @@ public class EntitySelectionManager : SelectionManagerBase
     /// <summary>
     /// Cell positions of the selected entities when movement started.
     /// </summary>
-    private Dictionary<SaveableEntity, Vector2Int> moveStartCells = new ();
+    private Dictionary<SaveableEntity, Vector2Int> moveStartCells = new();
 
     /// <summary>
     /// Cell positions of the selected entities when movement is continued on mobile.
     /// </summary>
-    private Dictionary<SaveableEntity, Vector2Int> extraMoveStartCells = new ();
+    private Dictionary<SaveableEntity, Vector2Int> extraMoveStartCells = new();
 
     /// <summary>
     /// Cell under the pointer when movement started.
@@ -73,6 +73,23 @@ public class EntitySelectionManager : SelectionManagerBase
     /// Prevents confirming immediately on the same frame movement starts.
     /// </summary>
     private bool startedMovingThisFrame;
+
+    /// <summary>
+    /// Converts a grid cell to the entity's world-position convention.
+    /// Entities are positioned at the cell's integer coordinates,
+    /// with a half-cell horizontal offset to center the sprite.
+    /// </summary>
+    /// <param name="cell">The grid cell.</param>
+    /// <returns>The entity's world position.</returns>
+    private Vector3 GetEntityWorldPosition(Vector3Int cell)
+    {
+        Vector3 cellPosition = this.Grid.CellToWorld(cell);
+
+        return new Vector3(
+            cellPosition.x + 0.5f,
+            cellPosition.y,
+            cellPosition.z);
+    }
 
     /// <inheritdoc/>
     public override void DeleteSelected()
@@ -175,7 +192,7 @@ public class EntitySelectionManager : SelectionManagerBase
                 (Vector3Int)(entry.Value + cellDelta);
 
             entity.transform.position =
-                this.Grid.GetCellCenterWorld(previewCell);
+                this.GetEntityWorldPosition(previewCell);
         }
 
         this.selectionVisualizer.Refresh();
@@ -269,7 +286,7 @@ public class EntitySelectionManager : SelectionManagerBase
             }
 
             entity.transform.position =
-                this.Grid.GetCellCenterWorld(
+                this.GetEntityWorldPosition(
                     (Vector3Int)entry.Value);
         }
 
@@ -311,31 +328,31 @@ public class EntitySelectionManager : SelectionManagerBase
     /// <inheritdoc/>
     protected override List<SaveableEntity> PickEntitiesAt(
         Vector2 position)
-    {
-        SaveableEntity closestEntity =
-            FindObjectsByType<SaveableEntity>()
-                .Where(e =>
-                    e.ExistsInWorld &&
-                    !IsTilemapEntity(e))
-                .OrderBy(e =>
-                    Vector2.Distance(
-                        e.transform.position,
-                        position))
-                .FirstOrDefault();
-
-        if (closestEntity != null &&
-            Vector2.Distance(
-                closestEntity.transform.position,
-                position) <= this.entitySelectRadius)
         {
-            return new List<SaveableEntity>
+            SaveableEntity closestEntity =
+                FindObjectsByType<SaveableEntity>()
+                    .Where(e =>
+                        e.ExistsInWorld &&
+                        !IsTilemapEntity(e))
+                    .OrderBy(e =>
+                        Vector2.Distance(
+                            GetEntityVisualCenter(e),
+                            position))
+                    .FirstOrDefault();
+    
+            if (closestEntity != null &&
+                Vector2.Distance(
+                    GetEntityVisualCenter(closestEntity),
+                    position) <= this.entitySelectRadius)
+            {
+                return new List<SaveableEntity>
             {
                 closestEntity,
             };
+            }
+    
+            return new List<SaveableEntity>();
         }
-
-        return new List<SaveableEntity>();
-    }
 
     /// <inheritdoc/>
     protected override List<SaveableEntity> PickEntitiesIn(
@@ -437,6 +454,23 @@ public class EntitySelectionManager : SelectionManagerBase
     private static bool IsTilemapEntity(SaveableEntity entity)
     {
         return entity.GetComponent<Tilemap>() != null;
+    }
+
+    /// <summary>
+    /// Gets the visual center of an entity for selection.
+    /// </summary>
+    /// <param name="entity">The entity.</param>
+    /// <returns>The center of its rendered sprite, or its transform position if no renderer exists.</returns>
+    private static Vector2 GetEntityVisualCenter(SaveableEntity entity)
+    {
+        SpriteRenderer spriteRenderer =
+            entity.GetComponentInChildren<SpriteRenderer>();
+        if (spriteRenderer != null)
+        {
+            return spriteRenderer.bounds.center;
+        }
+
+        return entity.transform.position;
     }
 
     /// <summary>

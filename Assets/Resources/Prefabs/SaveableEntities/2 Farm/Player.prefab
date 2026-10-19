@@ -84,12 +84,12 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 2
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -4954512182048078592, guid: 6080d2720bd457540955c3b61d68b51c, type: 3}
+  m_Sprite: {fileID: 42536041184912644, guid: 6080d2720bd457540955c3b61d68b51c, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
-  m_Size: {x: 1, y: 1}
+  m_Size: {x: 1, y: 1.3125}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
@@ -123,7 +123,11 @@ MonoBehaviour:
   spriteRenderer: {fileID: 3064584090858952109}
   maxHealth: 100
   currentHealth: 100
+  healthSlider: {fileID: 0}
+  healthText: {fileID: 0}
   moveSpeed: 5
+  sharedReference: {fileID: 0}
+  consumedReference: {fileID: 0}
   inventory: []
   inventoryCanvas: {fileID: 0}
   inventoryDescriptionText: {fileID: 0}

@@ -102,7 +102,7 @@ ScriptedImporter:
     generateIndividualEvents: 1
     generateSpriteAtlas: 1
   importFileNodeState: 1
-  platformSettingsDirtyTick: 639277404968340046
+  platformSettingsDirtyTick: 639280334917113640
   textureAssetName: 
   singleSpriteImportData:
   - name: 
@@ -1291,5 +1291,5 @@ ScriptedImporter:
   generatePhysicsShape: 0
   secondarySpriteTextures: []
   spritePackingTag: 
-  canvasSize: {x: 16, y: 32}
+  canvasSize: {x: 16, y: 16}
   previousTextureSize: {x: 128, y: 256}

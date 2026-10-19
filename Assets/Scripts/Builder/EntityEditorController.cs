@@ -60,12 +60,12 @@ public class EntityEditorController : EditorControllerBase
 
         Vector3 snappedPos = new Vector3(
             Mathf.Floor(this.CurrentPos.x) + 0.5f,
-            Mathf.Floor(this.CurrentPos.y) + 0.5f,
+            Mathf.Floor(this.CurrentPos.y),
             0f);
 
         foreach (BuilderEntity buildEntity in BuilderRegistry.GetAll())
         {
-            if (buildEntity.ExistsInWorld && Vector3.Distance(buildEntity.transform.position, snappedPos) < 0.1f )
+            if (buildEntity.ExistsInWorld && Vector3.Distance(buildEntity.transform.position, snappedPos) < 0.1f)
             {
                 return;
             }

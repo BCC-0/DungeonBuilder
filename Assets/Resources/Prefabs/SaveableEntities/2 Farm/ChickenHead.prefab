@@ -29,7 +29,7 @@ Transform:
   m_GameObject: {fileID: 63012258902885546}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 9.85, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -64,9 +64,7 @@ MonoBehaviour:
   spriteRenderer: {fileID: 8832082082192167856}
   eggPrefab: {fileID: 0}
   eggSpawnOffset: {x: 0, y: 0.5}
-  attackAnimationDuration: 0.5
   animator: {fileID: 4110574955272484897}
-  ambientDuration: 1
   minAmbientInterval: 4
   maxAmbientInterval: 8
 --- !u!212 &8832082082192167856
@@ -127,7 +125,7 @@ SpriteRenderer:
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
-  m_SpriteSortPoint: 0
+  m_SpriteSortPoint: 1
 --- !u!95 &4110574955272484897
 Animator:
   serializedVersion: 7

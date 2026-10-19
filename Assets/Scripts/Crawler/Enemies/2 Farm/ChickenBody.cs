@@ -16,7 +16,6 @@ public class ChickenBody : EnemyBody
     [SerializeField]
     private Animator bodyAnimator;
 
-    private Direction lastAnimationDirection;
     private bool lastAnimationMoving;
     private bool animationInitialized;
 
@@ -32,7 +31,7 @@ public class ChickenBody : EnemyBody
     }
 
     /// <summary>
-    /// The chicken body. tries to walk towards a min distance from the player and attack from there.
+    /// The chicken body tries to walk towards a minimum distance from the player and attack from there.
     /// </summary>
     protected override void UpdateMovement()
     {
@@ -69,6 +68,20 @@ public class ChickenBody : EnemyBody
 
         this.ApplyMovement();
         this.UpdateAnimation();
+    }
+
+    /// <summary>
+    /// Switches the body animation when the visible direction changes.
+    /// The delay itself is handled by the base class.
+    /// </summary>
+    protected override void OnVisibleDirectionChanged()
+    {
+        if (this.bodyAnimator == null)
+        {
+            return;
+        }
+
+        this.PlayAnimation();
     }
 
     private void MoveAlongOneAxis(Vector2 direction)
@@ -154,17 +167,27 @@ public class ChickenBody : EnemyBody
             return;
         }
 
-        if (this.animationInitialized &&
-            this.FacingDirection == this.lastAnimationDirection &&
-            this.IsMoving == this.lastAnimationMoving)
+        // Initialize the animation immediately.
+        if (!this.animationInitialized)
         {
+            this.PlayAnimation();
             return;
         }
 
-        string stateName = (this.IsMoving ? "Walk" : "Idle") + this.FacingDirection;
+        // Walking/idle transitions remain immediate.
+        if (this.IsMoving != this.lastAnimationMoving)
+        {
+            this.PlayAnimation();
+        }
+    }
+
+    private void PlayAnimation()
+    {
+        string stateName =
+            (this.IsMoving ? "Walk" : "Idle") + this.VisibleDirection;
+
         this.bodyAnimator.Play(stateName);
 
-        this.lastAnimationDirection = this.FacingDirection;
         this.lastAnimationMoving = this.IsMoving;
         this.animationInitialized = true;
     }

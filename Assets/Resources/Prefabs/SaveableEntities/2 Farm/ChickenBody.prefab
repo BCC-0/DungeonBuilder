@@ -58,7 +58,7 @@ Transform:
   m_GameObject: {fileID: 3180519846445475675}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.5, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -113,7 +113,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 2
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 4516674829783361813, guid: 25eb36c8c82f8254e9fe66788c2ae0d3, type: 3}
+  m_Sprite: {fileID: -3661443380396237380, guid: 25eb36c8c82f8254e9fe66788c2ae0d3, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -157,7 +157,7 @@ GameObject:
   - component: {fileID: 6428550216623043589}
   - component: {fileID: 728198483378389784}
   - component: {fileID: 2839116584964622822}
-  - component: {fileID: 4915050740301521725}
+  - component: {fileID: 8204779028514823500}
   m_Layer: 0
   m_Name: ChickenBody
   m_TagString: Untagged
@@ -212,13 +212,13 @@ MonoBehaviour:
   maxHealth: 10
   moveSpeed: 2
   headAnchor: {fileID: 8365387579630754373}
-  headDownPosition: {x: 0, y: 0.064, z: 0}
-  headRightPosition: {x: 0.375, y: 0, z: 0}
-  headUpPosition: {x: 0, y: 0, z: 0}
-  headLeftPosition: {x: -0.375, y: 0, z: 0}
+  headDownPosition: {x: 0, y: 0.625, z: 0}
+  headRightPosition: {x: 0.375, y: 0.5, z: 0}
+  headUpPosition: {x: 0, y: 0.5, z: 0}
+  headLeftPosition: {x: -0.375, y: 0.5, z: 0}
   visualRoot: {fileID: 8456700637839932628}
-  bobHeight: 0.066
-  bobSpeed: 12
+  bobHeight: 0.0625
+  bobSpeed: 8
   bodyAnimator: {fileID: 9182072126310494902}
 --- !u!50 &2839116584964622822
 Rigidbody2D:
@@ -247,7 +247,7 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 4
---- !u!61 &4915050740301521725
+--- !u!61 &8204779028514823500
 BoxCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -281,7 +281,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0}
+  m_Offset: {x: 0, y: 0.5}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
