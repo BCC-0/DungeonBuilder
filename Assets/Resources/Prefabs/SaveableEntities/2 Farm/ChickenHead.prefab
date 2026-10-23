@@ -62,7 +62,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ChickenHead
   uniqueID: 
   spriteRenderer: {fileID: 8832082082192167856}
-  eggPrefab: {fileID: 0}
+  eggPrefab: {fileID: 7781836826731624205, guid: 1a2b117329b01fb4d8f18793fa77d8a1, type: 3}
   eggSpawnOffset: {x: 0, y: 0.5}
   animator: {fileID: 4110574955272484897}
   minAmbientInterval: 4
