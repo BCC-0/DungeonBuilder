@@ -31,7 +31,7 @@ Transform:
   m_GameObject: {fileID: 6857028922066918596}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 11.802948, y: -3.7962465, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -84,7 +84,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 4
   m_MaskInteraction: 0
   m_Sprite: {fileID: 8962820850041061930, guid: 77590e13fd4cc0846830821dc026af62, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -130,7 +130,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 77a77f3c59b57eb4382776311c890271, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EggProjectile
-  rb: {fileID: 0}
+  rb: {fileID: 4508908705859545914}
   lifetime: 5
 --- !u!50 &4508908705859545914
 Rigidbody2D:
@@ -207,5 +207,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1e0ad838a5d31a24099e36cf58d2d846, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Damage
-  amount: 0
+  amount: 5
   melee: 0

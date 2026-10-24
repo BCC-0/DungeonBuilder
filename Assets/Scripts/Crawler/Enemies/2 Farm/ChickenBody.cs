@@ -32,6 +32,7 @@ public class ChickenBody : EnemyBody
 
     /// <summary>
     /// The chicken body tries to walk towards a minimum distance from the player and attack from there.
+    /// Only called while the player is detected.
     /// </summary>
     protected override void UpdateMovement()
     {
@@ -45,6 +46,9 @@ public class ChickenBody : EnemyBody
             this.UpdateAnimation();
             return;
         }
+
+        // Make sure the random walk picks a fresh direction next time.
+        this.randomWalkTimer = 0f;
 
         Vector2 toPlayer = (Vector2)playerTransform.position - this.Rb.position;
         float distance = toPlayer.magnitude;
@@ -68,6 +72,15 @@ public class ChickenBody : EnemyBody
 
         this.ApplyMovement();
         this.UpdateAnimation();
+    }
+
+    /// <summary>
+    /// The chicken wanders by walking in random cardinal directions,
+    /// or standing still, while the player is not detected.
+    /// </summary>
+    protected override void UpdateWander()
+    {
+        this.MoveRandomly();
     }
 
     /// <summary>

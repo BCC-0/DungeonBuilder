@@ -25,7 +25,11 @@ public class ChickenHead : EnemyHead
     private EggProjectile eggPrefab;
 
     [SerializeField]
-    private Vector2 eggSpawnOffset = new Vector2(0f, 0.5f);
+    private Vector2 eggSpawnOffset = Vector2.zero;
+
+    [SerializeField, Min(0f)]
+    [Tooltip("Seconds after the attack animation starts before the egg appears.")]
+    private float eggSpawnDelay = 0.2f;
 
     [Header("Animation")]
     [SerializeField]
@@ -38,6 +42,10 @@ public class ChickenHead : EnemyHead
     private float maxAmbientInterval = 8f;
 
     [Header("Attack Timing")]
+    [SerializeField, Range(0f, 1f)]
+    [Tooltip("Chance to actually attack each time the attack interval expires.")]
+    private float attackChance = 1f / 3f;
+
     [SerializeField, Range(0.5f, 1.5f)]
     private float minAttackIntervalMultiplier = 0.75f;
 
@@ -50,12 +58,22 @@ public class ChickenHead : EnemyHead
     private float nextAttackTime;
     private string currentAnimation;
 
+    // Direction the head is locked to while attacking.
+    private Direction attackDirection;
+
     private enum State
     {
         Idle,
         Attacking,
         Ambient,
     }
+
+    /// <summary>
+    /// The direction the head is actually looking: the locked attack
+    /// direction while attacking, otherwise the body's facing direction.
+    /// </summary>
+    private Direction HeadDirection =>
+        this.state == State.Attacking ? this.attackDirection : this.FacingDirection;
 
     /// <summary>
     /// Initializes the head and schedules its first attack.
@@ -109,6 +127,30 @@ public class ChickenHead : EnemyHead
         }
     }
 
+    /// <summary>
+    /// Snaps a vector to the nearest of the four cardinal directions.
+    /// </summary>
+    private static Direction GetCardinalDirection(Vector2 vector)
+    {
+        if (Mathf.Abs(vector.x) > Mathf.Abs(vector.y))
+        {
+            return vector.x >= 0f ? Direction.Right : Direction.Left;
+        }
+
+        return vector.y >= 0f ? Direction.Up : Direction.Down;
+    }
+
+    private static Vector2 DirectionToVector(Direction direction)
+    {
+        switch (direction)
+        {
+            case Direction.Up: return Vector2.up;
+            case Direction.Down: return Vector2.down;
+            case Direction.Left: return Vector2.left;
+            default: return Vector2.right;
+        }
+    }
+
     private void TryAttack()
     {
         Transform player = this.Body != null
@@ -121,16 +163,49 @@ public class ChickenHead : EnemyHead
             return;
         }
 
-        this.state = State.Attacking;
+        // The player has not been detected yet: do not attack, check again soon.
+        // The detection range is defined on the body.
+        if (!this.Body.IsPlayerDetected)
+        {
+            this.nextAttackTime = Time.time + 0.5f;
+            return;
+        }
 
-        string attackAnimation = "Attack" + this.FacingDirection;
+        // Each time the interval expires, only attack with a certain chance.
+        // Otherwise wait for the next interval and roll again.
+        if (Random.value > this.attackChance)
+        {
+            this.ScheduleNextAttack();
+            return;
+        }
+
+        // Turn the head to the best 90-degree direction towards the player.
+        Vector2 toPlayer =
+            (Vector2)player.position - (Vector2)this.transform.position;
+        this.attackDirection = GetCardinalDirection(toPlayer);
+
+        this.state = State.Attacking;
+        this.UpdateSortingOrder();
+
+        string attackAnimation = "Attack" + this.attackDirection;
         this.Play(attackAnimation, true);
 
-        this.ShootEgg(player);
-        this.ScheduleNextAttack();
-
+        // The next attack is scheduled when this attack animation ends,
+        // so the cooldown can never expire while the chicken is still attacking.
         this.StopAllCoroutines();
         this.StartCoroutine(this.WaitForAttackAnimation(attackAnimation));
+        this.StartCoroutine(this.ShootEggAfterDelay());
+    }
+
+    private IEnumerator ShootEggAfterDelay()
+    {
+        if (this.eggSpawnDelay > 0f)
+        {
+            yield return new WaitForSeconds(this.eggSpawnDelay);
+        }
+
+        // Fire only in the direction the head is looking.
+        this.ShootEgg(DirectionToVector(this.attackDirection));
     }
 
     private IEnumerator WaitForAttackAnimation(string animationName)
@@ -138,6 +213,7 @@ public class ChickenHead : EnemyHead
         if (this.animator == null)
         {
             this.state = State.Idle;
+            this.ScheduleNextAttack();
             this.ScheduleAmbient();
             this.RefreshAnimation();
             yield break;
@@ -171,6 +247,7 @@ public class ChickenHead : EnemyHead
         if (this.state == State.Attacking)
         {
             this.state = State.Idle;
+            this.ScheduleNextAttack();
             this.ScheduleAmbient();
             this.RefreshAnimation();
         }
@@ -197,17 +274,15 @@ public class ChickenHead : EnemyHead
         this.nextAttackTime = Time.time + randomInterval;
     }
 
-    private void ShootEgg(Transform target)
+    private void ShootEgg(Vector2 direction)
     {
         if (this.eggPrefab == null)
         {
             return;
         }
 
-        Vector2 spawnPosition = this.Origin + this.eggSpawnOffset;
-
-        Vector2 direction =
-            ((Vector2)target.position - spawnPosition).normalized;
+        Vector2 spawnPosition =
+            (Vector2)this.transform.position + this.eggSpawnOffset;
 
         EggProjectile egg = Instantiate(
             this.eggPrefab,
@@ -265,7 +340,7 @@ public class ChickenHead : EnemyHead
         switch (this.state)
         {
             case State.Attacking:
-                this.Play("Attack" + this.FacingDirection);
+                this.Play("Attack" + this.HeadDirection);
                 break;
 
             case State.Ambient:
@@ -324,7 +399,7 @@ public class ChickenHead : EnemyHead
         this.SpriteRenderer.sortingLayerID =
             bodyRenderer.sortingLayerID;
 
-        int offset = this.FacingDirection == Direction.Up ? -1 : 1;
+        int offset = this.HeadDirection == Direction.Up ? -1 : 1;
 
         this.SpriteRenderer.sortingOrder =
             bodyRenderer.sortingOrder + offset;

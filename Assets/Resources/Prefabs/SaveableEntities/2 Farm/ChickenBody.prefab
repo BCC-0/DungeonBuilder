@@ -158,7 +158,7 @@ GameObject:
   - component: {fileID: 728198483378389784}
   - component: {fileID: 2839116584964622822}
   - component: {fileID: 8204779028514823500}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: ChickenBody
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -216,6 +216,7 @@ MonoBehaviour:
   headRightPosition: {x: 0.375, y: 0.5, z: 0}
   headUpPosition: {x: 0, y: 0.5, z: 0}
   headLeftPosition: {x: -0.375, y: 0.5, z: 0}
+  directionSwitchDelay: 0.2
   visualRoot: {fileID: 8456700637839932628}
   bobHeight: 0.0625
   bobSpeed: 8

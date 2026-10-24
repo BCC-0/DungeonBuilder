@@ -28,6 +28,14 @@ public abstract class EnemyBody : SaveableEntity
     private float moveSpeed = 2f;
 
     /// <summary>
+    /// The distance within which the enemy detects the player. Outside of
+    /// this range the enemy wanders instead of reacting to the player.
+    /// </summary>
+    [SerializeField]
+    [SaveField(1, 30)]
+    private float detectionRange = 8f;
+
+    /// <summary>
     /// The head that is attached to this body.
     /// </summary>
     [SaveField(referenceMode: ReferenceMode.Consuming)]
@@ -69,7 +77,7 @@ public abstract class EnemyBody : SaveableEntity
     private int currentHealth;
     private float damageMultiplier = 1f;
     private CrawlerPlayerData player;
-    private int playerDamageLayer;
+    private int enemyDamageLayer;
     private Direction direction = Direction.Down;
     private Direction visibleDirection = Direction.Down;
     private bool directionSwitchPending;
@@ -132,6 +140,35 @@ public abstract class EnemyBody : SaveableEntity
         {
             CrawlerPlayerData currentPlayer = this.Player;
             return currentPlayer != null ? currentPlayer.transform : null;
+        }
+    }
+
+    /// <summary>
+    /// Gets the distance within which this enemy detects the player.
+    /// </summary>
+    public float DetectionRange => this.detectionRange;
+
+    /// <summary>
+    /// Gets a value indicating whether the player is within the detection
+    /// range. False when there is no player.
+    /// </summary>
+    public bool IsPlayerDetected
+    {
+        get
+        {
+            Transform playerTransform = this.PlayerTransform;
+
+            if (playerTransform == null)
+            {
+                return false;
+            }
+
+            Vector2 position = this.Rb != null
+                ? this.Rb.position
+                : this.Origin;
+
+            return Vector2.Distance(position, (Vector2)playerTransform.position)
+                <= this.detectionRange;
         }
     }
 
@@ -290,9 +327,20 @@ public abstract class EnemyBody : SaveableEntity
     }
 
     /// <summary>
-    /// Each enemy implementation defines its own movement behaviour.
+    /// Each enemy implementation defines its own movement behaviour for when
+    /// the player is detected, so within the detection range.
     /// </summary>
     protected abstract void UpdateMovement();
+
+    /// <summary>
+    /// Called instead of <see cref="UpdateMovement"/> while the player is not
+    /// detected. By default the enemy stands still. Override it to give the
+    /// enemy its own wander behaviour.
+    /// </summary>
+    protected virtual void UpdateWander()
+    {
+        this.IsMoving = false;
+    }
 
     /// <summary>
     /// Gets the rigidbody and layer, and keeps health valid before the map is loaded.
@@ -302,7 +350,7 @@ public abstract class EnemyBody : SaveableEntity
         base.Awake();
 
         this.Rb = this.GetComponent<Rigidbody2D>();
-        this.playerDamageLayer = LayerMask.NameToLayer("PlayerDamage");
+        this.enemyDamageLayer = LayerMask.NameToLayer("EnemyDamage");
         this.currentHealth = this.maxHealth;
     }
 
@@ -380,7 +428,15 @@ public abstract class EnemyBody : SaveableEntity
             return;
         }
 
-        this.UpdateMovement();
+        // React to the player when detected, otherwise wander.
+        if (this.IsPlayerDetected)
+        {
+            this.UpdateMovement();
+        }
+        else
+        {
+            this.UpdateWander();
+        }
     }
 
     private void LateUpdate()
@@ -418,7 +474,7 @@ public abstract class EnemyBody : SaveableEntity
     private void HandleContact(GameObject other)
     {
         // Damage dealt by the player, for example from a weapon.
-        if (other.layer == this.playerDamageLayer &&
+        if (other.layer == this.enemyDamageLayer &&
             other.TryGetComponent(out Damage damage))
         {
             this.TakeDamage(damage);
