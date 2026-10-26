@@ -1,3 +1,4 @@
+
 using System.Collections;
 using UnityEngine;
 using Direction = EnemyBody.Direction;
@@ -27,7 +28,7 @@ public class ChickenHead : EnemyHead
     [SerializeField]
     private Vector2 eggSpawnOffset = Vector2.zero;
 
-    [SerializeField, Min(0f)]
+    [SerializeField]
     [Tooltip("Seconds after the attack animation starts before the egg appears.")]
     private float eggSpawnDelay = 0.2f;
 
@@ -42,14 +43,17 @@ public class ChickenHead : EnemyHead
     private float maxAmbientInterval = 8f;
 
     [Header("Attack Timing")]
-    [SerializeField, Range(0f, 1f)]
+    [SerializeField]
+    [Range(0f, 1f)]
     [Tooltip("Chance to actually attack each time the attack interval expires.")]
     private float attackChance = 1f / 3f;
 
-    [SerializeField, Range(0.5f, 1.5f)]
+    [SerializeField]
+    [Range(0.5f, 1.5f)]
     private float minAttackIntervalMultiplier = 0.75f;
 
-    [SerializeField, Range(0.5f, 1.5f)]
+    [SerializeField]
+    [Range(0.5f, 1.5f)]
     private float maxAttackIntervalMultiplier = 1.25f;
 
     private State state;
@@ -69,7 +73,7 @@ public class ChickenHead : EnemyHead
     }
 
     /// <summary>
-    /// The direction the head is actually looking: the locked attack
+    /// Gets the direction the head is actually looking: the locked attack
     /// direction while attacking, otherwise the body's facing direction.
     /// </summary>
     private Direction HeadDirection =>
@@ -213,6 +217,7 @@ public class ChickenHead : EnemyHead
         if (this.animator == null)
         {
             this.state = State.Idle;
+            this.UpdateSortingOrder();
             this.ScheduleNextAttack();
             this.ScheduleAmbient();
             this.RefreshAnimation();
@@ -247,6 +252,7 @@ public class ChickenHead : EnemyHead
         if (this.state == State.Attacking)
         {
             this.state = State.Idle;
+            this.UpdateSortingOrder();
             this.ScheduleNextAttack();
             this.ScheduleAmbient();
             this.RefreshAnimation();

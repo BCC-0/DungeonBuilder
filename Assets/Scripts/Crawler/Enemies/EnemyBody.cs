@@ -473,7 +473,6 @@ public abstract class EnemyBody : SaveableEntity
 
     private void HandleContact(GameObject other)
     {
-        // Damage dealt by the player, for example from a weapon.
         if (other.layer == this.enemyDamageLayer &&
             other.TryGetComponent(out Damage damage))
         {
@@ -481,7 +480,6 @@ public abstract class EnemyBody : SaveableEntity
             return;
         }
 
-        // The player running into this enemy.
         CrawlerPlayerData touchedPlayer = other.GetComponentInParent<CrawlerPlayerData>();
 
         if (touchedPlayer != null)

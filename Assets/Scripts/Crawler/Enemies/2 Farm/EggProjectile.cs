@@ -1,18 +1,34 @@
+
+using System.Collections;
 using UnityEngine;
 
 /// <summary>
 /// An egg shot by a chicken. It flies in a straight line, damages the player
-/// on contact and disappears when it hits something solid or runs out of time.
+/// on contact and plays its break effects when destroyed.
 /// </summary>
 public class EggProjectile : MonoBehaviour
 {
     [SerializeField]
     private Rigidbody2D rb;
+
+    [SerializeField]
+    private Collider2D eggCollider;
+
+    [SerializeField]
+    private Renderer eggRenderer;
+
+    [SerializeField]
+    private ParticleSystem eggBreakEffect;
+
+    [SerializeField]
+    private ParticleSystem eggYolkEffect;
+
     [SerializeField]
     private float lifetime = 5f;
 
     private EnemyBody owner;
     private int damage;
+    private bool destroying;
 
     /// <summary>
     /// Launches the egg.
@@ -28,6 +44,9 @@ public class EggProjectile : MonoBehaviour
         this.rb.linearVelocity = direction * speed;
     }
 
+    /// <summary>
+    /// Initializes the projectile components and starts the lifetime timer.
+    /// </summary>
     private void Awake()
     {
         if (this.rb == null)
@@ -35,39 +54,92 @@ public class EggProjectile : MonoBehaviour
             this.rb = this.GetComponent<Rigidbody2D>();
         }
 
-        Destroy(this.gameObject, this.lifetime);
+        if (this.eggCollider == null)
+        {
+            this.eggCollider = this.GetComponent<Collider2D>();
+        }
+
+        if (this.eggRenderer == null)
+        {
+            this.eggRenderer = this.GetComponent<Renderer>();
+        }
+
+        this.StartCoroutine(this.LifetimeRoutine());
     }
 
-    private void OnTriggerEnter2D(Collider2D other)
+    /// <summary>
+    /// Starts the egg destruction sequence when it collides with another object.
+    /// </summary>
+    /// <param name="collision">The collision involving the egg.</param>
+    private void OnCollisionEnter2D(Collision2D collision)
     {
-        // Eggs fly through enemies.
-        if (other.GetComponentInParent<EnemyBody>() != null)
+        this.DestroyEgg();
+    }
+
+    /// <summary>
+    /// Disables the egg's physical interactions and rendering, then plays its destruction effects.
+    /// </summary>
+    private void DestroyEgg()
+    {
+        if (this.destroying)
         {
             return;
         }
 
-        CrawlerPlayerData player = other.GetComponentInParent<CrawlerPlayerData>();
+        this.destroying = true;
 
-        if (player != null)
+        if (this.eggCollider != null)
         {
-            if (this.owner != null)
-            {
-                this.owner.DamagePlayer(player, this.damage);
-            }
-            else
-            {
-                // The chicken died while the egg was in the air.
-                player.TakeDamage(this.damage);
-            }
-
-            Destroy(this.gameObject);
-            return;
+            this.eggCollider.enabled = false;
         }
 
-        // Break on walls and other solid things.
-        if (!other.isTrigger)
+        if (this.rb != null)
         {
-            Destroy(this.gameObject);
+            this.rb.linearVelocity = Vector2.zero;
+            this.rb.simulated = false;
         }
+
+        if (this.eggRenderer != null)
+        {
+            this.eggRenderer.enabled = false;
+        }
+
+        this.StartCoroutine(this.PlayDestroyEffects());
+    }
+
+    /// <summary>
+    /// Plays both particle effects and destroys the egg after they finish.
+    /// </summary>
+    /// <returns>An enumerator for the destruction effect coroutine.</returns>
+    private IEnumerator PlayDestroyEffects()
+    {
+        if (this.eggBreakEffect != null)
+        {
+            this.eggBreakEffect.Play();
+        }
+
+        if (this.eggYolkEffect != null)
+        {
+            this.eggYolkEffect.Play();
+        }
+
+        while ((this.eggBreakEffect != null && this.eggBreakEffect.IsAlive()) ||
+               (this.eggYolkEffect != null && this.eggYolkEffect.IsAlive()))
+        {
+            yield return null;
+        }
+
+        Destroy(this.gameObject);
+    }
+
+    /// <summary>
+    /// Starts the egg destruction sequence when its lifetime expires.
+    /// </summary>
+    /// <returns>An enumerator for the lifetime coroutine.</returns>
+    private IEnumerator LifetimeRoutine()
+    {
+        yield return new WaitForSeconds(this.lifetime);
+
+        this.DestroyEgg();
     }
 }

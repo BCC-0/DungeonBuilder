@@ -27,20 +27,6 @@ public class CrawlerPlayerData : SaveableEntity
     [SaveField(1, 12)]
     private float moveSpeed = 5f;
 
-    [SerializeField]
-    [SaveField(referenceMode: ReferenceMode.Shared)]
-    private SaveableEntity sharedReference;
-
-    [SerializeField]
-    [SaveField(referenceMode: ReferenceMode.Consuming)]
-    private SaveableEntity consumedReference;
-
-    [SaveField(referenceMode: ReferenceMode.Shared, maxReferences: 2)]
-    private List<SaveableEntity> referenceList;
-
-    [SaveField(referenceMode: ReferenceMode.Consuming, maxReferences: 3)]
-    private List<SaveableEntity> referenceOnlyList;
-
     [Header("Inventory")]
     [SerializeField]
     private List<Item> inventory = new List<Item>();
@@ -131,6 +117,7 @@ public class CrawlerPlayerData : SaveableEntity
 
         this.currentHealth = Mathf.Max(this.currentHealth - amount, 0);
         this.SetHealthSlider();
+        this.FlashHurtEffect();
         return this.currentHealth;
     }
 

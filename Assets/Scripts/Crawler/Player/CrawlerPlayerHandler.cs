@@ -178,12 +178,13 @@ public class CrawlerPlayerHandler : MonoBehaviour
             Destroy(gameObject);
         }
 
-        if (gameObject.layer == 7)
+        if (gameObject.layer == 6)
         {
             Damage damage = gameObject.GetComponent<Damage>();
 
             if (damage == null)
             {
+                Debug.Log("Hit" + Time.deltaTime);
                 return;
             }
 
