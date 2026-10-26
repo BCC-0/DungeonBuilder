@@ -287,13 +287,14 @@ public class ChickenHead : EnemyHead
             return;
         }
 
-        Vector2 spawnPosition =
-            (Vector2)this.transform.position + this.eggSpawnOffset;
+        Vector2 spawnPosition = (Vector2)this.transform.position + this.eggSpawnOffset;
 
         EggProjectile egg = Instantiate(
             this.eggPrefab,
             spawnPosition,
             Quaternion.identity);
+
+        egg.GetComponent<Damage>().Amount = this.eggDamage;
 
         egg.Initialize(
             this.Body,

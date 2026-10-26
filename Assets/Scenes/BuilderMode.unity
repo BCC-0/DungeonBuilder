@@ -12431,8 +12431,8 @@ MonoBehaviour:
   selectionImage: {fileID: 2135867203}
   selectionScale: 1.2
   folderNames:
-  - 1 Default
-  - 2 Farm
+  - 1-Farm
+  - 2-Forest
 --- !u!1 &1741936548
 GameObject:
   m_ObjectHideFlags: 0
@@ -16245,6 +16245,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SaveableTilemap
   uniqueID: Tilemap
   spriteRenderer: {fileID: 0}
+  hurtColor: {r: 1, g: 0, b: 0, a: 1}
+  hurtFlashDuration: 0.15
   tilemap: {fileID: 7453032813957364448}
 --- !u!483693784 &1478311151914156580
 TilemapRenderer:

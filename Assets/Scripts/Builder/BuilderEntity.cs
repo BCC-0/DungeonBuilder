@@ -834,6 +834,16 @@ public class BuilderEntity : SaveableEntity
 
     private void OnDestroy()
     {
+        if (this.isEnemyBody)
+        {
+            BuilderEntity head = this.FindConsumedHead();
+
+            if (head != null)
+            {
+                Destroy(head.gameObject);
+            }
+        }
+
         BuilderRegistry.Unregister(this);
     }
 }

@@ -27,7 +27,6 @@ public class EggProjectile : MonoBehaviour
     private float lifetime = 5f;
 
     private EnemyBody owner;
-    private int damage;
     private bool destroying;
 
     /// <summary>
@@ -40,7 +39,6 @@ public class EggProjectile : MonoBehaviour
     public void Initialize(EnemyBody shooter, Vector2 direction, float speed, int damageAmount)
     {
         this.owner = shooter;
-        this.damage = damageAmount;
         this.rb.linearVelocity = direction * speed;
     }
 
