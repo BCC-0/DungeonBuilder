@@ -48,11 +48,12 @@ public abstract class EquippableItem : Item
             return;
         }
 
-        AnimationClip clip = this.GetAnimation(playerHandler.LastFacingDirection);
+        Vector2 direction = playerHandler.LastFacingDirection;
+        AnimationClip clip = this.GetAnimation(direction);
         playerHandler.PlayUseAnimation(clip);
         playerHandler.PausePlayerMovement(clip.length);
         playerData.SetLastUseTime(Time.time);
-        this.PerformAction();
+        this.PerformAction(direction, playerHandler);
     }
 
     /// <summary>
@@ -60,7 +61,7 @@ public abstract class EquippableItem : Item
     /// Default implementation checks cooldown.
     /// </summary>
     /// <param name="playerData">The player to use the item.</param>
-    /// <returns>Whether the player can use this item.</returns>
+    /// <returns>Whether the item can be used.</returns>
     public bool CanUse(CrawlerPlayerData playerData)
     {
         float lastUse = playerData.LastUseTime + this.cooldown;
@@ -68,8 +69,23 @@ public abstract class EquippableItem : Item
     }
 
     /// <summary>
+    /// Initializes an item that can be used.
+    /// </summary>
+    public abstract void Initialize();
+
+    /// <summary>
     /// Performs the item action.
     /// Must be implemented by subclasses.
     /// </summary>
     protected abstract void PerformAction();
+
+    /// <summary>
+    /// Performs the item action using the player's facing direction.
+    /// </summary>
+    /// <param name="direction">The direction to attack in.</param>
+    /// <param name="playerHandler">The playerhandler that attacks.</param>
+    protected virtual void PerformAction(Vector2 direction, CrawlerPlayerHandler playerHandler)
+    {
+        this.PerformAction();
+    }
 }

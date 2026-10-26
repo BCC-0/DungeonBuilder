@@ -40,6 +40,17 @@ public class ItemObject : SaveableEntity
         }
     }
 
+    /// <summary>
+    /// Hands the runtime item over to a new owner so this object no longer destroys it.
+    /// </summary>
+    /// <returns>The runtime item that was held by this object.</returns>
+    public Item TakeItem()
+    {
+        Item taken = this.runtimeItem;
+        this.runtimeItem = null;
+        return taken;
+    }
+
 #if UNITY_EDITOR
     /// <summary>
     /// Creates a copy of the scriptable object for editing in the unity editor.
@@ -78,7 +89,6 @@ public class ItemObject : SaveableEntity
         base.Read(reader);
 
         string itemID = reader.ReadString();
-        Debug.Log($"Read item ID: '{itemID}'");
         Item def = ItemLibrary.GetItemByIDGlobal(itemID);
 
         if (def == null)

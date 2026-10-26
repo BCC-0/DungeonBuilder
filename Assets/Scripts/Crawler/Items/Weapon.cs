@@ -21,13 +21,20 @@ public abstract class Weapon : EquippableItem
     /// </summary>
     protected override void PerformAction()
     {
-        // Can do extra things beside just attacking here.
-        this.PerformAttack();
+        this.PerformAttack(Vector2.down, null);
+    }
+
+    /// <summary>
+    /// Performs the weapon action using the player's facing direction.
+    /// </summary>
+    protected override void PerformAction(Vector2 direction, CrawlerPlayerHandler playerHandler)
+    {
+        this.PerformAttack(direction, playerHandler);
     }
 
     /// <summary>
     /// Executes the weapon-specific attack logic.
     /// Must be implemented in implementations.
     /// </summary>
-    protected abstract void PerformAttack();
+    protected abstract void PerformAttack(Vector2 direction, CrawlerPlayerHandler playerHandler);
 }

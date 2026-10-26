@@ -28,7 +28,6 @@ public class CrawlerPlayerData : SaveableEntity
     private float moveSpeed = 5f;
 
     [Header("Inventory")]
-    [SerializeField]
     private List<Item> inventory = new List<Item>();
 
     [SerializeField]
@@ -132,15 +131,19 @@ public class CrawlerPlayerData : SaveableEntity
             return;
         }
 
-        if (item is Weapon weapon)
+        if (item is EquippableItem equippable)
         {
-            this.equippedWeapon = weapon;
-            this.inventoryDescriptionText.text = weapon.GetRuntimeEditableDescription();
-        }
-        else if (item is Tool tool)
-        {
-            this.equippedTool = tool;
-            this.inventoryDescriptionText.text = tool.Description;
+            equippable.Initialize();
+            if (item is Weapon weapon)
+            {
+                this.equippedWeapon = weapon;
+                this.inventoryDescriptionText.text = weapon.GetRuntimeEditableDescription();
+            }
+            else if (item is Tool tool)
+            {
+                this.equippedTool = tool;
+                this.inventoryDescriptionText.text = tool.Description;
+            }
         }
 
         ItemButtonUI[] uibuttons = FindObjectsByType<ItemButtonUI>();
@@ -169,7 +172,6 @@ public class CrawlerPlayerData : SaveableEntity
         }
 
         this.inventory.Add(item);
-        Debug.Log($"Added to inventory: {item.ItemName}");
 
         if (item is Weapon weapon && this.equippedWeapon == null)
         {
@@ -240,6 +242,7 @@ public class CrawlerPlayerData : SaveableEntity
         this.healthSlider.maxValue = this.maxHealth;
         this.SetHealthSlider();
 
+        this.Inventory.Clear();
         if (this.inventoryCanvas.activeSelf)
         {
             this.OpenInventory();

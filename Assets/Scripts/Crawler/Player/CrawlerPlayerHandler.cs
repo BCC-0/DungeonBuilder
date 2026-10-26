@@ -174,7 +174,7 @@ public class CrawlerPlayerHandler : MonoBehaviour
             }
 
             // TODO: Add get item animation!
-            this.playerData.AddToInventory(itemObject.Item);
+            this.playerData.AddToInventory(itemObject.TakeItem());
             Destroy(gameObject);
         }
 
