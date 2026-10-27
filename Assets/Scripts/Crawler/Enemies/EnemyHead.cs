@@ -79,7 +79,7 @@ public abstract class EnemyHead : SaveableEntity
     /// to block or scale the damage, or react to being hit.
     /// </summary>
     /// <param name="damage">The damage that is about to be applied.</param>
-    public virtual void OnDamageReceived(ref Damage damage)
+    public virtual void OnDamageReceived(ref DamageInfo damage)
     {
     }
 

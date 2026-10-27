@@ -1,4 +1,3 @@
-
 using System.Collections;
 using UnityEngine;
 using Direction = EnemyBody.Direction;
@@ -293,8 +292,6 @@ public class ChickenHead : EnemyHead
             this.eggPrefab,
             spawnPosition,
             Quaternion.identity);
-
-        egg.GetComponent<Damage>().Amount = this.eggDamage;
 
         egg.Initialize(
             this.Body,

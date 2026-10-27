@@ -1,4 +1,3 @@
-
 using System.Collections;
 using UnityEngine;
 
@@ -40,6 +39,7 @@ public class EggProjectile : MonoBehaviour
     {
         this.owner = shooter;
         this.rb.linearVelocity = direction * speed;
+        this.GetComponent<DamageSource>().Amount = damageAmount * shooter.DamageMultiplier;
     }
 
     /// <summary>

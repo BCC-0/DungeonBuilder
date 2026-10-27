@@ -12,6 +12,10 @@ public class ChickenBody : EnemyBody
     private float distanceTolerance = 0.2f;
     private float randomWalkDuration = 1f;
 
+    [Header("Knockback")]
+    [SerializeField]
+    private float knockbackDuration = 0.2f;
+
     [Header("Animation")]
     [SerializeField]
     private Animator bodyAnimator;
@@ -21,6 +25,7 @@ public class ChickenBody : EnemyBody
 
     private Vector2 movement;
     private float randomWalkTimer;
+    private float knockbackTimer;
 
     /// <summary>
     /// Gets the animator.
@@ -28,6 +33,24 @@ public class ChickenBody : EnemyBody
     protected override void Awake()
     {
         base.Awake();
+    }
+
+    /// <summary>
+    /// Applies the knockback and pauses the walking, so the movement does not
+    /// cancel the push.
+    /// </summary>
+    /// <param name="direction">The direction to push in.</param>
+    /// <param name="force">The strength of the push.</param>
+    public override void ApplyKnockback(Vector2 direction, float force)
+    {
+        if (!this.CanReceiveKnockback ||
+            !this.ExistsInWorld)
+        {
+            return;
+        }
+
+        base.ApplyKnockback(direction, force);
+        this.knockbackTimer = this.knockbackDuration;
     }
 
     /// <summary>
@@ -164,6 +187,19 @@ public class ChickenBody : EnemyBody
     {
         if (this.Rb == null)
         {
+            return;
+        }
+
+        // While knocked back, the physics push moves the chicken instead.
+        if (this.knockbackTimer > 0f)
+        {
+            this.knockbackTimer -= Time.fixedDeltaTime;
+
+            if (this.knockbackTimer <= 0f)
+            {
+                this.Rb.linearVelocity = Vector2.zero;
+            }
+
             return;
         }
 

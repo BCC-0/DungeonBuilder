@@ -48,6 +48,13 @@ public class CrawlerPlayerData : SaveableEntity
     [SerializeField]
     private Tool equippedTool;
 
+    [Header("Equipment Placeholders")]
+    [SerializeField]
+    private Transform weaponPlaceholder;
+
+    [SerializeField]
+    private Transform toolPlaceholder;
+
     private float lastUseTime = 0;
 
     /// <summary>
@@ -136,12 +143,24 @@ public class CrawlerPlayerData : SaveableEntity
             equippable.Initialize();
             if (item is Weapon weapon)
             {
+                if (this.equippedWeapon != null)
+                {
+                    this.equippedWeapon.Unequip();
+                }
+
                 this.equippedWeapon = weapon;
+                this.equippedWeapon.Equip(this.weaponPlaceholder);
                 this.inventoryDescriptionText.text = weapon.GetRuntimeEditableDescription();
             }
             else if (item is Tool tool)
             {
+                if (this.equippedTool != null)
+                {
+                    this.equippedTool.Unequip();
+                }
+
                 this.equippedTool = tool;
+                this.equippedTool.Equip(this.toolPlaceholder);
                 this.inventoryDescriptionText.text = tool.Description;
             }
         }

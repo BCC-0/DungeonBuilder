@@ -1,5 +1,4 @@
-﻿
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -10,7 +9,7 @@ using UnityEngine;
 /// All entities that should be saved to a map should extend from this class.
 /// </summary>
 [RequireComponent(typeof(PrefabIdentity))]
-public abstract class SaveableEntity : MonoBehaviour
+public abstract class SaveableEntity : MonoBehaviour, IKnockbackable
 {
     private readonly List<PendingReference> pendingReferences = new List<PendingReference>();
 
@@ -27,7 +26,13 @@ public abstract class SaveableEntity : MonoBehaviour
     [SerializeField]
     private float hurtFlashDuration = 0.15f;
 
+    [Header("Knockback")]
+    [SerializeField]
+    private bool canReceiveKnockback = true;
+
     private Coroutine hurtFlashCoroutine;
+
+    private Rigidbody2D knockbackBody;
 
     private SaveableEntity consumedBy;
 
@@ -48,6 +53,11 @@ public abstract class SaveableEntity : MonoBehaviour
     {
         get { return this.spriteRenderer; }
     }
+
+    /// <summary>
+    /// Gets a value indicating whether this entity can be pushed away by knockback.
+    /// </summary>
+    public bool CanReceiveKnockback => this.canReceiveKnockback;
 
     /// <summary>
     /// Gets a value indicating whether there are references that still wait to be resolved.
@@ -193,6 +203,48 @@ public abstract class SaveableEntity : MonoBehaviour
     }
 
     /// <summary>
+    /// Plays a hurt effect by flashing all enabled child sprite renderers red
+    /// before returning them to their original colors.
+    /// </summary>
+    public void FlashHurtEffect()
+    {
+        if (this.hurtFlashCoroutine != null)
+        {
+            this.StopCoroutine(this.hurtFlashCoroutine);
+        }
+
+        this.hurtFlashCoroutine = this.StartCoroutine(this.HurtFlashRoutine());
+    }
+
+    /// <summary>
+    /// Applies a knockback impulse to this entity. Does nothing when the entity
+    /// cannot receive knockback, does not exist in the world or has no
+    /// Rigidbody2D. Can be overridden to add behaviour like a stun.
+    /// </summary>
+    /// <param name="direction">The direction to push in.</param>
+    /// <param name="force">The strength of the push.</param>
+    public virtual void ApplyKnockback(Vector2 direction, float force)
+    {
+        if (!this.canReceiveKnockback ||
+            !this.ExistsInWorld)
+        {
+            return;
+        }
+
+        if (this.knockbackBody == null)
+        {
+            this.knockbackBody = this.GetComponent<Rigidbody2D>();
+        }
+
+        if (this.knockbackBody == null)
+        {
+            return;
+        }
+
+        this.knockbackBody.AddForce(direction.normalized * force, ForceMode2D.Impulse);
+    }
+
+    /// <summary>
     /// Whether a type is a list of entities.
     /// </summary>
     /// <param name="type">The type to check.</param>
@@ -241,20 +293,6 @@ public abstract class SaveableEntity : MonoBehaviour
         {
             SaveManager.Register(this);
         }
-    }
-
-    /// <summary>
-    /// Plays a hurt effect by flashing all enabled child sprite renderers red
-    /// before returning them to their original colors.
-    /// </summary>
-    public void FlashHurtEffect()
-    {
-        if (this.hurtFlashCoroutine != null)
-        {
-            this.StopCoroutine(this.hurtFlashCoroutine);
-        }
-
-        this.hurtFlashCoroutine = this.StartCoroutine(this.HurtFlashRoutine());
     }
 
     /// <summary>

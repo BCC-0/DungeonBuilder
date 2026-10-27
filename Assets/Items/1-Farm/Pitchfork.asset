@@ -9,19 +9,21 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 73c4ce0e21cc2044fb01fb2a2bcb6321, type: 3}
+  m_Script: {fileID: 11500000, guid: b5032c4c01b40454cbad4ce160fa6a8f, type: 3}
   m_Name: Pitchfork
   m_EditorClassIdentifier: Assembly-CSharp::Pitchfork
   itemID: Pitchfork
   itemName: Pitchfork
   icon: {fileID: 21300000, guid: 38494ac3739c7d549839df9993218f0b, type: 3}
-  description: 
-  prefab: {fileID: 0}
+  description: A simple melee stabbing weapon
+  prefab: {fileID: 5600406499463904487, guid: a31da5c9029194e4baf39a7c8b5cdb62, type: 3}
   itemType: 0
   uniqueID: 
-  cooldown: 0
+  cooldown: 0.6
   useUp: {fileID: 7400000, guid: 18060cb893e922f4c961305952a1ce2a, type: 2}
   useDown: {fileID: 7400000, guid: ca75be9d5bac5204fbfd452e05981277, type: 2}
   useLeft: {fileID: 7400000, guid: c1acbb3ec05e52c49a3719998564c5d3, type: 2}
   useRight: {fileID: 7400000, guid: 92574eebc4f30e3478fe010d944bf225, type: 2}
-  baseDamage: 10
+  baseDamage: 5
+  knockbackForce: 1000
+  activeDuration: 0.5

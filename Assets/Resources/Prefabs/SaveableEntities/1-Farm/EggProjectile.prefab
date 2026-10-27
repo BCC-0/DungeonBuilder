@@ -15,7 +15,7 @@ GameObject:
   - component: {fileID: 4508908705859545914}
   - component: {fileID: 3969361228530619569}
   - component: {fileID: 4317165378188983998}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: EggProjectile
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -210,11 +210,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 6857028922066918596}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1e0ad838a5d31a24099e36cf58d2d846, type: 3}
+  m_Script: {fileID: 11500000, guid: 8163a736fe8aa9c48a5ab9c659bd0852, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Damage
-  amount: 5
+  amount: 10
+  team: 2
   melee: 0
+  repeatInterval: 0
 --- !u!1 &8556236554399217041
 GameObject:
   m_ObjectHideFlags: 0

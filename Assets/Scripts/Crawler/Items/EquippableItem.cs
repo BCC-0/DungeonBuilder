@@ -7,18 +7,61 @@
 public abstract class EquippableItem : Item
 {
     [Header("Equippable Item Settings")]
-    [SerializeField] private float cooldown;
+    [SerializeField]
+    private float cooldown;
 
     [Header("Directional Animations")]
-    [SerializeField] private AnimationClip useUp;
-    [SerializeField] private AnimationClip useDown;
-    [SerializeField] private AnimationClip useLeft;
-    [SerializeField] private AnimationClip useRight;
+    [SerializeField]
+    private AnimationClip useUp;
+    [SerializeField]
+    private AnimationClip useDown;
+    [SerializeField]
+    private AnimationClip useLeft;
+    [SerializeField]
+    private AnimationClip useRight;
+
+    private GameObject spawnedInstance;
 
     /// <summary>
     /// Gets the cooldown of this item between uses.
     /// </summary>
     public float Cooldown => this.cooldown;
+
+    /// <summary>
+    /// Gets the currently spawned instance of this equippable item.
+    /// </summary>
+    public GameObject SpawnedInstance => this.spawnedInstance;
+
+    /// <summary>
+    /// Equips and instantiates the item prefab under the specified parent placeholder.
+    /// </summary>
+    /// <param name="weaponPlaceholder">The transform to instantiate the item under.</param>
+    public virtual void Equip(Transform weaponPlaceholder)
+    {
+        if (this.Prefab != null && weaponPlaceholder != null)
+        {
+            if (this.spawnedInstance != null)
+            {
+                Destroy(this.spawnedInstance);
+            }
+
+            this.spawnedInstance = Instantiate(this.Prefab, weaponPlaceholder);
+            this.spawnedInstance.transform.localPosition = Vector3.zero;
+            this.spawnedInstance.transform.localRotation = Quaternion.identity;
+        }
+    }
+
+    /// <summary>
+    /// Unequips and destroys the spawned item instance.
+    /// </summary>
+    public virtual void Unequip()
+    {
+        if (this.spawnedInstance != null)
+        {
+            Object.Destroy(this.spawnedInstance);
+            this.spawnedInstance = null;
+        }
+    }
 
     /// <summary>
     /// Returns the correct animation clip for the given direction.

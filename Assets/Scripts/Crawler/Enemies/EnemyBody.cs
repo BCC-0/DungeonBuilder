@@ -6,7 +6,7 @@ using UnityEngine;
 /// health, moves, takes damage and reacts when the player touches it. It
 /// consumes an <see cref="EnemyHead"/> that decides when and how it acts.
 /// </summary>
-public abstract class EnemyBody : SaveableEntity
+public abstract class EnemyBody : SaveableEntity, IDamageable
 {
     private static List<EnemyBody> activeEnemies = new List<EnemyBody>();
 
@@ -77,7 +77,6 @@ public abstract class EnemyBody : SaveableEntity
     private int currentHealth;
     private float damageMultiplier = 1f;
     private CrawlerPlayerData player;
-    private int enemyDamageLayer;
     private Direction direction = Direction.Down;
     private Direction visibleDirection = Direction.Down;
     private bool directionSwitchPending;
@@ -120,6 +119,11 @@ public abstract class EnemyBody : SaveableEntity
     /// Gets the name of this enemy.
     /// </summary>
     public string DisplayName => string.IsNullOrEmpty(this.displayName) ? this.name : this.displayName;
+
+    /// <summary>
+    /// Gets the team of this enemy.
+    /// </summary>
+    public Team Team => Team.Enemy;
 
     /// <summary>
     /// Gets or sets the multiplier applied to all damage this enemy deals.
@@ -243,22 +247,16 @@ public abstract class EnemyBody : SaveableEntity
     protected Vector2 Origin => this.transform.position;
 
     /// <summary>
-    /// Damages the player, scaled by the damage multiplier.
+    /// Damages this enemy. The body and head can change or block the damage
+    /// first, and react to being hit.
     /// </summary>
-    /// <param name="target">The player to damage.</param>
-    /// <param name="amount">The amount of damage before scaling.</param>
-    /// <returns>The health the player has left.</returns>
-    public int DamagePlayer(CrawlerPlayerData target, int amount)
-    {
-        return target.TakeDamage(Mathf.RoundToInt(amount * this.damageMultiplier));
-    }
-
+    /// <param name="damage">The damage to apply.</param>
     /// <summary>
     /// Damages this enemy. The body and head can change or block the damage
     /// first, and react to being hit.
     /// </summary>
     /// <param name="damage">The damage to apply.</param>
-    public void TakeDamage(Damage damage)
+    public void TakeDamage(DamageInfo damage)
     {
         this.OnDamageReceived(ref damage);
 
@@ -272,7 +270,10 @@ public abstract class EnemyBody : SaveableEntity
             return;
         }
 
-        this.currentHealth = Mathf.Max(this.currentHealth - damage.Amount, 0);
+        this.currentHealth = Mathf.Max(this.currentHealth - Mathf.RoundToInt(damage.Amount), 0);
+
+        // Flash red when damage is successfully taken
+        this.FlashHurtEffect();
 
         if (this.currentHealth == 0)
         {
@@ -318,15 +319,6 @@ public abstract class EnemyBody : SaveableEntity
     }
 
     /// <summary>
-    /// Called when the player touches this enemy. This is the collision
-    /// behaviour of the body, for example damage.
-    /// </summary>
-    /// <param name="touchedPlayer">The player that touched this enemy.</param>
-    public virtual void OnPlayerContact(CrawlerPlayerData touchedPlayer)
-    {
-    }
-
-    /// <summary>
     /// Each enemy implementation defines its own movement behaviour for when
     /// the player is detected, so within the detection range.
     /// </summary>
@@ -343,14 +335,13 @@ public abstract class EnemyBody : SaveableEntity
     }
 
     /// <summary>
-    /// Gets the rigidbody and layer, and keeps health valid before the map is loaded.
+    /// Gets the rigidbody, and keeps health valid before the map is loaded.
     /// </summary>
     protected override void Awake()
     {
         base.Awake();
 
         this.Rb = this.GetComponent<Rigidbody2D>();
-        this.enemyDamageLayer = LayerMask.NameToLayer("EnemyDamage");
         this.currentHealth = this.maxHealth;
     }
 
@@ -359,7 +350,7 @@ public abstract class EnemyBody : SaveableEntity
     /// to block or scale the damage, or react to being hit.
     /// </summary>
     /// <param name="damage">The damage that is about to be applied.</param>
-    protected virtual void OnDamageReceived(ref Damage damage)
+    protected virtual void OnDamageReceived(ref DamageInfo damage)
     {
     }
 
@@ -459,33 +450,6 @@ public abstract class EnemyBody : SaveableEntity
         }
 
         this.visualRoot.localPosition = new Vector3(0f, offset, 0f);
-    }
-
-    private void OnTriggerEnter2D(Collider2D other)
-    {
-        this.HandleContact(other.gameObject);
-    }
-
-    private void OnCollisionEnter2D(Collision2D collision)
-    {
-        this.HandleContact(collision.gameObject);
-    }
-
-    private void HandleContact(GameObject other)
-    {
-        if (other.layer == this.enemyDamageLayer &&
-            other.TryGetComponent(out Damage damage))
-        {
-            this.TakeDamage(damage);
-            return;
-        }
-
-        CrawlerPlayerData touchedPlayer = other.GetComponentInParent<CrawlerPlayerData>();
-
-        if (touchedPlayer != null)
-        {
-            this.OnPlayerContact(touchedPlayer);
-        }
     }
 
     /// <summary>
