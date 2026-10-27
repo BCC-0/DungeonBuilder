@@ -69,9 +69,13 @@ public class EggProjectile : MonoBehaviour
     /// Starts the egg destruction sequence when it collides with another object.
     /// </summary>
     /// <param name="collision">The collision involving the egg.</param>
-    private void OnCollisionEnter2D(Collision2D collision)
+    private void OnTriggerEnter2D(Collider2D collision)
     {
-        this.DestroyEgg();
+        if (collision.gameObject.layer == LayerMask.NameToLayer("Player") ||
+            collision.gameObject.layer == LayerMask.NameToLayer("Wall"))
+        {
+            this.DestroyEgg();
+        }
     }
 
     /// <summary>

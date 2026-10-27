@@ -1,3 +1,4 @@
+
 using System.Collections;
 using UnityEngine;
 using Direction = EnemyBody.Direction;
@@ -77,6 +78,12 @@ public class ChickenHead : EnemyHead
     /// </summary>
     private Direction HeadDirection =>
         this.state == State.Attacking ? this.attackDirection : this.FacingDirection;
+
+    /// <summary>
+    /// Gets the direction used for sorting, including the locked attack
+    /// direction while the chicken is attacking.
+    /// </summary>
+    protected override Direction SortingDirection => this.HeadDirection;
 
     /// <summary>
     /// Initializes the head and schedules its first attack.
@@ -384,28 +391,5 @@ public class ChickenHead : EnemyHead
             this.animator.GetCurrentAnimatorStateInfo(0);
 
         return info.length;
-    }
-
-    private void UpdateSortingOrder()
-    {
-        if (this.SpriteRenderer == null || this.Body == null)
-        {
-            return;
-        }
-
-        SpriteRenderer bodyRenderer = this.Body.SpriteRenderer;
-
-        if (bodyRenderer == null)
-        {
-            return;
-        }
-
-        this.SpriteRenderer.sortingLayerID =
-            bodyRenderer.sortingLayerID;
-
-        int offset = this.HeadDirection == Direction.Up ? -1 : 1;
-
-        this.SpriteRenderer.sortingOrder =
-            bodyRenderer.sortingOrder + offset;
     }
 }

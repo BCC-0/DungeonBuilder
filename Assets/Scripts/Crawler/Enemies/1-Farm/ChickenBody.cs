@@ -27,13 +27,6 @@ public class ChickenBody : EnemyBody
     private float randomWalkTimer;
     private float knockbackTimer;
 
-    /// <summary>
-    /// Gets the animator.
-    /// </summary>
-    protected override void Awake()
-    {
-        base.Awake();
-    }
 
     /// <summary>
     /// Applies the knockback and pauses the walking, so the movement does not
@@ -51,6 +44,14 @@ public class ChickenBody : EnemyBody
 
         base.ApplyKnockback(direction, force);
         this.knockbackTimer = this.knockbackDuration;
+    }
+
+    /// <summary>
+    /// Gets the animator.
+    /// </summary>
+    protected override void Awake()
+    {
+        base.Awake();
     }
 
     /// <summary>

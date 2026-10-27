@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿
+using UnityEngine;
 
 /// <summary>
 /// Base class for enemy heads. A head is consumed by an <see cref="EnemyBody"/>
@@ -27,6 +28,13 @@ public abstract class EnemyHead : SaveableEntity
     public EnemyBody.Direction FacingDirection { get; private set; } = EnemyBody.Direction.Down;
 
     /// <summary>
+    /// Gets the direction used to determine the head's sorting order.
+    /// Derived heads can override this when their displayed direction differs
+    /// from the body's facing direction.
+    /// </summary>
+    protected virtual EnemyBody.Direction SortingDirection => this.FacingDirection;
+
+    /// <summary>
     /// Gets the sprite of this head, used by the body to draw it.
     /// </summary>
     public Sprite Sprite => this.SpriteRenderer != null ? this.SpriteRenderer.sprite : null;
@@ -50,6 +58,7 @@ public abstract class EnemyHead : SaveableEntity
 
         this.FacingDirection = direction;
         this.OnFacingDirectionChanged();
+        this.UpdateSortingOrder();
     }
 
     /// <summary>
@@ -66,6 +75,22 @@ public abstract class EnemyHead : SaveableEntity
 
         this.SpriteRenderer.enabled = true;
         this.OnAttached();
+        this.UpdateSortingOrder();
+    }
+
+    /// <summary>
+    /// Updates the head's sorting order. The head renders behind the body
+    /// when looking up, and in front of the body in every other direction.
+    /// </summary>
+    protected void UpdateSortingOrder()
+    {
+        if (this.SpriteRenderer == null)
+        {
+            return;
+        }
+
+        this.SpriteRenderer.sortingOrder =
+            this.SortingDirection == EnemyBody.Direction.Up ? -1 : 1;
     }
 
     /// <summary>

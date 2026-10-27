@@ -153,7 +153,7 @@ GameObject:
   - component: {fileID: 8704239365106173982}
   - component: {fileID: 1119842860272496509}
   - component: {fileID: -8352585202300192458}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Debug_1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -251,6 +251,7 @@ MonoBehaviour:
   spriteRenderer: {fileID: 3064584090858952109}
   hurtColor: {r: 1, g: 0, b: 0, a: 1}
   hurtFlashDuration: 0.15
+  canReceiveKnockback: 1
 --- !u!114 &1119842860272496509
 MonoBehaviour:
   m_ObjectHideFlags: 0

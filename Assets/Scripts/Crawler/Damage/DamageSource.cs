@@ -7,7 +7,7 @@ using UnityEngine;
 /// </summary>
 public class DamageSource : MonoBehaviour
 {
-    private readonly Dictionary<IDamageable, float> nextHitTime = new ();
+    private readonly Dictionary<IDamageable, float> nextHitTime = new();
 
     [SerializeField]
     private float amount;
@@ -20,6 +20,10 @@ public class DamageSource : MonoBehaviour
 
     [SerializeField]
     private float repeatInterval;
+
+    [SerializeField]
+    [Min(0f)]
+    private float knockback;
 
     /// <summary>
     /// Gets or sets the damage dealt per hit.
@@ -37,6 +41,15 @@ public class DamageSource : MonoBehaviour
     {
         get => this.team;
         set => this.team = value;
+    }
+
+    /// <summary>
+    /// Gets or sets the knockback strength applied per hit.
+    /// </summary>
+    public float Knockback
+    {
+        get => this.knockback;
+        set => this.knockback = Mathf.Max(0f, value);
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
@@ -71,23 +84,29 @@ public class DamageSource : MonoBehaviour
 
     private void TryDamage(Collider2D other)
     {
-        if (!other.TryGetComponent(out IDamageable target) || !TeamUtility.CanDamage(this.team, target.Team))
+        if (!other.TryGetComponent(out IDamageable target)
+            || !TeamUtility.CanDamage(this.team, target.Team))
         {
             return;
         }
 
-        if (this.nextHitTime.TryGetValue(target, out float next) && Time.time < next)
+        if (this.nextHitTime.TryGetValue(target, out float next)
+            && (Time.time < next || this.repeatInterval <= 0f))
         {
             return;
         }
 
-        if (this.nextHitTime.ContainsKey(target) && this.repeatInterval <= 0f)
-        {
-            return;
-        }
+        Vector2 direction =
+            (other.bounds.center - this.transform.position).normalized;
 
-        Vector2 direction = (other.transform.position - this.transform.position).normalized;
-        target.TakeDamage(new DamageInfo(this.amount, direction, this.team, this.melee, this));
+        target.TakeDamage(new DamageInfo(
+            this.amount,
+            direction,
+            this.team,
+            this.melee,
+            this,
+            this.knockback));
+
         this.nextHitTime[target] = Time.time + this.repeatInterval;
     }
 

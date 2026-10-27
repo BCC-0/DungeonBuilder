@@ -62,6 +62,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ChickenHead
   uniqueID: 
   spriteRenderer: {fileID: 8832082082192167856}
+  hurtColor: {r: 1, g: 0, b: 0, a: 1}
+  hurtFlashDuration: 0.15
+  canReceiveKnockback: 1
   attackSpeed: 1
   eggSpeed: 6
   eggDamage: 1
@@ -71,6 +74,7 @@ MonoBehaviour:
   animator: {fileID: 4110574955272484897}
   minAmbientInterval: 4
   maxAmbientInterval: 8
+  attackChance: 0.33333334
   minAttackIntervalMultiplier: 0.75
   maxAttackIntervalMultiplier: 1.25
 --- !u!212 &8832082082192167856
@@ -118,9 +122,9 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 2
+  m_SortingLayerID: 63037723
+  m_SortingLayer: 2
+  m_SortingOrder: 1
   m_MaskInteraction: 0
   m_Sprite: {fileID: -3661443380396237380, guid: 6a0beb40abd183e45b4ca61eada02a23, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}

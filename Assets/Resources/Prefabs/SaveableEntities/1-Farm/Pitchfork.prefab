@@ -51,6 +51,7 @@ MonoBehaviour:
   spriteRenderer: {fileID: 4911899575539996239}
   hurtColor: {r: 1, g: 0, b: 0, a: 1}
   hurtFlashDuration: 0.15
+  canReceiveKnockback: 1
   originalItem: {fileID: 11400000, guid: eabeda5558a30924aad7399ccaec1ac6, type: 2}
   runtimeItem: {fileID: 0}
 --- !u!212 &4911899575539996239

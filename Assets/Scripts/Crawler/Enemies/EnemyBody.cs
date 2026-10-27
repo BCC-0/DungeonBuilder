@@ -1,11 +1,13 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 /// <summary>
 /// Base class for all enemies. The body is the enemy itself: it has the
 /// health, moves, takes damage and reacts when the player touches it. It
 /// consumes an <see cref="EnemyHead"/> that decides when and how it acts.
 /// </summary>
+[RequireComponent(typeof(SortingGroup))]
 public abstract class EnemyBody : SaveableEntity, IDamageable
 {
     private static List<EnemyBody> activeEnemies = new List<EnemyBody>();
@@ -251,11 +253,6 @@ public abstract class EnemyBody : SaveableEntity, IDamageable
     /// first, and react to being hit.
     /// </summary>
     /// <param name="damage">The damage to apply.</param>
-    /// <summary>
-    /// Damages this enemy. The body and head can change or block the damage
-    /// first, and react to being hit.
-    /// </summary>
-    /// <param name="damage">The damage to apply.</param>
     public void TakeDamage(DamageInfo damage)
     {
         this.OnDamageReceived(ref damage);
@@ -270,10 +267,16 @@ public abstract class EnemyBody : SaveableEntity, IDamageable
             return;
         }
 
-        this.currentHealth = Mathf.Max(this.currentHealth - Mathf.RoundToInt(damage.Amount), 0);
+        this.currentHealth = Mathf.Max(
+            this.currentHealth - Mathf.RoundToInt(damage.Amount),
+            0);
 
-        // Flash red when damage is successfully taken
         this.FlashHurtEffect();
+
+        if (damage.Knockback > 0f)
+        {
+            this.ApplyKnockback(damage.Direction, damage.Knockback);
+        }
 
         if (this.currentHealth == 0)
         {

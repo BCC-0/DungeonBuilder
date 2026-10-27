@@ -25,5 +25,5 @@ MonoBehaviour:
   useLeft: {fileID: 7400000, guid: c1acbb3ec05e52c49a3719998564c5d3, type: 2}
   useRight: {fileID: 7400000, guid: 92574eebc4f30e3478fe010d944bf225, type: 2}
   baseDamage: 5
-  knockbackForce: 1000
+  knockbackForce: 5
   activeDuration: 0.5
