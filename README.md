@@ -82,7 +82,7 @@
 
 ### Visual Style
 
-- Style: Pixelart 32x32 per tile.
+- Style: Pixelart 16x16 per tile.
 - Color rules: All outlines of enemies should be #303030 to give it a soft line and keep it consistent.
 - Readability rules: White pixel art text with outline in UI.
 
