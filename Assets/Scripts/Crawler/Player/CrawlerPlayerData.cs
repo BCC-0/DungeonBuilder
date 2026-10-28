@@ -27,22 +27,7 @@ public class CrawlerPlayerData : SaveableEntity
     [SaveField(1, 12)]
     private float moveSpeed = 5f;
 
-    [SerializeField]
-    [SaveField(referenceMode: ReferenceMode.Shared)]
-    private SaveableEntity sharedReference;
-
-    [SerializeField]
-    [SaveField(referenceMode: ReferenceMode.Consuming)]
-    private SaveableEntity consumedReference;
-
-    [SaveField(referenceMode: ReferenceMode.Shared, maxReferences: 2)]
-    private List<SaveableEntity> referenceList;
-
-    [SaveField(referenceMode: ReferenceMode.Consuming, maxReferences: 3)]
-    private List<SaveableEntity> referenceOnlyList;
-
     [Header("Inventory")]
-    [SerializeField]
     private List<Item> inventory = new List<Item>();
 
     [SerializeField]
@@ -62,6 +47,13 @@ public class CrawlerPlayerData : SaveableEntity
 
     [SerializeField]
     private Tool equippedTool;
+
+    [Header("Equipment Placeholders")]
+    [SerializeField]
+    private Transform weaponPlaceholder;
+
+    [SerializeField]
+    private Transform toolPlaceholder;
 
     private float lastUseTime = 0;
 
@@ -131,6 +123,7 @@ public class CrawlerPlayerData : SaveableEntity
 
         this.currentHealth = Mathf.Max(this.currentHealth - amount, 0);
         this.SetHealthSlider();
+        this.FlashHurtEffect();
         return this.currentHealth;
     }
 
@@ -145,15 +138,31 @@ public class CrawlerPlayerData : SaveableEntity
             return;
         }
 
-        if (item is Weapon weapon)
+        if (item is EquippableItem equippable)
         {
-            this.equippedWeapon = weapon;
-            this.inventoryDescriptionText.text = weapon.GetRuntimeEditableDescription();
-        }
-        else if (item is Tool tool)
-        {
-            this.equippedTool = tool;
-            this.inventoryDescriptionText.text = tool.Description;
+            equippable.Initialize();
+            if (item is Weapon weapon)
+            {
+                if (this.equippedWeapon != null)
+                {
+                    this.equippedWeapon.Unequip();
+                }
+
+                this.equippedWeapon = weapon;
+                this.equippedWeapon.Equip(this.weaponPlaceholder);
+                this.inventoryDescriptionText.text = weapon.GetRuntimeEditableDescription();
+            }
+            else if (item is Tool tool)
+            {
+                if (this.equippedTool != null)
+                {
+                    this.equippedTool.Unequip();
+                }
+
+                this.equippedTool = tool;
+                this.equippedTool.Equip(this.toolPlaceholder);
+                this.inventoryDescriptionText.text = tool.Description;
+            }
         }
 
         ItemButtonUI[] uibuttons = FindObjectsByType<ItemButtonUI>();
@@ -182,7 +191,6 @@ public class CrawlerPlayerData : SaveableEntity
         }
 
         this.inventory.Add(item);
-        Debug.Log($"Added to inventory: {item.ItemName}");
 
         if (item is Weapon weapon && this.equippedWeapon == null)
         {
@@ -253,6 +261,7 @@ public class CrawlerPlayerData : SaveableEntity
         this.healthSlider.maxValue = this.maxHealth;
         this.SetHealthSlider();
 
+        this.Inventory.Clear();
         if (this.inventoryCanvas.activeSelf)
         {
             this.OpenInventory();

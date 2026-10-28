@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 1470495617481982066}
   - component: {fileID: 7458600946505742518}
   - component: {fileID: 8403607519054633394}
+  - component: {fileID: 2515182625872119946}
   m_Layer: 0
   m_Name: Tilemap
   m_TagString: Untagged
@@ -141,6 +142,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SaveableTilemap
   uniqueID: Tilemap
-  prefabID: Tilemap
+  spriteRenderer: {fileID: 0}
+  hurtColor: {r: 1, g: 0, b: 0, a: 1}
+  hurtFlashDuration: 0.15
+  canReceiveKnockback: 0
   tilemap: {fileID: 1470495617481982066}
-  tileLibrary: {fileID: 11400000, guid: 27cfbe945689584418bb616ecb2d8726, type: 2}
+--- !u!114 &2515182625872119946
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 124106917105459780}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f162a1fe513da454ba930aa444eaf1a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrefabIdentity
+  prefabID: Tilemap

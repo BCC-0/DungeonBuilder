@@ -20,6 +20,8 @@ public class ReferenceButton : MonoBehaviour
     [SerializeField]
     private Button removeButton;
 
+    private AspectRatioFitter aspectRatioFitter;
+
     /// <summary>
     /// Sets the entity displayed by this button.
     /// </summary>
@@ -36,8 +38,12 @@ public class ReferenceButton : MonoBehaviour
         SpriteRenderer renderer =
             entity.GetComponentInChildren<SpriteRenderer>(true);
 
-        this.entityImage.sprite =
+        Sprite sprite =
             renderer != null ? renderer.sprite : null;
+
+        this.entityImage.sprite = sprite;
+        this.entityImage.preserveAspect = true;
+        this.UpdateAspectRatio(sprite);
 
         this.entityName.text = entity.name;
     }
@@ -63,5 +69,35 @@ public class ReferenceButton : MonoBehaviour
         {
             this.removeButton.onClick.AddListener(() => action());
         }
+    }
+
+    /// <summary>
+    /// Keeps the image inside its parent area while preserving the ratio
+    /// of the sprite.
+    /// </summary>
+    /// <param name="sprite">The sprite that is displayed.</param>
+    private void UpdateAspectRatio(Sprite sprite)
+    {
+        if (this.aspectRatioFitter == null)
+        {
+            this.aspectRatioFitter =
+                this.entityImage.GetComponent<AspectRatioFitter>();
+
+            if (this.aspectRatioFitter == null)
+            {
+                this.aspectRatioFitter = this.entityImage.gameObject.AddComponent<AspectRatioFitter>();
+            }
+        }
+
+        this.aspectRatioFitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+
+        if (sprite == null || sprite.rect.height <= 0f)
+        {
+            this.aspectRatioFitter.aspectRatio = 1f;
+            return;
+        }
+
+        this.aspectRatioFitter.aspectRatio =
+            sprite.rect.width / sprite.rect.height;
     }
 }

@@ -1,5 +1,5 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿
+using System.Collections;
 using UnityEngine;
 
 /// <summary>
@@ -7,7 +7,7 @@ using UnityEngine;
 /// </summary>
 [RequireComponent(typeof(CrawlerInputHandler))]
 [RequireComponent(typeof(CrawlerPlayerData))]
-public class CrawlerPlayerHandler : MonoBehaviour
+public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
 {
     private CrawlerPlayerData playerData;
 
@@ -20,10 +20,6 @@ public class CrawlerPlayerHandler : MonoBehaviour
     private Animator animator;
     private AnimatorOverrideController overrideController;
 
-    private HashSet<RepeatingDamage> activeRepeatingDamages = new HashSet<RepeatingDamage>();
-
-    private Dictionary<RepeatingDamage, Coroutine> repeatingDamageCoroutines = new Dictionary<RepeatingDamage, Coroutine>();
-
     /// <summary>
     /// Gets the last direction this player was facing.
     /// </summary>
@@ -33,6 +29,47 @@ public class CrawlerPlayerHandler : MonoBehaviour
     /// Gets a value indicating whether the player can currently move.
     /// </summary>
     public bool CanMove => this.movementLockCount <= 0;
+
+    /// <summary>
+    /// Gets the team of the player.
+    /// </summary>
+    public Team Team => Team.Player;
+
+    /// <summary>
+    /// Applies damage to the player if the attacking team is allowed to
+    /// damage the player. Applies knockback when specified.
+    /// </summary>
+    /// <param name="info">The damage details.</param>
+    public void TakeDamage(DamageInfo info)
+    {
+        if (!TeamUtility.CanDamage(info.Team, this.Team))
+        {
+            return;
+        }
+
+        this.playerData.TakeDamage(Mathf.RoundToInt(info.Amount));
+
+        if (info.Knockback > 0f)
+        {
+            this.ApplyKnockback(info.Direction, info.Knockback);
+        }
+    }
+
+    /// <summary>
+    /// Applies a knockback impulse and temporarily pauses player movement.
+    /// </summary>
+    /// <param name="direction">The direction to push the player.</param>
+    /// <param name="force">The strength of the push.</param>
+    public void ApplyKnockback(Vector2 direction, float force)
+    {
+        if (force <= 0f)
+        {
+            return;
+        }
+
+        KnockbackUtility.Apply(this.rigidbody2d, direction, force);
+        this.PausePlayerMovement(0.2f);
+    }
 
     /// <summary>
     /// Sets the current movement direction of the player.
@@ -133,6 +170,7 @@ public class CrawlerPlayerHandler : MonoBehaviour
         this.SetCanMove(false);
         yield return new WaitForSeconds(time);
         this.SetCanMove(true);
+        this.rigidbody2d.linearVelocity = Vector2.zero;
     }
 
     private void Start()
@@ -174,91 +212,8 @@ public class CrawlerPlayerHandler : MonoBehaviour
             }
 
             // TODO: Add get item animation!
-            this.playerData.AddToInventory(itemObject.Item);
+            this.playerData.AddToInventory(itemObject.TakeItem());
             Destroy(gameObject);
-        }
-
-        if (gameObject.layer == 7)
-        {
-            Damage damage = gameObject.GetComponent<Damage>();
-
-            if (damage == null)
-            {
-                return;
-            }
-
-            this.playerData.TakeDamage(damage.Amount);
-
-            if (damage is RepeatingDamage repeatingDamage)
-            {
-                this.StartRepeatingDamage(repeatingDamage);
-            }
-        }
-    }
-
-    private void OnCollisionExit2D(Collision2D collision)
-    {
-        if (collision.gameObject.layer != 7)
-        {
-            return;
-        }
-
-        RepeatingDamage repeatingDamage =
-            collision.gameObject.GetComponent<RepeatingDamage>();
-
-        if (repeatingDamage != null)
-        {
-            this.StopRepeatingDamage(repeatingDamage);
-        }
-    }
-
-    private void StartRepeatingDamage(RepeatingDamage damage)
-    {
-        if (damage == null)
-        {
-            return;
-        }
-
-        if (!this.activeRepeatingDamages.Add(damage))
-        {
-            return;
-        }
-
-        Coroutine coroutine = this.StartCoroutine(this.ApplyRepeatingDamage(damage));
-
-        this.repeatingDamageCoroutines.Add(damage, coroutine);
-    }
-
-    private void StopRepeatingDamage(RepeatingDamage damage)
-    {
-        if (damage == null)
-        {
-            return;
-        }
-
-        this.activeRepeatingDamages.Remove(damage);
-
-        if (this.repeatingDamageCoroutines.TryGetValue(damage, out Coroutine coroutine))
-        {
-            this.StopCoroutine(coroutine);
-            this.repeatingDamageCoroutines.Remove(damage);
-        }
-    }
-
-    private IEnumerator ApplyRepeatingDamage(RepeatingDamage damage)
-    {
-        this.playerData.TakeDamage(damage.RepeatingAmount);
-
-        while (this.activeRepeatingDamages.Contains(damage))
-        {
-            yield return new WaitForSeconds(damage.RepeatInterval);
-
-            if (!this.activeRepeatingDamages.Contains(damage))
-            {
-                yield break;
-            }
-
-            this.playerData.TakeDamage(damage.RepeatingAmount);
         }
     }
 

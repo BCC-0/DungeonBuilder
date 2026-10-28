@@ -94,6 +94,37 @@ public class PlaytestManager : MonoBehaviour
         // TODO: Add a loading scene screen here.
     }
 
+    private static IEnumerable<BuilderEntity> EnumerateReferences(object value)
+    {
+        if (value is BuilderEntity single)
+        {
+            yield return single;
+        }
+        else if (value is IList list)
+        {
+            foreach (object item in list)
+            {
+                if (item is BuilderEntity builderEntity)
+                {
+                    yield return builderEntity;
+                }
+            }
+        }
+    }
+
+    private static bool IsPrefabOfType<T>(BuilderEntity entity)
+        where T : Component
+    {
+        if (entity == null || entity.PrefabID == null)
+        {
+            return false;
+        }
+
+        GameObject prefab = SaveRegistry.GetPrefab(entity.PrefabID);
+
+        return prefab != null && prefab.GetComponent<T>() != null;
+    }
+
     /// <summary>
     /// Captures the builder camera, editor, and inventory state.
     /// </summary>
@@ -297,10 +328,7 @@ public class PlaytestManager : MonoBehaviour
                 SaveRegistry.GetPrefab(entity.PrefabID)
                     ?.GetComponent<ItemObject>() != null)
             {
-                FieldInfo f = typeof(BuilderEntity).GetField(
-                    "originalItem",
-                    BindingFlags.NonPublic |
-                    BindingFlags.Instance);
+                FieldInfo f = typeof(BuilderEntity).GetField("originalItem", BindingFlags.NonPublic | BindingFlags.Instance);
 
                 Item item = f != null
                     ? (Item)f.GetValue(entity)
@@ -330,6 +358,7 @@ public class PlaytestManager : MonoBehaviour
         }
 
         this.VerifyAttributes(errors);
+        this.VerifyEnemyHeads(errors);
 
         if (errors.Count > 0)
         {
@@ -345,54 +374,28 @@ public class PlaytestManager : MonoBehaviour
     {
         foreach (BuilderEntity entity in BuilderRegistry.GetAll())
         {
-            FieldInfo[] fields = entity.GetType().GetFields(
-                BindingFlags.Instance |
-                BindingFlags.Public |
-                BindingFlags.NonPublic);
-
-            foreach (FieldInfo field in fields)
+            foreach (KeyValuePair<string, RuntimeEditableValue> entry in
+                     entity.RuntimeEditableFields)
             {
+                FieldInfo field = entry.Value?.Field;
+
                 SaveFieldAttribute attribute =
-                    field.GetCustomAttribute<SaveFieldAttribute>();
+                    field?.GetCustomAttribute<SaveFieldAttribute>();
 
                 if (attribute == null)
                 {
                     continue;
                 }
 
-                if (typeof(SaveableEntity).IsAssignableFrom(
-                    field.FieldType))
+                object value = entry.Value.Value;
+
+                if (typeof(SaveableEntity).IsAssignableFrom(field.FieldType))
                 {
-                    SaveableEntity reference =
-                        field.GetValue(entity) as SaveableEntity;
-
-                    int referenceCount =
-                        reference != null ? 1 : 0;
-
-                    this.VerifyReferenceCount(
-                        entity,
-                        field,
-                        attribute,
-                        referenceCount,
-                        errors);
-
-                    continue;
+                    this.VerifyReferenceCount(entity, field, attribute, value as SaveableEntity != null ? 1 : 0, errors);
                 }
-
-                if (typeof(IList).IsAssignableFrom(field.FieldType))
+                else if (typeof(IList).IsAssignableFrom(field.FieldType))
                 {
-                    IList list =
-                        field.GetValue(entity) as IList;
-
-                    int referenceCount =
-                        list != null ? list.Count : 0;
-
-                    this.VerifyReferenceCount(
-                        entity,
-                        field,
-                        attribute,
-                        referenceCount,
-                        errors);
+                    this.VerifyReferenceCount(entity, field, attribute, value is IList list ? list.Count : 0, errors);
                 }
             }
         }
@@ -428,6 +431,106 @@ public class PlaytestManager : MonoBehaviour
                 $"Entity '{entity.name}' allows at most " +
                 $"{attribute.MaxReferences} reference(s) for " +
                 $"'{field.Name}', but has {referenceCount}.");
+        }
+    }
+
+    /// <summary>
+    /// Checks that every enemy has a head, and that every head is consumed
+    /// by exactly one enemy body.
+    /// </summary>
+    /// <param name="errors">The list that validation errors are added to.</param>
+    private void VerifyEnemyHeads(List<string> errors)
+    {
+        Dictionary<BuilderEntity, List<BuilderEntity>> consumers =
+            new Dictionary<BuilderEntity, List<BuilderEntity>>();
+
+        foreach (BuilderEntity entity in BuilderRegistry.GetAll())
+        {
+            bool isEnemy = IsPrefabOfType<EnemyBody>(entity);
+            bool hasHead = false;
+
+            foreach (RuntimeEditableValue editable in
+                     entity.RuntimeEditableFields.Values)
+            {
+                FieldInfo field = editable?.Field;
+
+                if (field == null ||
+                    !typeof(EnemyHead).IsAssignableFrom(field.FieldType))
+                {
+                    continue;
+                }
+
+                SaveFieldAttribute attribute =
+                    field.GetCustomAttribute<SaveFieldAttribute>();
+
+                if (attribute == null)
+                {
+                    continue;
+                }
+
+                foreach (BuilderEntity target in
+                         EnumerateReferences(editable.Value))
+                {
+                    if (!IsPrefabOfType<EnemyHead>(target))
+                    {
+                        continue;
+                    }
+
+                    hasHead = true;
+
+                    if (attribute.ReferenceMode == ReferenceMode.Consuming)
+                    {
+                        if (!consumers.TryGetValue(target, out var owners))
+                        {
+                            owners = new List<BuilderEntity>();
+                            consumers[target] = owners;
+                        }
+
+                        owners.Add(entity);
+                    }
+                }
+            }
+
+            if (isEnemy && !hasHead)
+            {
+                errors.Add(
+                    $"Enemy '{entity.name}' at {entity.transform.position} " +
+                    $"has no head assigned.");
+            }
+        }
+
+        foreach (BuilderEntity head in BuilderRegistry.GetAll())
+        {
+            if (!IsPrefabOfType<EnemyHead>(head))
+            {
+                continue;
+            }
+
+            if (!consumers.TryGetValue(head, out var owners) ||
+                owners.Count == 0)
+            {
+                errors.Add(
+                    $"Head '{head.name}' at {head.transform.position} " +
+                    $"is not consumed by any enemy.");
+                continue;
+            }
+
+            foreach (BuilderEntity owner in owners)
+            {
+                if (!IsPrefabOfType<EnemyBody>(owner))
+                {
+                    errors.Add(
+                        $"Head '{head.name}' at {head.transform.position} " +
+                        $"is consumed by '{owner.name}', which is not an enemy body.");
+                }
+            }
+
+            if (owners.Count > 1)
+            {
+                errors.Add(
+                    $"Head '{head.name}' at {head.transform.position} " +
+                    $"is consumed by {owners.Count} entities; it must be exactly one.");
+            }
         }
     }
 

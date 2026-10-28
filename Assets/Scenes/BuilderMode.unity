@@ -2303,7 +2303,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 307528835}
   m_Direction: 0
   m_Value: 1
-  m_Size: 0.9999999
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -11302,7 +11302,7 @@ Canvas:
   m_UseReflectionProbes: 0
   m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
-  m_SortingLayerID: 0
+  m_SortingLayerID: -1568099555
   m_SortingOrder: 4
   m_TargetDisplay: 0
 --- !u!1 &1631068774
@@ -12431,8 +12431,8 @@ MonoBehaviour:
   selectionImage: {fileID: 2135867203}
   selectionScale: 1.2
   folderNames:
-  - 1 Default
-  - 2 Farm
+  - 1-Farm
+  - 2-Forest
 --- !u!1 &1741936548
 GameObject:
   m_ObjectHideFlags: 0
@@ -16245,6 +16245,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SaveableTilemap
   uniqueID: Tilemap
   spriteRenderer: {fileID: 0}
+  hurtColor: {r: 1, g: 0, b: 0, a: 1}
+  hurtFlashDuration: 0.15
+  canReceiveKnockback: 1
   tilemap: {fileID: 7453032813957364448}
 --- !u!483693784 &1478311151914156580
 TilemapRenderer:
@@ -16291,9 +16294,9 @@ TilemapRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: -2
+  m_SortingLayerID: 2100044659
+  m_SortingLayer: 1
+  m_SortingOrder: 0
   m_MaskInteraction: 0
   m_ChunkSize: {x: 32, y: 32, z: 32}
   m_ChunkCullingBounds: {x: 0, y: 0, z: 0}
