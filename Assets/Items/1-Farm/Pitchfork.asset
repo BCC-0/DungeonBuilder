@@ -19,7 +19,7 @@ MonoBehaviour:
   prefab: {fileID: 5600406499463904487, guid: a31da5c9029194e4baf39a7c8b5cdb62, type: 3}
   itemType: 0
   uniqueID: 
-  cooldown: 0.6
+  cooldown: 0.5
   useUp: {fileID: 7400000, guid: 18060cb893e922f4c961305952a1ce2a, type: 2}
   useDown: {fileID: 7400000, guid: ca75be9d5bac5204fbfd452e05981277, type: 2}
   useLeft: {fileID: 7400000, guid: c1acbb3ec05e52c49a3719998564c5d3, type: 2}

@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿
+using System.Collections;
 using UnityEngine;
 
 /// <summary>
@@ -6,7 +7,7 @@ using UnityEngine;
 /// </summary>
 [RequireComponent(typeof(CrawlerInputHandler))]
 [RequireComponent(typeof(CrawlerPlayerData))]
-public class CrawlerPlayerHandler : MonoBehaviour, IDamageable
+public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
 {
     private CrawlerPlayerData playerData;
 
@@ -35,12 +36,39 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable
     public Team Team => Team.Player;
 
     /// <summary>
-    /// Applies damage to the player.
+    /// Applies damage to the player if the attacking team is allowed to
+    /// damage the player. Applies knockback when specified.
     /// </summary>
     /// <param name="info">The damage details.</param>
     public void TakeDamage(DamageInfo info)
     {
+        if (!TeamUtility.CanDamage(info.Team, this.Team))
+        {
+            return;
+        }
+
         this.playerData.TakeDamage(Mathf.RoundToInt(info.Amount));
+
+        if (info.Knockback > 0f)
+        {
+            this.ApplyKnockback(info.Direction, info.Knockback);
+        }
+    }
+
+    /// <summary>
+    /// Applies a knockback impulse and temporarily pauses player movement.
+    /// </summary>
+    /// <param name="direction">The direction to push the player.</param>
+    /// <param name="force">The strength of the push.</param>
+    public void ApplyKnockback(Vector2 direction, float force)
+    {
+        if (force <= 0f)
+        {
+            return;
+        }
+
+        KnockbackUtility.Apply(this.rigidbody2d, direction, force);
+        this.PausePlayerMovement(0.2f);
     }
 
     /// <summary>
@@ -142,6 +170,7 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable
         this.SetCanMove(false);
         yield return new WaitForSeconds(time);
         this.SetCanMove(true);
+        this.rigidbody2d.linearVelocity = Vector2.zero;
     }
 
     private void Start()

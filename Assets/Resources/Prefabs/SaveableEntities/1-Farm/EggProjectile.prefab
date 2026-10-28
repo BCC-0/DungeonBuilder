@@ -84,9 +84,9 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 4
+  m_SortingLayerID: 63037723
+  m_SortingLayer: 2
+  m_SortingOrder: 1
   m_MaskInteraction: 0
   m_Sprite: {fileID: 8962820850041061930, guid: 77590e13fd4cc0846830821dc026af62, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -217,6 +217,7 @@ MonoBehaviour:
   team: 2
   melee: 0
   repeatInterval: 0
+  knockback: 0
 --- !u!1 &8556236554399217041
 GameObject:
   m_ObjectHideFlags: 0

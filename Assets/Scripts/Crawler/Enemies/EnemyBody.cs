@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -74,6 +75,10 @@ public abstract class EnemyBody : SaveableEntity, IDamageable
     [SerializeField]
     private float bobSpeed = 12f;
 
+    [Header("Knockback")]
+    [SerializeField]
+    private bool canReceiveKnockback = true;
+
     private float bobTime;
 
     private int currentHealth;
@@ -136,6 +141,11 @@ public abstract class EnemyBody : SaveableEntity, IDamageable
         get => this.damageMultiplier;
         set => this.damageMultiplier = Mathf.Max(0f, value);
     }
+
+    /// <summary>
+    /// Gets a value indicating whether this enemy can receive knockback.
+    /// </summary>
+    public bool CanReceiveKnockback => this.canReceiveKnockback;
 
     /// <summary>
     /// Gets the transform of the player, or null when there is no player.
@@ -282,6 +292,35 @@ public abstract class EnemyBody : SaveableEntity, IDamageable
         {
             this.Die();
         }
+    }
+
+    /// <summary>
+    /// Applies knockback if this enemy can receive it.
+    /// </summary>
+    /// <param name="direction">The direction to give knockback in.</param>
+    /// <param name="force">The force of the knockback.</param>
+    public void ApplyKnockback(Vector2 direction, float force)
+    {
+        if (!this.canReceiveKnockback ||
+            !this.ExistsInWorld ||
+            !KnockbackUtility.Apply(this.Rb, direction, force))
+        {
+            return;
+        }
+
+        this.OnKnockbackApplied(direction, force);
+    }
+
+    /// <summary>
+    /// Called after knockback has been successfully applied.
+    /// Override for enemy-specific reactions.
+    /// </summary>
+    /// <param name="direction">The direction to give knockback in.</param>
+    /// <param name="force">The force of the knockback.</param>
+    protected virtual void OnKnockbackApplied(
+        Vector2 direction,
+        float force)
+    {
     }
 
     /// <summary>

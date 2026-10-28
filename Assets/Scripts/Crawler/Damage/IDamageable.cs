@@ -27,7 +27,7 @@ public enum Team
 public interface IDamageable
 {
     /// <summary>
-    /// Gets the team of this object.
+    /// Gets the team this side fights for.
     /// </summary>
     Team Team { get; }
 

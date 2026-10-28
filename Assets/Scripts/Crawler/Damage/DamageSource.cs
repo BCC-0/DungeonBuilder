@@ -1,3 +1,4 @@
+
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -96,8 +97,14 @@ public class DamageSource : MonoBehaviour
             return;
         }
 
+        Collider2D sourceCollider = this.GetComponent<Collider2D>();
+
+        Vector2 sourcePosition = sourceCollider != null
+            ? sourceCollider.bounds.center
+            : (Vector2)this.transform.position;
+
         Vector2 direction =
-            (other.bounds.center - this.transform.position).normalized;
+            ((Vector2)other.bounds.center - sourcePosition).normalized;
 
         target.TakeDamage(new DamageInfo(
             this.amount,

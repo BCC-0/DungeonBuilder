@@ -80,9 +80,9 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 2
+  m_SortingLayerID: 63037723
+  m_SortingLayer: 3
+  m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: 42536041184912644, guid: 6080d2720bd457540955c3b61d68b51c, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -121,20 +121,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CrawlerPlayerData
   uniqueID: Player
   spriteRenderer: {fileID: 3064584090858952109}
+  hurtColor: {r: 1, g: 0, b: 0, a: 1}
+  hurtFlashDuration: 0.15
+  canReceiveKnockback: 1
   maxHealth: 100
   currentHealth: 100
   healthSlider: {fileID: 0}
   healthText: {fileID: 0}
   moveSpeed: 5
-  sharedReference: {fileID: 0}
-  consumedReference: {fileID: 0}
-  inventory: []
   inventoryCanvas: {fileID: 0}
   inventoryDescriptionText: {fileID: 0}
   inventoryWeaponsUI: {fileID: 0}
   inventoryToolsUI: {fileID: 0}
   equippedWeapon: {fileID: 0}
   equippedTool: {fileID: 0}
+  weaponPlaceholder: {fileID: 0}
+  toolPlaceholder: {fileID: 0}
 --- !u!1 &6305420226766313905
 GameObject:
   m_ObjectHideFlags: 0

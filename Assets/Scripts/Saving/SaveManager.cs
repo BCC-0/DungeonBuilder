@@ -138,8 +138,6 @@ public static class SaveManager
         }
 
         Transform entityParent = GameObject.FindWithTag("Entity parent").transform;
-        Debug.Log(entityParent.name);
-
         SaveableTilemap sceneTilemap = GameObject.FindWithTag("TilemapEntity")?.GetComponent<SaveableTilemap>();
 
         using FileStream stream = File.Open(path, FileMode.Open);

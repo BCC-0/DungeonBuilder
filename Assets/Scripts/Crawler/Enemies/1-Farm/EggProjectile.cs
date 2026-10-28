@@ -35,11 +35,14 @@ public class EggProjectile : MonoBehaviour
     /// <param name="direction">The direction to fly in.</param>
     /// <param name="speed">The speed of the egg.</param>
     /// <param name="damageAmount">The damage before scaling by the shooter.</param>
-    public void Initialize(EnemyBody shooter, Vector2 direction, float speed, int damageAmount)
+    /// <param name="knockback">The knockback the egg should have.</param>
+    public void Initialize(EnemyBody shooter, Vector2 direction, float speed, int damageAmount, float knockback)
     {
         this.owner = shooter;
         this.rb.linearVelocity = direction * speed;
-        this.GetComponent<DamageSource>().Amount = damageAmount * shooter.DamageMultiplier;
+        DamageSource damage = this.GetComponent<DamageSource>();
+        damage.Amount = damageAmount * shooter.DamageMultiplier;
+        damage.Knockback = knockback;
     }
 
     /// <summary>

@@ -1,3 +1,4 @@
+
 using UnityEngine;
 
 /// <summary>
@@ -29,20 +30,14 @@ public class ChickenBody : EnemyBody
 
 
     /// <summary>
-    /// Applies the knockback and pauses the walking, so the movement does not
-    /// cancel the push.
+    /// Pauses the walking after knockback is applied.
     /// </summary>
     /// <param name="direction">The direction to push in.</param>
     /// <param name="force">The strength of the push.</param>
-    public override void ApplyKnockback(Vector2 direction, float force)
+    protected override void OnKnockbackApplied(
+        Vector2 direction,
+        float force)
     {
-        if (!this.CanReceiveKnockback ||
-            !this.ExistsInWorld)
-        {
-            return;
-        }
-
-        base.ApplyKnockback(direction, force);
         this.knockbackTimer = this.knockbackDuration;
     }
 

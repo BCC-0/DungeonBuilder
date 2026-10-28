@@ -42,7 +42,6 @@ public static class SaveRegistry
 
             if (identity == null)
             {
-                Debug.LogWarning($"Prefab {prefab.name} has no PrefabIdentity!");
                 continue;
             }
 

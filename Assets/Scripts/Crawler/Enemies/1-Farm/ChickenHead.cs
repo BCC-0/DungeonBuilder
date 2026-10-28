@@ -22,6 +22,10 @@ public class ChickenHead : EnemyHead
     [SerializeField]
     private int eggDamage = 1;
 
+    [SaveField(0, 20)]
+    [SerializeField]
+    private int eggKnockback = 5;
+
     [SerializeField]
     private EggProjectile eggPrefab;
 
@@ -304,7 +308,8 @@ public class ChickenHead : EnemyHead
             this.Body,
             direction,
             this.eggSpeed,
-            this.eggDamage);
+            this.eggDamage,
+            this.eggKnockback);
     }
 
     private void UpdateAnimationState()
