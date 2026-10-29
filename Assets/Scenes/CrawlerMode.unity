@@ -2011,6 +2011,7 @@ GameObject:
   - component: {fileID: 777243451}
   - component: {fileID: 777243453}
   - component: {fileID: 777243452}
+  - component: {fileID: 777243454}
   m_Layer: 0
   m_Name: HealthText
   m_TagString: Untagged
@@ -2034,7 +2035,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: -3}
   m_SizeDelta: {x: 400, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &777243452
@@ -2057,7 +2058,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 100/100
+  m_text: <sprite=27><space=0.1em><sprite=26><space=0.1em><sprite=26><space=0.1em><sprite=52><space=0.1em><sprite=27><space=0.1em><sprite=26><space=0.1em><sprite=26>
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: c65aec9542632bb47a357e5ca0d02c36, type: 2}
   m_sharedMaterial: {fileID: 5216245048539841939, guid: c65aec9542632bb47a357e5ca0d02c36, type: 2}
@@ -2076,7 +2077,7 @@ MonoBehaviour:
     bottomLeft: {r: 1, g: 1, b: 1, a: 1}
     bottomRight: {r: 1, g: 1, b: 1, a: 1}
   m_fontColorGradientPreset: {fileID: 0}
-  m_spriteAsset: {fileID: 0}
+  m_spriteAsset: {fileID: 11400000, guid: 095015a35aad0ea44896c253d1a1ff3e, type: 2}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
   m_TextStyleHashCode: 93368250
@@ -2137,6 +2138,24 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 777243450}
   m_CullTransparentMesh: 1
+--- !u!114 &777243454
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 777243450}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c76953ef10e06eb468dd7027d3584aaa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpriteFontText
+  spriteAsset: {fileID: 11400000, guid: 095015a35aad0ea44896c253d1a1ff3e, type: 2}
+  sourceText: 100/100
+  characters: ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,!?'":;-+_=()[]/\#
+  spaceWidthEm: 0.5
+  letterSpacingEm: 0.1
+  ignoreCase: 1
 --- !u!1 &836631100
 GameObject:
   m_ObjectHideFlags: 0
@@ -2315,7 +2334,7 @@ MonoBehaviour:
   maxHealth: 100
   currentHealth: 0
   healthSlider: {fileID: 54895746}
-  healthText: {fileID: 777243452}
+  healthText: {fileID: 777243454}
   moveSpeed: 5
   inventoryCanvas: {fileID: 1621829967}
   inventoryDescriptionText: {fileID: 2003982022}

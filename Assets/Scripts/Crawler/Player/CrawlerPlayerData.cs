@@ -21,7 +21,7 @@ public class CrawlerPlayerData : SaveableEntity
     [SerializeField]
     private Slider healthSlider;
     [SerializeField]
-    private TextMeshProUGUI healthText;
+    private SpriteFontText healthText;
 
     [SerializeField]
     [SaveField(1, 12)]
@@ -276,7 +276,7 @@ public class CrawlerPlayerData : SaveableEntity
             this.healthSlider.value = damage;
         }
 
-        this.healthText.text = this.currentHealth + "/" + this.maxHealth;
+        this.healthText.SetText(this.currentHealth + "/" + this.maxHealth);
     }
 
     private void OnInventoryChange()
