@@ -15,9 +15,6 @@ public class ItemBarSlot : MonoBehaviour
     private InventoryItem item;
 
     [SerializeField]
-    private TMP_Text itemNameText;
-
-    [SerializeField]
     private Image itemImage;
 
     private InventoryController inventoryController;
@@ -68,16 +65,13 @@ public class ItemBarSlot : MonoBehaviour
 
         if (this.item == null)
         {
-            this.itemNameText.gameObject.SetActive(false);
             this.itemImage.gameObject.SetActive(false);
             return;
         }
 
         this.currentInventorySize = inventorySize;
 
-        this.itemNameText.gameObject.SetActive(true);
         this.itemImage.gameObject.SetActive(true);
-        this.itemNameText.text = this.item.Name;
         this.itemImage.sprite = this.item.Sprite;
 
         RectTransform imageTransform = this.itemImage.rectTransform;
@@ -157,15 +151,12 @@ public class ItemBarSlot : MonoBehaviour
 
         if (this.item == null)
         {
-            this.itemNameText.gameObject.SetActive(false);
             this.itemImage.gameObject.SetActive(false);
         }
         else
         {
-            this.itemNameText.gameObject.SetActive(true);
             this.itemImage.gameObject.SetActive(true);
 
-            this.itemNameText.text = this.item.Name;
             this.itemImage.sprite = this.item.Sprite;
         }
     }
