@@ -1,5 +1,4 @@
 ﻿using DG.Tweening;
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -75,7 +74,13 @@ public class ItemBarSlot : MonoBehaviour
         this.itemImage.sprite = this.item.Sprite;
 
         RectTransform imageTransform = this.itemImage.rectTransform;
-        Vector2 targetSize = this.GetAspectRatioSize(inventorySize, this.originalImageSize);
+        RectTransform parentRect = imageTransform.parent as RectTransform;
+
+        Vector2 availableSize = parentRect.rect.size - new Vector2(32f, 32f);
+
+        Vector2 targetSize = this.GetAspectRatioSize(
+            inventorySize,
+            availableSize);
 
         Canvas canvas = this.itemImage.canvas;
 
@@ -85,10 +90,14 @@ public class ItemBarSlot : MonoBehaviour
                 : canvas.worldCamera;
 
         RectTransformUtility.ScreenPointToWorldPointInRectangle(
-            imageTransform.parent as RectTransform,
+            parentRect,
             screenPos,
             cam,
             out Vector3 startPosition);
+
+        imageTransform.anchorMin = new Vector2(0.5f, 0.5f);
+        imageTransform.anchorMax = new Vector2(0.5f, 0.5f);
+        imageTransform.pivot = new Vector2(0.5f, 0.5f);
 
         imageTransform.position = startPosition;
         imageTransform.sizeDelta = inventorySize;

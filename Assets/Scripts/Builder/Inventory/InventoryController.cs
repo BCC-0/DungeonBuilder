@@ -26,7 +26,13 @@ public class InventoryController : MonoBehaviour
     private ItemBarSlot[] itemSlots;
 
     [SerializeField]
-    private RectTransform selectionImage;
+    private Image selectionImage;
+
+    [SerializeField]
+    private Sprite inventorySelectionSprite;
+
+    [SerializeField]
+    private Sprite[] slotSelectionSprites;
 
     [SerializeField]
     private float selectionScale = 1.2f;
@@ -364,6 +370,27 @@ public class InventoryController : MonoBehaviour
     }
 
     /// <summary>
+    /// Converts the world position of a UI element to a screen point,
+    /// using the camera of the canvas it belongs to.
+    /// </summary>
+    /// <param name="rect">The UI element to convert.</param>
+    /// <returns>The screen position of the element.</returns>
+    private static Vector3 GetScreenPoint(RectTransform rect)
+    {
+        Canvas canvas = rect.GetComponentInParent<Canvas>();
+
+        Camera cam =
+            canvas != null &&
+            canvas.renderMode != RenderMode.ScreenSpaceOverlay
+                ? canvas.worldCamera
+                : null;
+
+        return RectTransformUtility.WorldToScreenPoint(
+            cam,
+            rect.position);
+    }
+
+    /// <summary>
     /// Swaps the items between two toolbar slots.
     /// </summary>
     /// <param name="firstIndex">The index of the first slot.</param>
@@ -502,6 +529,8 @@ public class InventoryController : MonoBehaviour
 
     /// <summary>
     /// Moves the selection image to the supplied UI object.
+    /// Uses a dedicated sprite for inventory items or the corresponding
+    /// sprite for toolbar slots.
     /// </summary>
     /// <param name="target">The UI object to highlight. Null hides the selection image.</param>
     private void SetSelectionImage(GameObject target)
@@ -525,34 +554,48 @@ public class InventoryController : MonoBehaviour
             return;
         }
 
-        Vector2 targetSize = targetRect.rect.size;
+        RectTransform selectionRect =
+            this.selectionImage.rectTransform;
 
-        bool isSlot = target.TryGetComponent<ItemBarSlot>(out _);
-
-        Vector2 selectionSize;
-
-        if (isSlot)
+        if (target.TryGetComponent<ItemBarSlot>(out ItemBarSlot slot))
         {
-            selectionSize = targetSize;
+            int slotIndex = System.Array.IndexOf(
+                this.itemSlots,
+                slot);
+
+            if (slotIndex < 0 ||
+                this.slotSelectionSprites == null ||
+                slotIndex >= this.slotSelectionSprites.Length)
+            {
+                return;
+            }
+
+            this.selectionImage.sprite =
+                this.slotSelectionSprites[slotIndex];
+
+            selectionRect.sizeDelta = new Vector2(160f, 176f);
         }
         else
         {
+            this.selectionImage.sprite =
+                this.inventorySelectionSprite;
+
+            Vector2 targetSize = targetRect.rect.size;
+
             float largestDimension =
                 Mathf.Max(targetSize.x, targetSize.y);
 
             float selectionDimension =
                 largestDimension * this.selectionScale;
 
-            selectionSize = new Vector2(
+            selectionRect.sizeDelta = new Vector2(
                 selectionDimension,
                 selectionDimension);
         }
 
-        this.selectionImage.SetParent(targetRect, false);
+        selectionRect.SetParent(targetRect, false);
 
         this.selectionImage.gameObject.SetActive(true);
-
-        this.selectionImage.sizeDelta = selectionSize;
     }
 
     /// <summary>
@@ -592,7 +635,7 @@ public class InventoryController : MonoBehaviour
 
         if (this.selectionImageParent != null)
         {
-            this.selectionImage.SetParent(
+            this.selectionImage.rectTransform.SetParent(
                 this.selectionImageParent,
                 false);
         }
@@ -687,27 +730,6 @@ public class InventoryController : MonoBehaviour
     }
 
     /// <summary>
-    /// Converts the world position of a UI element to a screen point,
-    /// using the camera of the canvas it belongs to.
-    /// </summary>
-    /// <param name="rect">The UI element to convert.</param>
-    /// <returns>The screen position of the element.</returns>
-    private static Vector3 GetScreenPoint(RectTransform rect)
-    {
-        Canvas canvas = rect.GetComponentInParent<Canvas>();
-
-        Camera cam =
-            canvas != null &&
-            canvas.renderMode != RenderMode.ScreenSpaceOverlay
-                ? canvas.worldCamera
-                : null;
-
-        return RectTransformUtility.WorldToScreenPoint(
-            cam,
-            rect.position);
-    }
-
-    /// <summary>
     /// Forces a layout rebuild of every canvas that contains a toolbar slot.
     /// </summary>
     private void RebuildSlotLayouts()
@@ -740,7 +762,7 @@ public class InventoryController : MonoBehaviour
         if (this.selectionImage != null)
         {
             this.selectionImageParent =
-                this.selectionImage.parent;
+                this.selectionImage.transform.parent;
         }
 
         this.ScanFolders();

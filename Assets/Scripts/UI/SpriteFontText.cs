@@ -96,7 +96,7 @@ public class SpriteFontText : MonoBehaviour
                 }
                 else if (this.TryGetIndex(lookup, c, out int index))
                 {
-                    token = "<sprite=" + index + ">";
+                    token = "<sprite=" + index + " tint=1>";
                 }
                 else
                 {
