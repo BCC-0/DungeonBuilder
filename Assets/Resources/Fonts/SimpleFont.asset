@@ -892,15 +892,15 @@ MonoBehaviour:
     sprite: {fileID: 402926740, guid: 5061c4b3a1046b848bf966285664abd5, type: 3}
   - m_Index: 36
     m_Metrics:
-      m_Width: 6
+      m_Width: 4
       m_Height: 9
       m_HorizontalBearingX: 0
       m_HorizontalBearingY: 8
-      m_HorizontalAdvance: 6
+      m_HorizontalAdvance: 4
     m_GlyphRect:
-      m_X: 33
+      m_X: 34
       m_Y: 18
-      m_Width: 6
+      m_Width: 4
       m_Height: 9
     m_Scale: 1
     m_AtlasIndex: 0
