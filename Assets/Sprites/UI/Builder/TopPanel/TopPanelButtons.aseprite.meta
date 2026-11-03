@@ -211,90 +211,6 @@ ScriptedImporter:
     edges: []
     tessellationDetail: 0
     uvTransform: {x: 21, y: 4}
-  - name: Frame_4
-    originalName: 
-    pivot: {x: 0.5, y: 0}
-    alignment: 9
-    border: {x: 0, y: 0, z: 0, w: 0}
-    customData: 
-    rect:
-      serializedVersion: 2
-      x: 21
-      y: 21
-      width: 9
-      height: 9
-    spriteID: e5ec412c63ab8404bbbea6896219e269
-    spriteBone: []
-    spriteOutline: []
-    vertices: []
-    spritePhysicsOutline: []
-    indices: 
-    edges: []
-    tessellationDetail: 0
-    uvTransform: {x: 21, y: 21}
-  - name: Frame_5
-    originalName: 
-    pivot: {x: 0.5, y: 0}
-    alignment: 9
-    border: {x: 0, y: 0, z: 0, w: 0}
-    customData: 
-    rect:
-      serializedVersion: 2
-      x: 21
-      y: 38
-      width: 9
-      height: 9
-    spriteID: 6e2cc481bdad068458f1ab5a60ab7667
-    spriteBone: []
-    spriteOutline: []
-    vertices: []
-    spritePhysicsOutline: []
-    indices: 
-    edges: []
-    tessellationDetail: 0
-    uvTransform: {x: 21, y: 38}
-  - name: Frame_6
-    originalName: 
-    pivot: {x: 0.5, y: 0}
-    alignment: 9
-    border: {x: 0, y: 0, z: 0, w: 0}
-    customData: 
-    rect:
-      serializedVersion: 2
-      x: 38
-      y: 4
-      width: 9
-      height: 9
-    spriteID: 484e144f38ad66d4eb5d04c6c4075aee
-    spriteBone: []
-    spriteOutline: []
-    vertices: []
-    spritePhysicsOutline: []
-    indices: 
-    edges: []
-    tessellationDetail: 0
-    uvTransform: {x: 38, y: 4}
-  - name: Frame_7
-    originalName: 
-    pivot: {x: 0.5, y: 0}
-    alignment: 9
-    border: {x: 0, y: 0, z: 0, w: 0}
-    customData: 
-    rect:
-      serializedVersion: 2
-      x: 38
-      y: 21
-      width: 9
-      height: 9
-    spriteID: a2aae4957eeb9ec47bf2f8e54bbdf11e
-    spriteBone: []
-    spriteOutline: []
-    vertices: []
-    spritePhysicsOutline: []
-    indices: 
-    edges: []
-    tessellationDetail: 0
-    uvTransform: {x: 38, y: 21}
   spriteSheetImportData: []
   tileSetImportData: []
   asepriteLayers:
@@ -346,42 +262,6 @@ ScriptedImporter:
         width: 9
         height: 9
       spriteId: 41e7819bb5870a54cb6ea5468d82ea60
-    - name: Frame_4
-      frameIndex: 4
-      additiveSortOrder: 0
-      cellRect:
-        x: 0
-        y: 0
-        width: 9
-        height: 9
-      spriteId: e5ec412c63ab8404bbbea6896219e269
-    - name: Frame_5
-      frameIndex: 5
-      additiveSortOrder: 0
-      cellRect:
-        x: 0
-        y: 0
-        width: 9
-        height: 9
-      spriteId: 6e2cc481bdad068458f1ab5a60ab7667
-    - name: Frame_6
-      frameIndex: 6
-      additiveSortOrder: 0
-      cellRect:
-        x: 0
-        y: 0
-        width: 9
-        height: 9
-      spriteId: 484e144f38ad66d4eb5d04c6c4075aee
-    - name: Frame_7
-      frameIndex: 7
-      additiveSortOrder: 0
-      cellRect:
-        x: 0
-        y: 0
-        width: 9
-        height: 9
-      spriteId: a2aae4957eeb9ec47bf2f8e54bbdf11e
     linkedCells: []
     tileCells: []
     tileSetIndex: 0
