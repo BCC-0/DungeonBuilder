@@ -8,7 +8,7 @@ using UnityEngine.UI;
 public class InventoryFolderUI : MonoBehaviour
 {
     [SerializeField]
-    private TMP_Text folderNameText;
+    private SpriteFontText folderNameText;
 
     [SerializeField]
     private Image folderImage;
@@ -30,7 +30,7 @@ public class InventoryFolderUI : MonoBehaviour
 
         if (this.folderNameText != null)
         {
-            this.folderNameText.text = this.folder.Name;
+            this.folderNameText.SetText(this.folder.Name);
         }
 
         if (this.folderImage != null)

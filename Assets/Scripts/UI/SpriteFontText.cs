@@ -27,9 +27,11 @@ public class SpriteFontText : MonoBehaviour
     [SerializeField]
     private bool ignoreCase = true;
     [SerializeField]
-    private char caretCharacter = '.';
+    private char caretCharacter = '|';
     [SerializeField]
     private float caretBlinkSeconds = 0.5f;
+    [SerializeField]
+    private Color caretColor;
 
     private TMP_Text target;
     private float blinkTimer;
@@ -61,7 +63,7 @@ public class SpriteFontText : MonoBehaviour
     }
 
     /// <summary>
-    /// Sets the text 
+    /// Sets the text.
     /// </summary>
     /// <param name="text">Plain text to display using the sprite font.</param>
     public void SetText(string text)
@@ -77,12 +79,28 @@ public class SpriteFontText : MonoBehaviour
     {
         if (this.spriteAsset == null || this.Target == null)
         {
+            Debug.LogWarning($"[SpriteFontText] Refresh aborted: spriteAsset null={this.spriteAsset == null}, target null={this.Target == null}", this);
             return;
         }
 
-        int caretIndex = this.ShowCaret ? Mathf.Clamp(this.inputField.caretPosition, 0, this.sourceText.Length) : -1;
+        int caretIndex = this.ShowCaret ? Mathf.Clamp(this.inputField.stringPosition, 0, this.sourceText.Length) : -1;
         this.Target.spriteAsset = this.spriteAsset;
         this.Target.text = this.Convert(this.sourceText, caretIndex);
+    }
+
+    /// <param name="builder">Builder receiving the output.</param>
+    /// <param name="token">The tag to append.</param>
+    /// <param name="gap">The letter spacing tag placed between tokens.</param>
+    /// <param name="first">True if nothing has been appended on the current line yet; set to false afterwards.</param>
+    private static void AppendToken(StringBuilder builder, string token, string gap, ref bool first)
+    {
+        if (!first)
+        {
+            builder.Append(gap);
+        }
+
+        builder.Append(token);
+        first = false;
     }
 
     /// <summary>
@@ -147,21 +165,6 @@ public class SpriteFontText : MonoBehaviour
         return builder.ToString();
     }
 
-    /// <param name="builder">Builder receiving the output.</param>
-    /// <param name="token">The tag to append.</param>
-    /// <param name="gap">The letter spacing tag placed between tokens.</param>
-    /// <param name="first">True if nothing has been appended on the current line yet; set to false afterwards.</param>
-    private static void AppendToken(StringBuilder builder, string token, string gap, ref bool first)
-    {
-        if (!first)
-        {
-            builder.Append(gap);
-        }
-
-        builder.Append(token);
-        first = false;
-    }
-
     /// <param name="lookup">Character to sprite index map.</param>
     /// <returns>The caret tag, invisible but space-preserving while blinking off, or null if the caret character has no sprite.</returns>
     private string BuildCaretToken(Dictionary<char, int> lookup)
@@ -171,8 +174,15 @@ public class SpriteFontText : MonoBehaviour
             return null;
         }
 
-        string sprite = "<sprite=" + index + " tint=1>";
-        return this.caretVisible ? sprite : "<alpha=#00>" + sprite + "<alpha=#FF>";
+        Color color = this.caretColor;
+        if (!this.caretVisible)
+        {
+            color.a = 0f;
+        }
+
+        string hexColor = "#" + ColorUtility.ToHtmlStringRGBA(color);
+
+        return "<color=" + hexColor + "><sprite=" + index + " tint=1></color>";
     }
 
     /// <returns>A dictionary from character to sprite index, based on position in the characters string.</returns>
@@ -187,8 +197,8 @@ public class SpriteFontText : MonoBehaviour
         return lookup;
     }
 
-    /// <param name="lookup">Character to sprite index map.</param>
-    /// <param name="c">Character to look up.</param>
+    /// <param name="lookup">Character to look up.</param>
+    /// <param name="c">Character to look up the index.</param>
     /// <param name="index">The sprite index when found.</param>
     /// <returns>True if the character has a sprite.</returns>
     private bool TryGetIndex(Dictionary<char, int> lookup, char c, out int index)
@@ -251,7 +261,7 @@ public class SpriteFontText : MonoBehaviour
         }
 
         bool focused = this.inputField.isFocused;
-        int caretPosition = this.inputField.caretPosition;
+        int caretPosition = this.inputField.stringPosition;
         bool changed = focused != this.lastFocused || (focused && caretPosition != this.lastCaretPosition);
 
         if (focused)

@@ -8,9 +8,6 @@ using UnityEngine.UI;
 public class InventoryItemUI : MonoBehaviour
 {
     [SerializeField]
-    private TMP_Text itemNameText;
-
-    [SerializeField]
     private Image itemImage;
 
     private InventoryItem item;
@@ -35,11 +32,6 @@ public class InventoryItemUI : MonoBehaviour
     {
         this.item = inventoryItem;
         this.inventoryController = controller;
-
-        if (this.itemNameText != null)
-        {
-            this.itemNameText.text = this.item.Name;
-        }
 
         if (this.itemImage != null)
         {
