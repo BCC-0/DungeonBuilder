@@ -31,7 +31,7 @@ public class SpriteFontText : MonoBehaviour
     [SerializeField]
     private float caretBlinkSeconds = 0.5f;
     [SerializeField]
-    private Color caretColor;
+    private Color caretColor = Color.white;
 
     private TMP_Text target;
     private float blinkTimer;

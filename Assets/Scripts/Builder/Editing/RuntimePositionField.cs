@@ -374,7 +374,7 @@ public class RuntimePositionField : MonoBehaviour
     {
         return new Vector2(
             gridPosition.x + 0.5f,
-            gridPosition.y + 0.5f);
+            gridPosition.y);
     }
 
     /// <summary>

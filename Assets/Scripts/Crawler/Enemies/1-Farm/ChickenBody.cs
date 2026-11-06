@@ -13,6 +13,8 @@ public class ChickenBody : EnemyBody
     private float distanceTolerance = 0.2f;
     private float randomWalkDuration = 1f;
 
+    [SaveField]
+    private bool testToggle;
     [Header("Knockback")]
     [SerializeField]
     private float knockbackDuration = 0.2f;
