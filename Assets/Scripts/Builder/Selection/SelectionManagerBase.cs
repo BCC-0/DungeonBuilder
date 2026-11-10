@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -17,6 +18,12 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// Vertical padding (in UI units) between the top of a selection rect and the buttons above it.
     /// </summary>
     private const float ButtonVerticalPadding = 100f;
+
+    /// <summary>
+    /// Displacement of the UI buttons from the selected position.
+    /// </summary>
+    [SerializeField]
+    private Vector2 buttonDisplacement = new Vector2(0f, 100f);
 
     /// <summary>
     /// The selection box UI object.
@@ -525,7 +532,7 @@ public abstract class SelectionManagerBase : MonoBehaviour
             this.WorldToLocalUiPoint(topCenterWorld);
 
         buttons.anchoredPosition =
-            localPoint + new Vector2(0f, ButtonVerticalPadding);
+            localPoint + this.buttonDisplacement;
     }
 
     /// <summary>
