@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -40,6 +41,13 @@ public class InventoryController : MonoBehaviour
     [SerializeField]
     private string[] folderNames;
 
+    [Header("Inventory Button Animation")]
+    [SerializeField] private Image inventoryButtonImage;
+    [SerializeField] private Sprite[] inventoryFrames = new Sprite[5];
+    [SerializeField] private float frameDuration = 0.08f;
+
+    private Sequence inventoryButtonAnimation;
+
     private InventoryItemUI selectedInventoryItem;
 
     private int selectedSlot = -1;
@@ -48,6 +56,7 @@ public class InventoryController : MonoBehaviour
     private List<InventoryFolder> folders = new ();
 
     private bool isOpen;
+    private bool isAnimatingInventoryButton;
 
     private Transform selectionImageParent;
 
@@ -71,6 +80,7 @@ public class InventoryController : MonoBehaviour
 
         this.isOpen = true;
         this.inventory.SetActive(true);
+        this.AnimateInventoryButton(true);
         Time.timeScale = 0;
 
         this.lastSelectedSlot = this.selectedSlot;
@@ -85,6 +95,7 @@ public class InventoryController : MonoBehaviour
     {
         this.isOpen = false;
         this.inventory.SetActive(false);
+        this.AnimateInventoryButton(false);
         Time.timeScale = 1;
 
         this.ClearItemSelection();
@@ -755,6 +766,66 @@ public class InventoryController : MonoBehaviour
         }
 
         Canvas.ForceUpdateCanvases();
+    }
+
+    /// <summary>
+    /// Animates the inventory button between its open and closed states.
+    /// </summary>
+    /// <param name="open">Whether the book should open or close.</param>
+    private void AnimateInventoryButton(bool open)
+    {
+        if (this.inventoryButtonImage == null ||
+            this.inventoryFrames == null ||
+            this.inventoryFrames.Length == 0 ||
+            this.isAnimatingInventoryButton)
+        {
+            return;
+        }
+
+        this.isAnimatingInventoryButton = true;
+
+        this.inventoryButtonAnimation?.Kill();
+
+        Sequence sequence = DOTween.Sequence()
+            .SetUpdate(true);
+
+        if (open)
+        {
+            for (int i = 0; i < this.inventoryFrames.Length; i++)
+            {
+                Sprite frame = this.inventoryFrames[i];
+
+                sequence.AppendCallback(() =>
+                    this.inventoryButtonImage.sprite = frame);
+
+                if (i < this.inventoryFrames.Length - 1)
+                {
+                    sequence.AppendInterval(this.frameDuration);
+                }
+            }
+        }
+        else
+        {
+            for (int i = this.inventoryFrames.Length - 1; i >= 0; i--)
+            {
+                Sprite frame = this.inventoryFrames[i];
+
+                sequence.AppendCallback(() =>
+                    this.inventoryButtonImage.sprite = frame);
+
+                if (i > 0)
+                {
+                    sequence.AppendInterval(this.frameDuration);
+                }
+            }
+        }
+
+        sequence.OnComplete(() =>
+        {
+            this.isAnimatingInventoryButton = false;
+        });
+
+        this.inventoryButtonAnimation = sequence;
     }
 
     private void Start()

@@ -24,7 +24,7 @@ public class EntitySelectionManager : SelectionManagerBase
     private RectTransform referenceTextBlock;
 
     [SerializeField]
-    private TextMeshProUGUI referenceOverlayText;
+    private SpriteFontText referenceOverlayText;
 
     [SerializeField]
     private float referenceOverlayFadeDuration = 0.25f;
@@ -499,8 +499,7 @@ public class EntitySelectionManager : SelectionManagerBase
         this.referenceTextBlock.anchoredPosition =
             this.GetReferenceTextHiddenPosition();
 
-        this.referenceOverlayText.text =
-            "Select entities";
+        this.referenceOverlayText.SetText("Select entities");
     }
 
     /// <summary>
@@ -577,8 +576,7 @@ public class EntitySelectionManager : SelectionManagerBase
 
         this.referenceTextSequence?.Kill();
 
-        this.referenceOverlayText.text =
-            "Select entities";
+        this.referenceOverlayText.SetText("Select entities");
 
         this.referenceTextSequence =
             DOTween.Sequence();
@@ -588,29 +586,25 @@ public class EntitySelectionManager : SelectionManagerBase
                 this.referenceTextAnimationInterval)
             .AppendCallback(() =>
             {
-                this.referenceOverlayText.text =
-                    "Select entities.";
+                this.referenceOverlayText.SetText("Select entities.");
             })
             .AppendInterval(
                 this.referenceTextAnimationInterval)
             .AppendCallback(() =>
             {
-                this.referenceOverlayText.text =
-                    "Select entities..";
+                this.referenceOverlayText.SetText("Select entities..");
             })
             .AppendInterval(
                 this.referenceTextAnimationInterval)
             .AppendCallback(() =>
             {
-                this.referenceOverlayText.text =
-                    "Select entities...";
+                this.referenceOverlayText.SetText("Select entities...");
             })
             .AppendInterval(
                 this.referenceTextAnimationInterval)
             .AppendCallback(() =>
             {
-                this.referenceOverlayText.text =
-                    "Select entities";
+                this.referenceOverlayText.SetText("Select entities");
             })
             .SetLoops(-1);
     }

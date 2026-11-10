@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using DG.Tweening;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// The editor tools that can be selected in the builder.
@@ -70,6 +71,15 @@ public class MapEditorManager : MonoBehaviour
     private bool canSwitch = true;
 
     private string mapName;
+
+    [Header("Layer Button Visuals")]
+    [SerializeField]
+    private Image backgroundLayerImage;
+    [SerializeField]
+    private Image foregroundLayerImage;
+
+    [SerializeField]
+    private float layerTransitionDuration = 0.25f;
 
     /// <summary>
     /// Gets the instance of the MapEditorManager.
@@ -159,6 +169,8 @@ public class MapEditorManager : MonoBehaviour
                 sr.DOFade(targetAlpha, 0.25f);
             }
         }
+
+        this.UpdateLayerButtonVisuals(layer);
     }
 
     /// <summary>
@@ -281,5 +293,23 @@ public class MapEditorManager : MonoBehaviour
         this.canSwitch = false;
         yield return new WaitForSeconds(0.1f);
         this.canSwitch = true;
+    }
+
+    private void UpdateLayerButtonVisuals(EditLayer layer)
+    {
+        bool isForeground = layer == EditLayer.Foreground;
+
+        this.backgroundLayerImage.DOKill();
+        this.foregroundLayerImage.DOKill();
+
+        this.backgroundLayerImage.DOFade(
+            isForeground ? 0f : 1f,
+            this.layerTransitionDuration
+        );
+
+        this.foregroundLayerImage.DOFade(
+            isForeground ? 1f : 0f,
+            this.layerTransitionDuration
+        );
     }
 }
