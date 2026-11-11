@@ -1,5 +1,4 @@
-﻿
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -15,15 +14,17 @@ public abstract class SelectionManagerBase : MonoBehaviour
     protected const float DragThreshold = 0.1f;
 
     /// <summary>
-    /// Vertical padding (in UI units) between the top of a selection rect and the buttons above it.
+    /// Time in seconds after the selection buttons appear during which presses are ignored.
     /// </summary>
-    private const float ButtonVerticalPadding = 100f;
+    private const float ButtonPressDelay = 0.1f;
 
     /// <summary>
-    /// Displacement of the UI buttons from the selected position.
+    /// Gap between the selection and the button panel, in canvas units (the local space of
+    /// the selection box parent). Higher values push the panel further away from the selection.
+    /// Independent of screen size and of the panel's own height.
     /// </summary>
     [SerializeField]
-    private Vector2 buttonDisplacement = new Vector2(0f, 100f);
+    private float buttonGap = 40f;
 
     /// <summary>
     /// The selection box UI object.
@@ -44,6 +45,12 @@ public abstract class SelectionManagerBase : MonoBehaviour
     private RectTransform selectionButtons;
 
     /// <summary>
+    /// Canvas group controlling interaction with the selection buttons.
+    /// </summary>
+    [SerializeField]
+    private CanvasGroup selectionButtonsCanvasGroup;
+
+    /// <summary>
     /// The UI element containing buttons with actions possible when moving (mobile only).
     /// </summary>
     [SerializeField]
@@ -57,6 +64,8 @@ public abstract class SelectionManagerBase : MonoBehaviour
     private bool isMoving;
     private bool isReferenceSelectionMode;
     private Grid grid;
+
+    private float buttonsBlockedUntil;
 
     private Vector2 dragStart;
     private Vector2 dragEnd;
@@ -107,6 +116,11 @@ public abstract class SelectionManagerBase : MonoBehaviour
         get => this.grid;
         set => this.grid = value;
     }
+
+    /// <summary>
+    /// Gets a value indicating whether this manager currently has something selected.
+    /// </summary>
+    protected abstract bool HasSelection { get; }
 
     /// <summary>
     /// Begins picking entities for a reference field. The current selection is
@@ -379,11 +393,19 @@ public abstract class SelectionManagerBase : MonoBehaviour
     }
 
     /// <summary>
-    /// Enables the selection buttons.
+    /// Enables the selection buttons. When they were hidden before, presses on them
+    /// are ignored for a short time.
     /// </summary>
     /// <param name="selectionRect">The rect of all selected objects.</param>
     protected void EnableSelectionButtons(Rect selectionRect)
     {
+        if (!this.selectionButtons.gameObject.activeSelf)
+        {
+            this.buttonsBlockedUntil = Time.unscaledTime + ButtonPressDelay;
+            this.selectionButtonsCanvasGroup.interactable = false;
+            this.selectionButtonsCanvasGroup.blocksRaycasts = false;
+        }
+
         this.PositionButtonsAboveRect(this.selectionButtons, selectionRect);
         this.selectionButtons.gameObject.SetActive(true);
     }
@@ -517,22 +539,76 @@ public abstract class SelectionManagerBase : MonoBehaviour
     }
 
     /// <summary>
-    /// Positions a button panel centered above the top edge of the given world-space rect.
+    /// Gets the visible screen area expressed in the local space of the selection box parent.
+    /// </summary>
+    /// <returns>The visible area.</returns>
+    private Rect GetVisibleUiRect()
+    {
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            this.selectionBoxParent,
+            Vector2.zero,
+            this.cam,
+            out Vector2 min);
+
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            this.selectionBoxParent,
+            new Vector2(Screen.width, Screen.height),
+            this.cam,
+            out Vector2 max);
+
+        return Rect.MinMaxRect(min.x, min.y, max.x, max.y);
+    }
+
+    /// <summary>
+    /// Positions a button panel centered above the given world-space rect, keeping it fully on screen.
+    /// If there is no room above, the panel is placed below the rect. If neither fits,
+    /// the panel is clamped to the nearest visible position. The gap to the rect is a
+    /// fixed distance in canvas units.
     /// </summary>
     /// <param name="buttons">The button panel's RectTransform to position.</param>
-    /// <param name="worldRect">The world-space rect (e.g. selection bounds) to anchor above.</param>
+    /// <param name="worldRect">The world-space rect (e.g. selection bounds) to anchor to.</param>
     private void PositionButtonsAboveRect(
         RectTransform buttons,
         Rect worldRect)
     {
-        Vector2 topCenterWorld =
-            new Vector2(worldRect.center.x, worldRect.yMax);
+        Vector2 uiMin = this.WorldToLocalUiPoint(worldRect.min);
+        Vector2 uiMax = this.WorldToLocalUiPoint(worldRect.max);
+        Rect bounds = this.GetVisibleUiRect();
 
-        Vector2 localPoint =
-            this.WorldToLocalUiPoint(topCenterWorld);
+        Vector3 relativeScale = new Vector3(
+            buttons.lossyScale.x / this.selectionBoxParent.lossyScale.x,
+            buttons.lossyScale.y / this.selectionBoxParent.lossyScale.y,
+            1f);
+        Vector2 size = Vector2.Scale(buttons.rect.size, relativeScale);
 
-        buttons.anchoredPosition =
-            localPoint + this.buttonDisplacement;
+        float gap = this.buttonGap;
+        float minBottom = bounds.yMin;
+        float maxBottom = Mathf.Max(minBottom, bounds.yMax - size.y);
+
+        float bottom = uiMax.y + gap;
+
+        if (bottom > maxBottom)
+        {
+            float below = uiMin.y - gap - size.y;
+            bottom = below >= minBottom ? below : maxBottom;
+        }
+
+        bottom = Mathf.Clamp(bottom, minBottom, maxBottom);
+
+        float minLeft = bounds.xMin;
+        float maxLeft = Mathf.Max(minLeft, bounds.xMax - size.x);
+        float left = Mathf.Clamp(
+            ((uiMin.x + uiMax.x) * 0.5f) - (size.x * 0.5f),
+            minLeft,
+            maxLeft);
+
+        Vector3 pivotWorld = this.selectionBoxParent.TransformPoint(new Vector3(
+            left + (buttons.pivot.x * size.x),
+            bottom + (buttons.pivot.y * size.y),
+            0f));
+
+        pivotWorld.z = buttons.position.z;
+        buttons.position = pivotWorld;
     }
 
     /// <summary>
@@ -540,6 +616,19 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// </summary>
     private void LateUpdate()
     {
+        if (!this.selectionButtonsCanvasGroup.blocksRaycasts &&
+            this.selectionButtons.gameObject.activeSelf &&
+            Time.unscaledTime >= this.buttonsBlockedUntil)
+        {
+            this.selectionButtonsCanvasGroup.interactable = true;
+            this.selectionButtonsCanvasGroup.blocksRaycasts = true;
+        }
+
+        if (!this.HasSelection)
+        {
+            return;
+        }
+
         if (this.IsMovementMode)
         {
             if (this.moveButtons.gameObject.activeSelf)

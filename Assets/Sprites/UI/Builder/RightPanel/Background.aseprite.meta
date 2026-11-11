@@ -137,7 +137,7 @@ ScriptedImporter:
       serializedVersion: 2
       x: 4
       y: 4
-      width: 22
+      width: 23
       height: 57
     spriteID: f6f89335ce2b4404e9b37362c80198b8
     spriteBone: []
@@ -150,7 +150,7 @@ ScriptedImporter:
     uvTransform: {x: 4, y: 4}
   - name: Frame_1
     originalName: 
-    pivot: {x: 0.47058827, y: -0.11363636}
+    pivot: {x: 0.5, y: -0.11363636}
     alignment: 9
     border: {x: 0, y: 0, z: 0, w: 0}
     customData: 
@@ -190,7 +190,7 @@ ScriptedImporter:
       cellRect:
         x: 0
         y: 0
-        width: 22
+        width: 23
         height: 57
       spriteId: f6f89335ce2b4404e9b37362c80198b8
     - name: Frame_1
@@ -259,5 +259,5 @@ ScriptedImporter:
   generatePhysicsShape: 0
   secondarySpriteTextures: []
   spritePackingTag: 
-  canvasSize: {x: 22, y: 57}
+  canvasSize: {x: 23, y: 57}
   previousTextureSize: {x: 64, y: 128}

@@ -1,4 +1,5 @@
-﻿using System;
+﻿
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -722,6 +723,15 @@ public class BuilderEntity : SaveableEntity
                 mb.enabled = false;
             }
         }
+    }
+
+    /// <summary>
+    /// Gets the consumed head that belongs to this enemy body.
+    /// </summary>
+    /// <returns>The consumed head, or null when there is none.</returns>
+    public BuilderEntity GetConsumedHead()
+    {
+        return this.FindConsumedHead();
     }
 
     /// <summary>

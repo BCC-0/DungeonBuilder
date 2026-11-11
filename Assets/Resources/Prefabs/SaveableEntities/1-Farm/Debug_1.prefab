@@ -114,9 +114,9 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 3
+  m_SortingLayerID: 63037723
+  m_SortingLayer: 3
+  m_SortingOrder: 1
   m_MaskInteraction: 0
   m_Sprite: {fileID: -6975229491276798700, guid: 7db2a4ec5f03df043ade037fcb63a3ef, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -251,7 +251,6 @@ MonoBehaviour:
   spriteRenderer: {fileID: 3064584090858952109}
   hurtColor: {r: 1, g: 0, b: 0, a: 1}
   hurtFlashDuration: 0.15
-  canReceiveKnockback: 1
 --- !u!114 &1119842860272496509
 MonoBehaviour:
   m_ObjectHideFlags: 0

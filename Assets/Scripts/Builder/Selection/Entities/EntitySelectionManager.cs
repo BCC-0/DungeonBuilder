@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿
+using System.Collections.Generic;
 using System.Linq;
 using DG.Tweening;
 using TMPro;
@@ -74,22 +75,10 @@ public class EntitySelectionManager : SelectionManagerBase
     /// </summary>
     private bool startedMovingThisFrame;
 
-    /// <summary>
-    /// Converts a grid cell to the entity's world-position convention.
-    /// Entities are positioned at the cell's integer coordinates,
-    /// with a half-cell horizontal offset to center the sprite.
-    /// </summary>
-    /// <param name="cell">The grid cell.</param>
-    /// <returns>The entity's world position.</returns>
-    private Vector3 GetEntityWorldPosition(Vector3Int cell)
-    {
-        Vector3 cellPosition = this.Grid.CellToWorld(cell);
-
-        return new Vector3(
-            cellPosition.x + 0.5f,
-            cellPosition.y,
-            cellPosition.z);
-    }
+    /// <inheritdoc/>
+    protected override bool HasSelection =>
+        MapEditorManager.Instance.SelectedEntities != null &&
+        MapEditorManager.Instance.SelectedEntities.Count > 0;
 
     /// <inheritdoc/>
     public override void DeleteSelected()
@@ -243,6 +232,7 @@ public class EntitySelectionManager : SelectionManagerBase
                         other != entity &&
                         !movingEntities.Contains(other) &&
                         !IsTilemapEntity(other) &&
+                        other.ExistsInWorld &&
                         (Vector2Int)this.Grid.WorldToCell(
                             other.transform.position) == finalCell);
 
@@ -326,33 +316,28 @@ public class EntitySelectionManager : SelectionManagerBase
     }
 
     /// <inheritdoc/>
-    protected override List<SaveableEntity> PickEntitiesAt(
-        Vector2 position)
+    protected override List<SaveableEntity> PickEntitiesAt(Vector2 position)
+    {
+        SaveableEntity closestEntity =
+            FindObjectsByType<SaveableEntity>()
+                .Where(e =>
+                    e.ExistsInWorld &&
+                    !IsTilemapEntity(e))
+                .OrderBy(e =>
+                    Vector2.Distance(
+                        GetEntityVisualCenter(e),
+                        position))
+                .FirstOrDefault();
+        if (closestEntity != null &&
+            Vector2.Distance(
+                GetEntityVisualCenter(closestEntity),
+                position) <= this.entitySelectRadius)
         {
-            SaveableEntity closestEntity =
-                FindObjectsByType<SaveableEntity>()
-                    .Where(e =>
-                        e.ExistsInWorld &&
-                        !IsTilemapEntity(e))
-                    .OrderBy(e =>
-                        Vector2.Distance(
-                            GetEntityVisualCenter(e),
-                            position))
-                    .FirstOrDefault();
-    
-            if (closestEntity != null &&
-                Vector2.Distance(
-                    GetEntityVisualCenter(closestEntity),
-                    position) <= this.entitySelectRadius)
-            {
-                return new List<SaveableEntity>
-            {
-                closestEntity,
-            };
-            }
-    
-            return new List<SaveableEntity>();
+            return new List<SaveableEntity> { closestEntity, };
         }
+
+        return new List<SaveableEntity>();
+    }
 
     /// <inheritdoc/>
     protected override List<SaveableEntity> PickEntitiesIn(
@@ -471,6 +456,23 @@ public class EntitySelectionManager : SelectionManagerBase
         }
 
         return entity.transform.position;
+    }
+
+    /// <summary>
+    /// Converts a grid cell to the entity's world-position convention.
+    /// Entities are positioned at the cell's integer coordinates,
+    /// with a half-cell horizontal offset to center the sprite.
+    /// </summary>
+    /// <param name="cell">The grid cell.</param>
+    /// <returns>The entity's world position.</returns>
+    private Vector3 GetEntityWorldPosition(Vector3Int cell)
+    {
+        Vector3 cellPosition = this.Grid.CellToWorld(cell);
+
+        return new Vector3(
+            cellPosition.x + 0.5f,
+            cellPosition.y,
+            cellPosition.z);
     }
 
     /// <summary>
