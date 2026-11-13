@@ -576,8 +576,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0618f71726e34664d856eda80a365f06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetAspect: 1.8
-  baseOrthoSize: 5
+  referenceResolution: {x: 1920, y: 1080}
   canvasScaler: {fileID: 1617474116}
   canvas: {fileID: 1617474117}
 --- !u!1 &55963868
