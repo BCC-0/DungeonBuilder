@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Tilemaps;
@@ -28,12 +29,12 @@ public class TileSelectionManager : SelectionManagerBase
     /// <summary>
     /// Original tile data and positions when movement started.
     /// </summary>
-    private Dictionary<Vector2Int, TileData> moveStartTiles = new ();
+    private Dictionary<Vector2Int, TileData> moveStartTiles = new();
 
     /// <summary>
     /// Current cell positions of the selected tiles when movement is continued.
     /// </summary>
-    private Dictionary<Vector2Int, TileData> extraMoveStartTiles = new ();
+    private Dictionary<Vector2Int, TileData> extraMoveStartTiles = new();
 
     /// <summary>
     /// Cell under the pointer when movement started.
@@ -44,6 +45,11 @@ public class TileSelectionManager : SelectionManagerBase
     /// Prevents confirming immediately on the same frame movement starts.
     /// </summary>
     private bool startedMovingThisFrame;
+
+    /// <inheritdoc/>
+    protected override bool HasSelection =>
+        MapEditorManager.Instance.SelectedTiles != null &&
+        MapEditorManager.Instance.SelectedTiles.Count > 0;
 
     /// <inheritdoc/>
     public override void DeleteSelected()
@@ -119,6 +125,8 @@ public class TileSelectionManager : SelectionManagerBase
             return;
         }
 
+        List<Vector2Int> movedTiles = new(this.extraMoveStartTiles.Keys);
+
         foreach (KeyValuePair<Vector2Int, TileData> entry in this.extraMoveStartTiles)
         {
             this.saveableTilemap.SetTile(
@@ -137,7 +145,7 @@ public class TileSelectionManager : SelectionManagerBase
         this.extraMoveStartTiles.Clear();
 
         this.DisableMoveButtons();
-        this.ClearSelection();
+        this.SetSelection(movedTiles);
     }
 
     /// <inheritdoc/>
@@ -225,7 +233,7 @@ public class TileSelectionManager : SelectionManagerBase
     /// <param name="rect">The world-space rectangle of the drag.</param>
     protected override void OnBoxSelect(Rect rect)
     {
-        List<Vector2Int> selected = new ();
+        List<Vector2Int> selected = new();
 
         Vector2Int min = (Vector2Int)this.saveableTilemap.Tilemap.WorldToCell(rect.min);
 
@@ -235,7 +243,7 @@ public class TileSelectionManager : SelectionManagerBase
         {
             for (int y = min.y; y <= max.y; y++)
             {
-                Vector2Int cell = new (x, y);
+                Vector2Int cell = new(x, y);
 
                 if (this.saveableTilemap.Tilemap.HasTile(new Vector3Int(cell.x, cell.y, 0)))
                 {
@@ -283,14 +291,33 @@ public class TileSelectionManager : SelectionManagerBase
     }
 
     /// <summary>
-    /// Computes the world-space bounding rect of a set of tile cells.
+    /// Computes the world-space bounding rect of a set of tile cells, covering the full area of each cell
+    /// at the position where the tiles are actually drawn.
     /// </summary>
     /// <param name="tiles">The tile cells.</param>
     /// <returns>The bounding rectangle in world space.</returns>
     private Rect GetTileBoundingRect(List<Vector2Int> tiles)
     {
-        return this.GetBoundingRect(tiles.Select(
-            t => (Vector2)this.saveableTilemap.Tilemap.GetCellCenterWorld(new Vector3Int(t.x, t.y, 0))));
+        Tilemap tilemap = this.saveableTilemap.Tilemap;
+
+        Vector2 cellStep =
+            tilemap.GetCellCenterWorld(new Vector3Int(1, 1, 0)) -
+            tilemap.GetCellCenterWorld(Vector3Int.zero);
+
+        Vector2 halfCell = new Vector2(
+            Mathf.Abs(cellStep.x),
+            Mathf.Abs(cellStep.y)) * 0.5f;
+
+        return this.GetBoundingRect(tiles.SelectMany(t =>
+        {
+            Vector2 center = tilemap.GetCellCenterWorld(new Vector3Int(t.x, t.y, 0));
+
+            return new[]
+            {
+                center - halfCell,
+                center + halfCell,
+            };
+        }));
     }
 
     /// <summary>
@@ -318,9 +345,9 @@ public class TileSelectionManager : SelectionManagerBase
             return;
         }
 
-        Vector2Int cellDelta2D = new (cellDelta.x, cellDelta.y);
+        Vector2Int cellDelta2D = new(cellDelta.x, cellDelta.y);
 
-        Dictionary<Vector2Int, TileData> shifted = new ();
+        Dictionary<Vector2Int, TileData> shifted = new();
 
         foreach (KeyValuePair<Vector2Int, TileData> entry in this.extraMoveStartTiles)
         {

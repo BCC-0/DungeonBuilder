@@ -3,6 +3,8 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using TMPro;
+using UnityEngine.UI;
 
 /// <summary>
 /// Handles all desktop input (mouse + keyboard) for the map editor.
@@ -23,6 +25,15 @@ public class BuilderDesktopInputHandler : MonoBehaviour
 
     // private bool command;
     private EditorControllerBase ActiveController => MapEditorManager.Instance.ActiveController;
+
+    private bool IsTyping()
+    {
+        GameObject selected = EventSystem.current?.currentSelectedGameObject;
+
+        return selected != null &&
+            (selected.GetComponent<TMP_InputField>() != null ||
+             selected.GetComponent<InputField>() != null);
+    }
 
     /// <summary>
     /// Called when the pointer is moved.
@@ -103,6 +114,11 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     /// <param name="ctx">The input context.</param>
     public void OnOpenInventory(InputAction.CallbackContext ctx)
     {
+        if (this.IsTyping())
+        {
+            return;
+        }
+
         this.inventoryController.OpenInventory();
     }
 
@@ -112,6 +128,11 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     /// <param name="ctx">The input context.</param>
     public void OnDelete(InputAction.CallbackContext ctx)
     {
+        if (this.IsTyping())
+        {
+            return;
+        }
+
         if (ctx.started)
         {
             this.ActiveController.OnDeleteSelection();
@@ -124,6 +145,11 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     /// <param name="ctx">The input context.</param>
     public void OnMove(InputAction.CallbackContext ctx)
     {
+        if (this.IsTyping())
+        {
+            return;
+        }
+
         if (ctx.started)
         {
             this.ActiveController.OnMoveSelection();
@@ -136,6 +162,11 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     /// <param name="ctx">The input context.</param>
     public void OnConfirmMove(InputAction.CallbackContext ctx)
     {
+        if (this.IsTyping())
+        {
+            return;
+        }
+
         if (ctx.started)
         {
             this.ActiveController.OnConfirmMove();
@@ -148,6 +179,11 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     /// <param name="ctx">The input context.</param>
     public void OnCancelMove(InputAction.CallbackContext ctx)
     {
+        if (this.IsTyping())
+        {
+            return;
+        }
+
         if (ctx.started)
         {
             this.ActiveController.OnCancelMove();
@@ -203,6 +239,11 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     /// <param name="ctx">The input context.</param>
     public void OnMoveCamera(InputAction.CallbackContext ctx)
     {
+        if (this.IsTyping())
+        {
+            return;
+        }
+
         Vector2 dir = ctx.ReadValue<Vector2>();
         if (ctx.canceled)
         {
@@ -218,6 +259,11 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     /// <param name="ctx">The input context.</param>
     public void OnSelectSlot(InputAction.CallbackContext ctx)
     {
+        if (this.IsTyping())
+        {
+            return;
+        }
+
         if (!ctx.performed)
         {
             return;
@@ -230,7 +276,7 @@ public class BuilderDesktopInputHandler : MonoBehaviour
             return;
         }
 
-        this.inventoryController.SelectSlot(index-1);
+        this.inventoryController.SelectSlot(index - 1);
     }
 
     /// <summary>
@@ -239,6 +285,11 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     /// <param name="ctx">The input context.</param>
     public void OnSwitchTool(InputAction.CallbackContext ctx)
     {
+        if (this.IsTyping())
+        {
+            return;
+        }
+
         if (!ctx.performed)
         {
             return;
@@ -253,6 +304,11 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     /// <param name="ctx">The input context.</param>
     public void OnSwitchLayer(InputAction.CallbackContext ctx)
     {
+        if (this.IsTyping())
+        {
+            return;
+        }
+
         if (!ctx.performed)
         {
             return;
@@ -267,6 +323,11 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     /// <param name="ctx">The input context.</param>
     public void OnCommand(InputAction.CallbackContext ctx)
     {
+        if (this.IsTyping())
+        {
+            return;
+        }
+
         if (ctx.started)
         {
             // this.command = true;

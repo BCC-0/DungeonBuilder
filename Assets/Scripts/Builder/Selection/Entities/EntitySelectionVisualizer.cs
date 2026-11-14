@@ -25,6 +25,16 @@ public class EntitySelectionVisualizer : MonoBehaviour
 
             this.SetEntityOutline(entity, true);
             this.highlightedEntities.Add(entity);
+
+            if (entity is BuilderEntity builderEntity)
+            {
+                BuilderEntity head = builderEntity.GetConsumedHead();
+
+                if (head != null)
+                {
+                    this.SetHeadOutline(builderEntity, head, true);
+                }
+            }
         }
     }
 
@@ -35,9 +45,21 @@ public class EntitySelectionVisualizer : MonoBehaviour
     {
         foreach (SaveableEntity entity in this.highlightedEntities)
         {
-            if (entity != null)
+            if (entity == null)
             {
-                this.SetEntityOutline(entity, false);
+                continue;
+            }
+
+            this.SetEntityOutline(entity, false);
+
+            if (entity is BuilderEntity body)
+            {
+                BuilderEntity head = body.GetConsumedHead();
+
+                if (head != null)
+                {
+                    this.SetHeadOutline(body, head, false);
+                }
             }
         }
 
@@ -51,7 +73,7 @@ public class EntitySelectionVisualizer : MonoBehaviour
     /// <param name="enabled">Whether the outline should be visible.</param>
     private void SetEntityOutline(SaveableEntity entity, bool enabled)
     {
-        EntitySelectionOutline outline = entity.GetComponentInChildren<EntitySelectionOutline>();
+        EntitySelectionOutline outline = this.FindOwnOutline(entity);
         if (outline != null)
         {
             if (enabled)
@@ -60,6 +82,73 @@ public class EntitySelectionVisualizer : MonoBehaviour
                 return;
             }
 
+            outline.HideSelection();
+        }
+    }
+
+    /// <summary>
+    /// Finds the entity's own outline, ignoring any outline that was
+    /// re-parented under the body's HeadRenderer.
+    /// </summary>
+    /// <param name="entity">The entity to find the outline for.</param>
+    /// <returns>The entity's own outline, or null when there is none.</returns>
+    private EntitySelectionOutline FindOwnOutline(SaveableEntity entity)
+    {
+        foreach (EntitySelectionOutline candidate in
+                 entity.GetComponentsInChildren<EntitySelectionOutline>(true))
+        {
+            if (candidate.transform.parent != null &&
+                candidate.transform.parent.name == "HeadRenderer")
+            {
+                continue;
+            }
+
+            return candidate;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Enables or disables the selection outline on a consumed head.
+    /// The outline is parented to the body's HeadRenderer and follows its transform.
+    /// </summary>
+    /// <param name="body">The enemy body displaying the head.</param>
+    /// <param name="head">The consumed head.</param>
+    /// <param name="enabled">Whether the outline should be visible.</param>
+    private void SetHeadOutline(BuilderEntity body, BuilderEntity head, bool enabled)
+    {
+        Transform headRenderer = body.transform.Find("HeadRenderer");
+
+        if (headRenderer == null)
+        {
+            return;
+        }
+
+        // The outline is moved under the HeadRenderer on first use, so look
+        // there first and fall back to the head itself.
+        EntitySelectionOutline outline =
+            headRenderer.GetComponentInChildren<EntitySelectionOutline>(true);
+
+        if (outline == null)
+        {
+            outline = head.GetComponentInChildren<EntitySelectionOutline>(true);
+        }
+
+        if (outline == null)
+        {
+            return;
+        }
+
+        outline.transform.SetParent(headRenderer, false);
+        outline.transform.localPosition = Vector3.zero;
+
+        if (enabled)
+        {
+            outline.ShowSelection();
+        }
+        else
+        {
             outline.HideSelection();
         }
     }

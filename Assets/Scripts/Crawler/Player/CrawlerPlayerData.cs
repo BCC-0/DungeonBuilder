@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿
+using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using UnityEngine;
@@ -21,7 +22,7 @@ public class CrawlerPlayerData : SaveableEntity
     [SerializeField]
     private Slider healthSlider;
     [SerializeField]
-    private TextMeshProUGUI healthText;
+    private SpriteFontText healthText;
 
     [SerializeField]
     [SaveField(1, 12)]
@@ -34,7 +35,7 @@ public class CrawlerPlayerData : SaveableEntity
     private GameObject inventoryCanvas;
 
     [SerializeField]
-    private TextMeshProUGUI inventoryDescriptionText;
+    private SpriteFontText inventoryDescriptionText;
 
     [SerializeField]
     private InventoryUI inventoryWeaponsUI;
@@ -76,6 +77,11 @@ public class CrawlerPlayerData : SaveableEntity
     /// Gets the player's inventory.
     /// </summary>
     public List<Item> Inventory => this.inventory;
+
+    /// <summary>
+    /// Gets whether the inventory is currently open.
+    /// </summary>
+    public bool IsInventoryOpen => this.inventoryCanvas.activeSelf;
 
     /// <summary>
     /// Gets the currently equipped weapon.
@@ -150,7 +156,7 @@ public class CrawlerPlayerData : SaveableEntity
 
                 this.equippedWeapon = weapon;
                 this.equippedWeapon.Equip(this.weaponPlaceholder);
-                this.inventoryDescriptionText.text = weapon.GetRuntimeEditableDescription();
+                this.inventoryDescriptionText.SetText(weapon.GetRuntimeEditableDescription());
             }
             else if (item is Tool tool)
             {
@@ -161,7 +167,7 @@ public class CrawlerPlayerData : SaveableEntity
 
                 this.equippedTool = tool;
                 this.equippedTool.Equip(this.toolPlaceholder);
-                this.inventoryDescriptionText.text = tool.Description;
+                this.inventoryDescriptionText.SetText(tool.Description);
             }
         }
 
@@ -230,23 +236,20 @@ public class CrawlerPlayerData : SaveableEntity
     }
 
     /// <summary>
-    /// Opens or closes the inventory depending on if it is opened.
+    /// Displays the inventory and populates its contents.
     /// </summary>
-    /// <returns>Returns whether the inventory is opened after this.</returns>
-    public bool OpenInventory()
+    public void ShowInventory()
     {
-        // If it was not active yet, opened becomes true since we open it.
-        bool opened = !this.inventoryCanvas.activeSelf;
-        Time.timeScale = opened ? 0f : 1f;
-        this.inventoryCanvas.SetActive(opened);
+        this.inventoryCanvas.SetActive(true);
+        this.OnInventoryChange();
+    }
 
-        // Populate both weapons and tools parts.
-        if (opened)
-        {
-            this.OnInventoryChange();
-        }
-
-        return opened;
+    /// <summary>
+    /// Hides the inventory.
+    /// </summary>
+    public void HideInventory()
+    {
+        this.inventoryCanvas.SetActive(false);
     }
 
     /// <summary>
@@ -264,7 +267,7 @@ public class CrawlerPlayerData : SaveableEntity
         this.Inventory.Clear();
         if (this.inventoryCanvas.activeSelf)
         {
-            this.OpenInventory();
+            this.HideInventory();
         }
     }
 
@@ -276,7 +279,7 @@ public class CrawlerPlayerData : SaveableEntity
             this.healthSlider.value = damage;
         }
 
-        this.healthText.text = this.currentHealth + "/" + this.maxHealth;
+        this.healthText.SetText(this.currentHealth + "/" + this.maxHealth);
     }
 
     private void OnInventoryChange()

@@ -21,6 +21,8 @@ public class CameraController : MonoBehaviour
     [SerializeField]
     private Slider zoomSlider;
     [SerializeField]
+    private SpriteFontText zoomText;
+    [SerializeField]
     private float inertiaDamping = 6f;
     [SerializeField]
     private float inertiaThreshold = 0.01f;
@@ -125,6 +127,7 @@ public class CameraController : MonoBehaviour
         this.isZooming = true;
         this.zoomSlider.value = this.MapCameraSizeToSlider(this.cam.orthographicSize);
         this.isZooming = false;
+        this.UpdateZoomText();
 
         Vector3 mouseAfter = this.cam.ScreenToWorldPoint(new Vector3(pointerScreenPosition.x, pointerScreenPosition.y, this.cam.nearClipPlane));
         this.transform.position += mouseBefore - mouseAfter;
@@ -153,6 +156,7 @@ public class CameraController : MonoBehaviour
         float snappedSliderValue = this.SnapSliderValue(sliderValue);
         this.zoomSlider.value = snappedSliderValue;
         this.cam.orthographicSize = this.MapSliderToCameraSize(snappedSliderValue);
+        this.UpdateZoomText();
     }
 
     private void FixedUpdate()
@@ -165,6 +169,7 @@ public class CameraController : MonoBehaviour
     private void Start()
     {
         this.zoomSlider.value = this.MapCameraSizeToSlider(this.cam.orthographicSize);
+        this.UpdateZoomText();
     }
 
     private float MapSliderToCameraSize(float sliderValue)
@@ -248,5 +253,11 @@ public class CameraController : MonoBehaviour
         }
 
         return 0f;
+    }
+
+    private void UpdateZoomText()
+    {
+        float magnification = DefaultCameraSize / this.cam.orthographicSize;
+        this.zoomText.SetText($"{magnification:F2}x");
     }
 }

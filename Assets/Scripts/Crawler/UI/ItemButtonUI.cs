@@ -1,4 +1,5 @@
-﻿using TMPro;
+﻿
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -7,15 +8,29 @@ using UnityEngine.UI;
 /// </summary>
 public class ItemButtonUI : MonoBehaviour
 {
+    [Header("Slot")]
     [SerializeField]
-    private Image iconImage;
+    private Image pocketImage;
+
     [SerializeField]
-    private Image outlineImage;
+    private Sprite[] pocketSprites;
+
+    [Header("Item")]
     [SerializeField]
-    private TextMeshProUGUI nameText;
+    private Image itemImage;
+
+    [Header("Selection Animation")]
+    [SerializeField]
+    private float slideDistance = 20f;
+
+    [SerializeField]
+    private float slideDuration = 0.2f;
 
     private Item item;
     private CrawlerPlayerData player;
+
+    private Vector2 itemRestPosition;
+    private Tween slideTween;
 
     /// <summary>
     /// Gets the type of this item.
@@ -30,8 +45,8 @@ public class ItemButtonUI : MonoBehaviour
     /// <summary>
     /// Sets this button to a certain item.
     /// </summary>
-    /// <param name="player">The player that has this item in it's inventory.</param>
-    /// <param name="newItem">The item this button will be for.</param>
+    /// <param name="player">The player that controls this item.</param>
+    /// <param name="newItem">The new item to set this to.</param>
     public void SetItem(CrawlerPlayerData player, Item newItem)
     {
         this.player = player;
@@ -39,13 +54,17 @@ public class ItemButtonUI : MonoBehaviour
 
         if (this.item != null)
         {
-            this.iconImage.sprite = this.item.Icon;
-            this.nameText.text = this.item.ItemName;
+            this.itemImage.sprite = this.item.Icon;
+            this.itemImage.enabled = true;
+        }
+        else
+        {
+            this.itemImage.enabled = false;
         }
     }
 
     /// <summary>
-    /// Equips the item and shows it using the outline image.
+    /// Equips the item and shows its selection animation.
     /// </summary>
     public void OnClick()
     {
@@ -58,7 +77,15 @@ public class ItemButtonUI : MonoBehaviour
     /// </summary>
     public void OnSelect()
     {
-        this.outlineImage.enabled = true;
+        this.slideTween?.Kill();
+
+        Vector2 selectedPosition =
+            this.itemRestPosition + (Vector2.up * this.slideDistance);
+
+        this.slideTween = this.itemImage.rectTransform
+            .DOAnchorPos(selectedPosition, this.slideDuration)
+            .SetEase(Ease.OutBack)
+            .SetUpdate(true);
     }
 
     /// <summary>
@@ -66,6 +93,31 @@ public class ItemButtonUI : MonoBehaviour
     /// </summary>
     public void Deselect()
     {
-        this.outlineImage.enabled = false;
+        this.slideTween?.Kill();
+
+        this.slideTween = this.itemImage.rectTransform
+            .DOAnchorPos(this.itemRestPosition, this.slideDuration)
+            .SetEase(Ease.InOutSine)
+            .SetUpdate(true);
+    }
+
+    private void Awake()
+    {
+        this.itemRestPosition = this.itemImage.rectTransform.anchoredPosition;
+
+        if (this.pocketSprites != null && this.pocketSprites.Length > 0)
+        {
+            int randomIndex = Random.Range(0, this.pocketSprites.Length);
+            this.pocketImage.sprite = this.pocketSprites[randomIndex];
+        }
+
+        // Keep the item behind the pocket.
+        this.itemImage.transform.SetAsFirstSibling();
+        this.pocketImage.transform.SetAsLastSibling();
+    }
+
+    private void OnDestroy()
+    {
+        this.slideTween?.Kill();
     }
 }

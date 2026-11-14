@@ -13,9 +13,11 @@ using UnityEngine.UI;
 public class RuntimePropertyField : MonoBehaviour
 {
     [SerializeField]
-    private TextMeshProUGUI label;
+    private SpriteFontText label;
     [SerializeField]
     private TMP_InputField inputField;
+    [SerializeField]
+    private SpriteFontText inputText;
     [SerializeField]
     private Toggle toggle;
 
@@ -23,17 +25,17 @@ public class RuntimePropertyField : MonoBehaviour
     [SerializeField]
     private Slider slider;
     [SerializeField]
-    private TextMeshProUGUI sliderMinLabel;
+    private TMP_InputField sliderInputField;
     [SerializeField]
-    private TextMeshProUGUI sliderValueLabel;
-    [SerializeField]
-    private TextMeshProUGUI sliderMaxLabel;
+    private SpriteFontText sliderInputText;
 
     [Header("References (optional)")]
     [SerializeField]
     private ReferenceButton referenceButtonPrefab;
     [SerializeField]
     private Button addReferenceButton;
+    [SerializeField]
+    private Transform referenceContainer;
 
     private FieldInfo field;
     private List<object> targets;
@@ -46,6 +48,14 @@ public class RuntimePropertyField : MonoBehaviour
     /// runtime editable name, everything else uses the real field name.
     /// </summary>
     private string ConsumingFieldName => this.builderFieldName ?? this.field.Name;
+
+    /// <summary>
+    /// Gets the transform the reference buttons are spawned under. Falls back to
+    /// the row itself when no container is assigned.
+    /// </summary>
+    private Transform ReferenceParent => this.referenceContainer != null
+        ? this.referenceContainer
+        : this.transform;
 
     /// <summary>
     /// Initialize the property field.
@@ -67,7 +77,7 @@ public class RuntimePropertyField : MonoBehaviour
 
         if (this.label != null)
         {
-            this.label.text = displayName;
+            this.label.SetText(displayName);
         }
 
         this.Setup();
@@ -112,7 +122,7 @@ public class RuntimePropertyField : MonoBehaviour
 
         if (this.label != null)
         {
-            this.label.text = displayName;
+            this.label.SetText(displayName);
         }
 
         this.Setup();
@@ -651,16 +661,6 @@ public class RuntimePropertyField : MonoBehaviour
     /// <summary>
     /// Converts a visible/UI reference index into the actual index in the
     /// underlying list.
-    ///
-    /// For example, if the real list is:
-    ///
-    ///     [A, B, C]
-    ///
-    /// and B is consumed elsewhere, the UI contains:
-    ///
-    ///     [A, C]
-    ///
-    /// Therefore visible index 1 maps to actual index 2.
     /// </summary>
     private int GetActualReferenceIndex(
         object target,
@@ -749,6 +749,12 @@ public class RuntimePropertyField : MonoBehaviour
             this.slider.onValueChanged.RemoveAllListeners();
         }
 
+        if (this.sliderInputField != null)
+        {
+            this.sliderInputField.gameObject.SetActive(false);
+            this.sliderInputField.onEndEdit.RemoveAllListeners();
+        }
+
         if (this.addReferenceButton != null)
         {
             this.addReferenceButton.gameObject.SetActive(false);
@@ -826,19 +832,19 @@ public class RuntimePropertyField : MonoBehaviour
         this.slider.wholeNumbers =
             this.field.FieldType == typeof(int);
 
-        if (this.sliderMinLabel != null)
+        if (this.sliderInputField != null)
         {
-            this.sliderMinLabel.text = FormatNumber(min);
-        }
-
-        if (this.sliderMaxLabel != null)
-        {
-            this.sliderMaxLabel.text = FormatNumber(max);
+            this.sliderInputField.gameObject.SetActive(true);
         }
 
         this.RefreshSlider();
 
         this.slider.onValueChanged.AddListener(this.OnSliderChanged);
+
+        if (this.sliderInputField != null)
+        {
+            this.sliderInputField.onEndEdit.AddListener(this.OnSliderInputChanged);
+        }
     }
 
     private void SetupReferenceList()
@@ -884,7 +890,7 @@ public class RuntimePropertyField : MonoBehaviour
             ReferenceButton button =
                 Instantiate(
                     this.referenceButtonPrefab,
-                    this.transform);
+                    this.ReferenceParent);
 
             int index = i;
 
@@ -970,12 +976,15 @@ public class RuntimePropertyField : MonoBehaviour
 
     private void ClearReferenceButtons()
     {
-        for (int i = this.transform.childCount - 1;
+        Transform parent =
+            this.ReferenceParent;
+
+        for (int i = parent.childCount - 1;
              i >= 0;
              i--)
         {
             Transform child =
-                this.transform.GetChild(i);
+                parent.GetChild(i);
 
             if ((this.addReferenceButton != null &&
                  child == this.addReferenceButton.transform) ||
@@ -991,11 +1000,19 @@ public class RuntimePropertyField : MonoBehaviour
     }
 
     /// <summary>
-    /// Recalculates the layout so the row and the inspector around it resize
-    /// to fit the current number of reference buttons.
+    /// Recalculates the layout so the container, the row and the inspector
+    /// around it resize to fit the current number of reference buttons.
     /// </summary>
     private void RebuildLayout()
     {
+        RectTransform container =
+            this.ReferenceParent as RectTransform;
+
+        if (container != null)
+        {
+            LayoutRebuilder.ForceRebuildLayoutImmediate(container);
+        }
+
         RectTransform row =
             this.transform as RectTransform;
 
@@ -1110,6 +1127,45 @@ public class RuntimePropertyField : MonoBehaviour
         this.RefreshInput();
     }
 
+    /// <summary>
+    /// Applies a number typed into the slider's input field. The value is only
+    /// applied when it parses for the field type and lies inside the allowed
+    /// range, otherwise the slider and input show the real value again.
+    /// </summary>
+    /// <param name="value">The text typed into the slider's input field.</param>
+    private void OnSliderInputChanged(string value)
+    {
+        if (this.updating)
+        {
+            return;
+        }
+
+        if (!this.TryConvert(
+                value,
+                this.field.FieldType,
+                out object converted) ||
+            !this.TryGetRange(
+                out float min,
+                out float max))
+        {
+            this.RefreshSlider();
+            return;
+        }
+
+        float numericValue =
+            Convert.ToSingle(converted);
+
+        if (numericValue < min ||
+            numericValue > max)
+        {
+            this.RefreshSlider();
+            return;
+        }
+
+        this.ApplyValue(converted);
+        this.RefreshSlider();
+    }
+
     private void OnToggleChanged(bool value)
     {
         if (this.updating)
@@ -1199,16 +1255,23 @@ public class RuntimePropertyField : MonoBehaviour
         object value =
             this.GetCurrentValue();
 
-        this.updating = true;
-
-        this.inputField.SetTextWithoutNotify(
+        string text =
             value != null
                 ? Convert.ToString(
                     value,
                     CultureInfo.InvariantCulture)
-                : string.Empty);
+                : string.Empty;
+
+        this.updating = true;
+
+        this.inputField.SetTextWithoutNotify(text);
 
         this.updating = false;
+
+        if (this.inputText != null)
+        {
+            this.inputText.SetText(text);
+        }
     }
 
     private void RefreshSlider()
@@ -1236,12 +1299,24 @@ public class RuntimePropertyField : MonoBehaviour
             sliderValue);
     }
 
+    /// <summary>
+    /// Shows the given value in the slider's input field without triggering
+    /// its end edit handler.
+    /// </summary>
+    /// <param name="value">The value to display.</param>
     private void UpdateSliderValueLabel(float value)
     {
-        if (this.sliderValueLabel != null)
+        string text =
+            FormatNumber(value);
+
+        if (this.sliderInputField != null)
         {
-            this.sliderValueLabel.text =
-                FormatNumber(value);
+            this.sliderInputField.SetTextWithoutNotify(text);
+        }
+
+        if (this.sliderInputText != null)
+        {
+            this.sliderInputText.SetText(text);
         }
     }
 

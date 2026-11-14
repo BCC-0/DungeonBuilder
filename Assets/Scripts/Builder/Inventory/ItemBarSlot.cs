@@ -1,5 +1,4 @@
 ﻿using DG.Tweening;
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -13,9 +12,6 @@ public class ItemBarSlot : MonoBehaviour
 
     [SerializeField]
     private InventoryItem item;
-
-    [SerializeField]
-    private TMP_Text itemNameText;
 
     [SerializeField]
     private Image itemImage;
@@ -68,20 +64,23 @@ public class ItemBarSlot : MonoBehaviour
 
         if (this.item == null)
         {
-            this.itemNameText.gameObject.SetActive(false);
             this.itemImage.gameObject.SetActive(false);
             return;
         }
 
         this.currentInventorySize = inventorySize;
 
-        this.itemNameText.gameObject.SetActive(true);
         this.itemImage.gameObject.SetActive(true);
-        this.itemNameText.text = this.item.Name;
         this.itemImage.sprite = this.item.Sprite;
 
         RectTransform imageTransform = this.itemImage.rectTransform;
-        Vector2 targetSize = this.GetAspectRatioSize(inventorySize, this.originalImageSize);
+        RectTransform parentRect = imageTransform.parent as RectTransform;
+
+        Vector2 availableSize = parentRect.rect.size - new Vector2(32f, 32f);
+
+        Vector2 targetSize = this.GetAspectRatioSize(
+            inventorySize,
+            availableSize);
 
         Canvas canvas = this.itemImage.canvas;
 
@@ -91,10 +90,14 @@ public class ItemBarSlot : MonoBehaviour
                 : canvas.worldCamera;
 
         RectTransformUtility.ScreenPointToWorldPointInRectangle(
-            imageTransform.parent as RectTransform,
+            parentRect,
             screenPos,
             cam,
             out Vector3 startPosition);
+
+        imageTransform.anchorMin = new Vector2(0.5f, 0.5f);
+        imageTransform.anchorMax = new Vector2(0.5f, 0.5f);
+        imageTransform.pivot = new Vector2(0.5f, 0.5f);
 
         imageTransform.position = startPosition;
         imageTransform.sizeDelta = inventorySize;
@@ -157,15 +160,12 @@ public class ItemBarSlot : MonoBehaviour
 
         if (this.item == null)
         {
-            this.itemNameText.gameObject.SetActive(false);
             this.itemImage.gameObject.SetActive(false);
         }
         else
         {
-            this.itemNameText.gameObject.SetActive(true);
             this.itemImage.gameObject.SetActive(true);
 
-            this.itemNameText.text = this.item.Name;
             this.itemImage.sprite = this.item.Sprite;
         }
     }

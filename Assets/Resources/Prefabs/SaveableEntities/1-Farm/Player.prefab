@@ -123,7 +123,6 @@ MonoBehaviour:
   spriteRenderer: {fileID: 3064584090858952109}
   hurtColor: {r: 1, g: 0, b: 0, a: 1}
   hurtFlashDuration: 0.15
-  canReceiveKnockback: 1
   maxHealth: 100
   currentHealth: 100
   healthSlider: {fileID: 0}
@@ -251,9 +250,9 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 3
+  m_SortingLayerID: 63037723
+  m_SortingLayer: 3
+  m_SortingOrder: 1
   m_MaskInteraction: 0
   m_Sprite: {fileID: -4954512182048078592, guid: 280432b08e1970f42a0487917b92e983, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}

@@ -1,6 +1,7 @@
-﻿
-using System.Collections;
+﻿using System.Collections;
+using DG.Tweening;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// Handles player movement and using tools/weapons.
@@ -19,6 +20,53 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
 
     private Animator animator;
     private AnimatorOverrideController overrideController;
+
+    private AnimatorUpdateMode originalAnimatorUpdateMode;
+
+    private bool inventoryTransitioning;
+    private Tween inventoryTween;
+
+    private Vector3 originalCameraLocalPosition;
+    private float originalCameraSize;
+
+    private Vector2 previousFacingDirection;
+
+    [Header("Inventory Transition")]
+    [SerializeField]
+    private Camera playerCamera;
+
+    [SerializeField]
+    private CanvasGroup inventoryCanvasGroup;
+
+    [SerializeField]
+    private float cameraZoomDuration = 0.8f;
+
+    [SerializeField]
+    private float inventoryFadeDuration = 0.4f;
+
+    [SerializeField]
+    private float inventoryZoomSize = 2f;
+
+    [SerializeField]
+    private Vector3 inventoryCameraLocalPosition;
+
+    [Header("Inventory Background Breathing")]
+    [SerializeField]
+    private Image inventoryBackground;
+
+    [SerializeField]
+    private Sprite[] inventoryBreathingSprites;
+
+    [SerializeField]
+    private float minBreathingInterval = 5f;
+
+    [SerializeField]
+    private float maxBreathingInterval = 12f;
+
+    [SerializeField]
+    private float breathingFrameDuration = 0.15f;
+
+    private Coroutine inventoryBreathingCoroutine;
 
     /// <summary>
     /// Gets the last direction this player was facing.
@@ -114,15 +162,48 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
     }
 
     /// <summary>
-    /// Opens or closes the inventory.
+    /// Opens or closes the inventory with a camera and UI transition.
     /// </summary>
-    /// <returns>Returns whether the inventory has opened after calling.</returns>
+    /// <returns>Returns whether the inventory will be open after this call.</returns>
     public bool OpenInventory()
     {
-        // TODO: Check here if we can open the inventory.
-        bool open = this.playerData.OpenInventory();
+        if (this.inventoryTransitioning)
+        {
+            return this.playerData.IsInventoryOpen;
+        }
 
-        this.SetCanMove(!open);
+        bool open = !this.playerData.IsInventoryOpen;
+
+        this.inventoryTransitioning = true;
+
+        // Pause the entire game immediately.
+        Time.timeScale = 0f;
+
+        if (open)
+        {
+            this.SetCanMove(false);
+            this.movementDirection = Vector2.zero;
+
+            this.previousFacingDirection = this.lastFacingDirection;
+
+            // Allow the player's animator to update while the game is paused.
+            this.originalAnimatorUpdateMode = this.animator.updateMode;
+            this.animator.updateMode = AnimatorUpdateMode.UnscaledTime;
+
+            // Make the player face down towards the camera.
+            this.lastFacingDirection = Vector2.down;
+
+            this.animator.SetFloat("MoveX", 0f);
+            this.animator.SetFloat("MoveY", -1f);
+            this.animator.SetFloat("Speed", 0f);
+
+            this.OpenInventorySequence();
+        }
+        else
+        {
+            this.CloseInventorySequence();
+        }
+
         return open;
     }
 
@@ -165,6 +246,165 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
         this.StartCoroutine(this.PlayerPauser(time));
     }
 
+    private void OpenInventorySequence()
+    {
+        this.inventoryCanvasGroup.alpha = 0f;
+        this.inventoryCanvasGroup.interactable = false;
+        this.inventoryCanvasGroup.blocksRaycasts = false;
+
+        Sequence sequence = DOTween.Sequence()
+            .SetUpdate(true);
+
+        // Give the player time to face the camera.
+        sequence.AppendInterval(0.15f);
+
+        // Zoom the camera towards the player's body.
+        sequence.Append(
+            this.playerCamera.transform
+                .DOLocalMove(this.inventoryCameraLocalPosition, this.cameraZoomDuration)
+                .SetEase(Ease.InOutSine)
+        );
+
+        sequence.Join(
+            this.playerCamera
+                .DOOrthoSize(this.inventoryZoomSize, this.cameraZoomDuration)
+                .SetEase(Ease.InOutSine)
+        );
+
+        // Show and populate the inventory after the camera zoom.
+        sequence.AppendCallback(() =>
+        {
+            this.playerData.ShowInventory();
+        });
+
+        // Fade in the inventory.
+        sequence.Append(
+            this.inventoryCanvasGroup
+                .DOFade(1f, this.inventoryFadeDuration)
+                .SetEase(Ease.OutSine)
+        );
+
+        sequence.OnComplete(() =>
+        {
+            this.inventoryCanvasGroup.interactable = true;
+            this.inventoryCanvasGroup.blocksRaycasts = true;
+
+            this.inventoryTransitioning = false;
+            this.inventoryTween = null;
+
+            this.inventoryBreathingCoroutine = this.StartCoroutine(
+                this.InventoryBreathingAnimation()
+            );
+        });
+
+        this.inventoryTween = sequence;
+    }
+
+    private void CloseInventorySequence()
+    {
+        if (this.inventoryBreathingCoroutine != null)
+        {
+            this.StopCoroutine(this.inventoryBreathingCoroutine);
+            this.inventoryBreathingCoroutine = null;
+        }
+
+        if (this.inventoryBreathingSprites.Length > 0)
+        {
+            this.inventoryBackground.sprite = this.inventoryBreathingSprites[0];
+        }
+
+        this.inventoryCanvasGroup.interactable = false;
+        this.inventoryCanvasGroup.blocksRaycasts = false;
+
+        Sequence sequence = DOTween.Sequence()
+            .SetUpdate(true);
+
+        // Fade out the inventory.
+        sequence.Append(
+            this.inventoryCanvasGroup
+                .DOFade(0f, this.inventoryFadeDuration)
+                .SetEase(Ease.InSine)
+        );
+
+        // Hide the inventory after fading out.
+        sequence.AppendCallback(() =>
+        {
+            this.playerData.HideInventory();
+        });
+
+        // Restore the original camera position.
+        sequence.Append(
+            this.playerCamera.transform
+                .DOLocalMove(this.originalCameraLocalPosition, this.cameraZoomDuration)
+                .SetEase(Ease.InOutSine)
+        );
+
+        sequence.Join(
+            this.playerCamera
+                .DOOrthoSize(this.originalCameraSize, this.cameraZoomDuration)
+                .SetEase(Ease.InOutSine)
+        );
+
+        sequence.OnComplete(() =>
+        {
+            // Restore the player's previous facing direction.
+            this.lastFacingDirection = this.previousFacingDirection;
+
+            this.animator.SetFloat("MoveX", this.lastFacingDirection.x);
+            this.animator.SetFloat("MoveY", this.lastFacingDirection.y);
+            this.animator.SetFloat("Speed", 0f);
+
+            // Restore the original animator update mode.
+            this.animator.updateMode = this.originalAnimatorUpdateMode;
+
+            // Allow the player to move again.
+            this.SetCanMove(true);
+
+            this.inventoryTransitioning = false;
+            this.inventoryTween = null;
+
+            // Resume gameplay.
+            Time.timeScale = 1f;
+        });
+
+        this.inventoryTween = sequence;
+    }
+
+    private IEnumerator InventoryBreathingAnimation()
+    {
+        while (this.playerData.IsInventoryOpen)
+        {
+            // Wait a random amount of real-world time.
+            float waitTime = Random.Range(
+                this.minBreathingInterval,
+                this.maxBreathingInterval
+            );
+
+            yield return new WaitForSecondsRealtime(waitTime);
+
+            if (!this.playerData.IsInventoryOpen)
+            {
+                break;
+            }
+
+            // Play through the breathing sprites.
+            for (int i = 0; i < this.inventoryBreathingSprites.Length; i++)
+            {
+                this.inventoryBackground.sprite = this.inventoryBreathingSprites[i];
+
+                yield return new WaitForSecondsRealtime(this.breathingFrameDuration);
+            }
+
+            // Return to the default background sprite.
+            if (this.inventoryBreathingSprites.Length > 0)
+            {
+                this.inventoryBackground.sprite = this.inventoryBreathingSprites[0];
+            }
+        }
+
+        this.inventoryBreathingCoroutine = null;
+    }
+
     private IEnumerator PlayerPauser(float time)
     {
         this.SetCanMove(false);
@@ -181,6 +421,13 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
 
         this.overrideController = new AnimatorOverrideController(this.animator.runtimeAnimatorController);
         this.animator.runtimeAnimatorController = this.overrideController;
+
+        this.originalCameraLocalPosition = this.playerCamera.transform.localPosition;
+        this.originalCameraSize = this.playerCamera.orthographicSize;
+
+        this.inventoryCanvasGroup.alpha = 0f;
+        this.inventoryCanvasGroup.interactable = false;
+        this.inventoryCanvasGroup.blocksRaycasts = false;
     }
 
     private void Update()

@@ -2,77 +2,88 @@
 using UnityEngine.UI;
 
 /// <summary>
-/// Adds black bars to the side if the screen exceeds the allowed aspect ratio.
-/// This prevents players with weird aspect ratios to see parts of levels they are not allowed to see yet.
+/// Makes sure the canvas scales with the ratio for each possible resolution.
 /// </summary>
 [RequireComponent(typeof(Camera))]
 public class FixedAspectRatio : MonoBehaviour
 {
     [SerializeField]
-    private float targetAspect = 16f / 9f;
-    [SerializeField]
-    private float baseOrthoSize = 5f;
-
+    private Vector2 referenceResolution = new Vector2(1920f, 1080f);
     [SerializeField]
     private CanvasScaler canvasScaler;
     [SerializeField]
     private Canvas canvas;
 
     private Camera cam;
-
     private Rect viewportRect;
+    private int lastWidth;
+    private int lastHeight;
 
     /// <summary>
-    /// Gets the viewport rect of the camera.
+    /// Gets the viewport rect.
     /// </summary>
     public Rect ViewportRect => this.viewportRect;
 
     /// <summary>
-    /// Call when the camera is zooming in/out.
-    /// This methods adjusts the black bars to make sure players can't see outside of the allowed ratio.
+    /// Adjusts the ratio.
     /// </summary>
     public void AdjustRatio()
     {
-        float screenAspect = (float)Screen.width / Screen.height;
-        Rect rect = new Rect(0, 0, 1, 1);
+        int screenW = Screen.width;
+        int screenH = Screen.height;
+        float targetAspect = this.referenceResolution.x / this.referenceResolution.y;
 
-        if (screenAspect > this.targetAspect)
+        int w, h;
+        if ((float)screenW / screenH > targetAspect)
         {
-            float scale = this.targetAspect / screenAspect;
-            rect.width = scale;
-            rect.x = (1f - scale) / 2f;
-            this.cam.orthographicSize = this.baseOrthoSize;
+            h = screenH;
+            w = Mathf.RoundToInt(h * targetAspect);
         }
         else
         {
-            float scale = screenAspect / this.targetAspect;
-            rect.height = scale;
-            rect.y = (1f - scale) / 2f;
-            this.cam.orthographicSize = this.baseOrthoSize;
+            w = screenW;
+            h = Mathf.RoundToInt(w / targetAspect);
         }
 
-        this.cam.rect = rect;
-        this.viewportRect = rect;
+        // Whole-pixel rect (no fractional edges).
+        this.cam.pixelRect = new Rect((screenW - w) / 2, (screenH - h) / 2, w, h);
+        this.viewportRect = this.cam.rect;
 
-        this.AdjustCanvas();
+        this.lastWidth = screenW;
+        this.lastHeight = screenH;
+
+        this.AdjustCanvas(h);
     }
 
-    private void AdjustCanvas()
+    private void AdjustCanvas(int viewportPixelHeight)
     {
-        if (this.canvasScaler != null && this.canvas != null)
+        if (this.canvas == null || this.canvasScaler == null)
         {
-            float widthScale = this.viewportRect.width;
-            float heightScale = this.viewportRect.height;
+            return;
         }
+
+        this.canvas.renderMode = RenderMode.ScreenSpaceCamera;
+        this.canvas.worldCamera = this.cam;
+        this.canvas.pixelPerfect = true;
+
+        // CanvasScaler measures the full screen, not the cropped camera, so set the scale directly.
+        this.canvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
+        this.canvasScaler.scaleFactor = viewportPixelHeight / this.referenceResolution.y;
     }
 
     private void Start()
     {
         this.cam = this.GetComponent<Camera>();
-        this.baseOrthoSize = this.cam.orthographicSize;
-
         this.cam.clearFlags = CameraClearFlags.SolidColor;
         this.cam.backgroundColor = Color.black;
         this.AdjustRatio();
+    }
+
+    private void Update()
+    {
+        if (Screen.width != this.lastWidth || Screen.height != this.lastHeight)
+        {
+            this.AdjustRatio();
+        }
     }
 }

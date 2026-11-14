@@ -12,9 +12,6 @@ public class ReferenceButton : MonoBehaviour
     private Image entityImage;
 
     [SerializeField]
-    private TMP_Text entityName;
-
-    [SerializeField]
     private Image modeIndicator;
 
     [SerializeField]
@@ -31,7 +28,6 @@ public class ReferenceButton : MonoBehaviour
         if (entity == null)
         {
             this.entityImage.sprite = null;
-            this.entityName.text = string.Empty;
             return;
         }
 
@@ -44,8 +40,6 @@ public class ReferenceButton : MonoBehaviour
         this.entityImage.sprite = sprite;
         this.entityImage.preserveAspect = true;
         this.UpdateAspectRatio(sprite);
-
-        this.entityName.text = entity.name;
     }
 
     /// <summary>
