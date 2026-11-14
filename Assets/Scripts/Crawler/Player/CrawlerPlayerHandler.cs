@@ -1,7 +1,7 @@
-﻿
-using System.Collections;
+﻿using System.Collections;
 using DG.Tweening;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// Handles player movement and using tools/weapons.
@@ -49,6 +49,24 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
 
     [SerializeField]
     private Vector3 inventoryCameraLocalPosition;
+
+    [Header("Inventory Background Breathing")]
+    [SerializeField]
+    private Image inventoryBackground;
+
+    [SerializeField]
+    private Sprite[] inventoryBreathingSprites;
+
+    [SerializeField]
+    private float minBreathingInterval = 5f;
+
+    [SerializeField]
+    private float maxBreathingInterval = 12f;
+
+    [SerializeField]
+    private float breathingFrameDuration = 0.15f;
+
+    private Coroutine inventoryBreathingCoroutine;
 
     /// <summary>
     /// Gets the last direction this player was facing.
@@ -273,6 +291,10 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
 
             this.inventoryTransitioning = false;
             this.inventoryTween = null;
+
+            this.inventoryBreathingCoroutine = this.StartCoroutine(
+                this.InventoryBreathingAnimation()
+            );
         });
 
         this.inventoryTween = sequence;
@@ -280,6 +302,17 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
 
     private void CloseInventorySequence()
     {
+        if (this.inventoryBreathingCoroutine != null)
+        {
+            this.StopCoroutine(this.inventoryBreathingCoroutine);
+            this.inventoryBreathingCoroutine = null;
+        }
+
+        if (this.inventoryBreathingSprites.Length > 0)
+        {
+            this.inventoryBackground.sprite = this.inventoryBreathingSprites[0];
+        }
+
         this.inventoryCanvasGroup.interactable = false;
         this.inventoryCanvasGroup.blocksRaycasts = false;
 
@@ -335,6 +368,41 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
         });
 
         this.inventoryTween = sequence;
+    }
+
+    private IEnumerator InventoryBreathingAnimation()
+    {
+        while (this.playerData.IsInventoryOpen)
+        {
+            // Wait a random amount of real-world time.
+            float waitTime = Random.Range(
+                this.minBreathingInterval,
+                this.maxBreathingInterval
+            );
+
+            yield return new WaitForSecondsRealtime(waitTime);
+
+            if (!this.playerData.IsInventoryOpen)
+            {
+                break;
+            }
+
+            // Play through the breathing sprites.
+            for (int i = 0; i < this.inventoryBreathingSprites.Length; i++)
+            {
+                this.inventoryBackground.sprite = this.inventoryBreathingSprites[i];
+
+                yield return new WaitForSecondsRealtime(this.breathingFrameDuration);
+            }
+
+            // Return to the default background sprite.
+            if (this.inventoryBreathingSprites.Length > 0)
+            {
+                this.inventoryBackground.sprite = this.inventoryBreathingSprites[0];
+            }
+        }
+
+        this.inventoryBreathingCoroutine = null;
     }
 
     private IEnumerator PlayerPauser(float time)
