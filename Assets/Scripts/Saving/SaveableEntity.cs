@@ -1,5 +1,4 @@
-﻿
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -258,82 +257,6 @@ public abstract class SaveableEntity : MonoBehaviour
     }
 
     /// <summary>
-    /// Tweens enabled child sprite renderers to the hurt color and back
-    /// to their original colors.
-    /// </summary>
-    /// <returns>An enumerator for the hurt effect coroutine.</returns>
-    private IEnumerator HurtFlashRoutine()
-    {
-        SpriteRenderer[] renderers =
-            this.GetComponentsInChildren<SpriteRenderer>();
-
-        List<SpriteRenderer> enabledRenderers = new List<SpriteRenderer>();
-        List<Color> originalColors = new List<Color>();
-
-        foreach (SpriteRenderer renderer in renderers)
-        {
-            if (renderer.enabled)
-            {
-                enabledRenderers.Add(renderer);
-                originalColors.Add(renderer.color);
-            }
-        }
-
-        float halfDuration = Mathf.Max(0.01f, this.hurtFlashDuration / 2f);
-        float elapsed = 0f;
-
-        while (elapsed < halfDuration)
-        {
-            elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsed / halfDuration);
-
-            for (int i = 0; i < enabledRenderers.Count; i++)
-            {
-                if (enabledRenderers[i] != null)
-                {
-                    enabledRenderers[i].color = Color.Lerp(
-                        originalColors[i],
-                        this.hurtColor,
-                        t);
-                }
-            }
-
-            yield return null;
-        }
-
-        elapsed = 0f;
-
-        while (elapsed < halfDuration)
-        {
-            elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsed / halfDuration);
-
-            for (int i = 0; i < enabledRenderers.Count; i++)
-            {
-                if (enabledRenderers[i] != null)
-                {
-                    enabledRenderers[i].color = Color.Lerp(
-                        this.hurtColor,
-                        originalColors[i],
-                        t);
-                }
-            }
-
-            yield return null;
-        }
-
-        for (int i = 0; i < enabledRenderers.Count; i++)
-        {
-            if (enabledRenderers[i] != null)
-            {
-                enabledRenderers[i].color = originalColors[i];
-            }
-        }
-
-        this.hurtFlashCoroutine = null;
-    }
-
-    /// <summary>
     /// Writes the transform to the map file.
     /// </summary>
     /// <param name="writer">The writes to use.</param>
@@ -440,6 +363,10 @@ public abstract class SaveableEntity : MonoBehaviour
         {
             writer.Write((string)value ?? string.Empty);
         }
+        else if (type.IsEnum)
+        {
+            writer.Write(Convert.ToInt32(value));
+        }
         else if (typeof(SaveableEntity).IsAssignableFrom(type))
         {
             string id = value != null
@@ -502,6 +429,11 @@ public abstract class SaveableEntity : MonoBehaviour
         if (type == typeof(string))
         {
             return reader.ReadString();
+        }
+
+        if (type.IsEnum)
+        {
+            return Enum.ToObject(type, reader.ReadInt32());
         }
 
         if (typeof(SaveableEntity).IsAssignableFrom(type))
@@ -693,6 +625,82 @@ public abstract class SaveableEntity : MonoBehaviour
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Tweens enabled child sprite renderers to the hurt color and back
+    /// to their original colors.
+    /// </summary>
+    /// <returns>An enumerator for the hurt effect coroutine.</returns>
+    private IEnumerator HurtFlashRoutine()
+    {
+        SpriteRenderer[] renderers =
+            this.GetComponentsInChildren<SpriteRenderer>();
+
+        List<SpriteRenderer> enabledRenderers = new List<SpriteRenderer>();
+        List<Color> originalColors = new List<Color>();
+
+        foreach (SpriteRenderer renderer in renderers)
+        {
+            if (renderer.enabled)
+            {
+                enabledRenderers.Add(renderer);
+                originalColors.Add(renderer.color);
+            }
+        }
+
+        float halfDuration = Mathf.Max(0.01f, this.hurtFlashDuration / 2f);
+        float elapsed = 0f;
+
+        while (elapsed < halfDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / halfDuration);
+
+            for (int i = 0; i < enabledRenderers.Count; i++)
+            {
+                if (enabledRenderers[i] != null)
+                {
+                    enabledRenderers[i].color = Color.Lerp(
+                        originalColors[i],
+                        this.hurtColor,
+                        t);
+                }
+            }
+
+            yield return null;
+        }
+
+        elapsed = 0f;
+
+        while (elapsed < halfDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / halfDuration);
+
+            for (int i = 0; i < enabledRenderers.Count; i++)
+            {
+                if (enabledRenderers[i] != null)
+                {
+                    enabledRenderers[i].color = Color.Lerp(
+                        this.hurtColor,
+                        originalColors[i],
+                        t);
+                }
+            }
+
+            yield return null;
+        }
+
+        for (int i = 0; i < enabledRenderers.Count; i++)
+        {
+            if (enabledRenderers[i] != null)
+            {
+                enabledRenderers[i].color = originalColors[i];
+            }
+        }
+
+        this.hurtFlashCoroutine = null;
     }
 
     /// <summary>

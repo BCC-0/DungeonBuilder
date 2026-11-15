@@ -37,6 +37,16 @@ public class RuntimePropertyField : MonoBehaviour
     [SerializeField]
     private Transform referenceContainer;
 
+    [Header("Enum (optional)")]
+    [SerializeField]
+    private GameObject enumSelector;
+    [SerializeField]
+    private Button enumPreviousButton;
+    [SerializeField]
+    private Button enumNextButton;
+    [SerializeField]
+    private SpriteFontText enumText;
+
     private FieldInfo field;
     private List<object> targets;
     private Action onValueChanged;
@@ -760,6 +770,21 @@ public class RuntimePropertyField : MonoBehaviour
             this.addReferenceButton.gameObject.SetActive(false);
         }
 
+        if (this.enumSelector != null)
+        {
+            this.enumSelector.SetActive(false);
+        }
+
+        if (this.enumPreviousButton != null)
+        {
+            this.enumPreviousButton.onClick.RemoveAllListeners();
+        }
+
+        if (this.enumNextButton != null)
+        {
+            this.enumNextButton.onClick.RemoveAllListeners();
+        }
+
         if (this.field == null ||
             this.targets == null ||
             this.targets.Count == 0)
@@ -773,6 +798,12 @@ public class RuntimePropertyField : MonoBehaviour
             typeof(SaveableEntity).IsAssignableFrom(type))
         {
             this.SetupReferenceList();
+            return;
+        }
+
+        if (type.IsEnum)
+        {
+            this.SetupEnum();
             return;
         }
 
@@ -845,6 +876,75 @@ public class RuntimePropertyField : MonoBehaviour
         {
             this.sliderInputField.onEndEdit.AddListener(this.OnSliderInputChanged);
         }
+    }
+
+    /// <summary>
+    /// Shows the previous / next selector for an enum field.
+    /// </summary>
+    private void SetupEnum()
+    {
+        if (this.enumSelector == null)
+        {
+            return;
+        }
+
+        this.enumSelector.SetActive(true);
+
+        if (this.enumPreviousButton != null)
+        {
+            this.enumPreviousButton.onClick.AddListener(
+                () => this.CycleEnum(-1));
+        }
+
+        if (this.enumNextButton != null)
+        {
+            this.enumNextButton.onClick.AddListener(
+                () => this.CycleEnum(1));
+        }
+
+        this.RefreshEnum();
+    }
+
+    /// <summary>
+    /// Selects the previous or next value of the enum and wraps around at the ends.
+    /// </summary>
+    /// <param name="step">The number of values to move, negative to go back.</param>
+    private void CycleEnum(int step)
+    {
+        Array values =
+            Enum.GetValues(this.field.FieldType);
+
+        int index =
+            Math.Max(
+                0,
+                Array.IndexOf(
+                    values,
+                    this.GetCurrentValue()));
+
+        index =
+            (index + step + values.Length) % values.Length;
+
+        this.ApplyValue(values.GetValue(index));
+        this.RefreshEnum();
+    }
+
+    /// <summary>
+    /// Shows the name of the current enum value.
+    /// </summary>
+    private void RefreshEnum()
+    {
+        if (this.enumText == null)
+        {
+            return;
+        }
+
+        object value =
+            this.GetCurrentValue();
+
+        this.enumText.SetText(
+            value != null
+                ? value.ToString()
+                : string.Empty);
     }
 
     private void SetupReferenceList()

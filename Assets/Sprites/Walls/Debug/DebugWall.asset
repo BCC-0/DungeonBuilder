@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6772dfa53342c6240abcea7d861d7fc8, type: 3}
+  m_Name: DebugWall
+  m_EditorClassIdentifier: Assembly-CSharp::WallSpriteSet
+  isolatedUp: {fileID: 5003946072499004523, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  isolatedRight: {fileID: 7356430830990726571, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  isolatedDown: {fileID: -6849432310203496455, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  isolatedLeft: {fileID: 2017686162704893642, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  connectedUp: {fileID: -1859522329455189414, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  connectedRight: {fileID: 5052419933057988642, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  connectedDown: {fileID: -1887140002773308278, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  connectedLeft: {fileID: 8992083977173736329, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  upDown: {fileID: 681722971736485254, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  leftRight: {fileID: -3476714375528759733, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  upRight: {fileID: 4705787140425034440, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  rightDown: {fileID: -9027225144602519935, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  downLeft: {fileID: 4263984372007587474, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  leftUp: {fileID: -2864978885309644123, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  upRightDown: {fileID: -3807773189748604300, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  rightDownLeft: {fileID: 1949165514168020469, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  downLeftUp: {fileID: 2716580082880731084, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  leftUpRight: {fileID: 8613905121783355909, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  allSides: {fileID: 6610911297774225360, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}

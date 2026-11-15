@@ -103,7 +103,7 @@ public class RuntimePropertyEditor : MonoBehaviour
         RuntimePropertyField propertyField,
         int index)
     {
-        
+
 
         if (selectionManager == null)
         {
@@ -544,6 +544,11 @@ public class RuntimePropertyEditor : MonoBehaviour
             type == typeof(float) ||
             type == typeof(bool) ||
             type == typeof(string))
+        {
+            return true;
+        }
+
+        if (type.IsEnum)
         {
             return true;
         }
