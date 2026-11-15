@@ -59,7 +59,7 @@ public class EntityEditorController : EditorControllerBase
         }
 
         Vector3 snappedPos = new Vector3(
-            Mathf.Floor(this.CurrentPos.x) + 0.5f,
+            Mathf.Floor(this.CurrentPos.x + 0.5f),
             Mathf.Floor(this.CurrentPos.y),
             0f);
 
@@ -88,11 +88,34 @@ public class EntityEditorController : EditorControllerBase
     /// <summary>
     /// Attempts to erase an entity near the pointer position.
     /// </summary>
+    /// <summary>
+    /// Attempts to erase an entity whose sprite bounds contain the pointer position.
+    /// </summary>
     private void TryErase()
     {
         foreach (BuilderEntity buildEntity in BuilderRegistry.GetAll())
         {
-            if (buildEntity.ExistsInWorld && Vector3.Distance(buildEntity.transform.position, this.CurrentPos) < 0.5f)
+            if (!buildEntity.ExistsInWorld)
+            {
+                continue;
+            }
+
+            SpriteRenderer spriteRenderer = buildEntity.GetComponent<SpriteRenderer>();
+
+            if (spriteRenderer == null)
+            {
+                continue;
+            }
+
+            Bounds bounds = spriteRenderer.bounds;
+
+            bool containsPointer =
+                this.CurrentPos.x >= bounds.min.x &&
+                this.CurrentPos.x <= bounds.max.x &&
+                this.CurrentPos.y >= bounds.min.y &&
+                this.CurrentPos.y <= bounds.max.y;
+
+            if (containsPointer)
             {
                 Destroy(buildEntity.gameObject);
                 return;

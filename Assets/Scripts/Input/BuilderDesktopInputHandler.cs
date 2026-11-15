@@ -26,15 +26,6 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     // private bool command;
     private EditorControllerBase ActiveController => MapEditorManager.Instance.ActiveController;
 
-    private bool IsTyping()
-    {
-        GameObject selected = EventSystem.current?.currentSelectedGameObject;
-
-        return selected != null &&
-            (selected.GetComponent<TMP_InputField>() != null ||
-             selected.GetComponent<InputField>() != null);
-    }
-
     /// <summary>
     /// Called when the pointer is moved.
     /// Finds the position of the pointer and communicates it to the tileEditor and the entityEditor.
@@ -370,5 +361,14 @@ public class BuilderDesktopInputHandler : MonoBehaviour
         List<RaycastResult> results = new List<RaycastResult>();
         EventSystem.current.RaycastAll(eventData, results);
         return results.Count > 0;
+    }
+
+    private bool IsTyping()
+    {
+        GameObject selected = EventSystem.current?.currentSelectedGameObject;
+
+        return selected != null &&
+            (selected.GetComponent<TMP_InputField>() != null ||
+             selected.GetComponent<InputField>() != null);
     }
 }

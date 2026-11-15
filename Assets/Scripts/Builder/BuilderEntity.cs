@@ -672,20 +672,20 @@ public class BuilderEntity : SaveableEntity
 
         if (prefabRenderer != null)
         {
-            SpriteRenderer sr = this.GetComponent<SpriteRenderer>();
+            SpriteRenderer spriteRenderer = this.GetComponent<SpriteRenderer>();
 
-            if (sr == null)
+            if (spriteRenderer == null)
             {
-                sr = this.gameObject.AddComponent<SpriteRenderer>();
+                spriteRenderer = this.gameObject.AddComponent<SpriteRenderer>();
             }
 
-            sr.sprite = prefabRenderer.sprite;
+            spriteRenderer.sprite = prefabRenderer.sprite;
 
-            sr.color = prefabRenderer.color;
+            spriteRenderer.color = prefabRenderer.color;
 
-            sr.sortingLayerID = prefabRenderer.sortingLayerID;
+            spriteRenderer.sortingLayerID = prefabRenderer.sortingLayerID;
 
-            sr.sortingOrder = prefabRenderer.sortingOrder;
+            spriteRenderer.sortingOrder = prefabRenderer.sortingOrder;
         }
         else
         {
