@@ -11164,6 +11164,7 @@ MonoBehaviour:
   folderNames:
   - 1-Default
   - 2-Farm
+  - Debug
   inventoryButtonImage: {fileID: 1393812803}
   inventoryFrames:
   - {fileID: -524195158538991735, guid: fa5dcb7fd837f834b905397fb9d4d30e, type: 3}

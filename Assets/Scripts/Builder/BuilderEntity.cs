@@ -1,5 +1,4 @@
-﻿
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -25,6 +24,12 @@ public class BuilderEntity : SaveableEntity
 
     private bool isEnemyBody;
     private Vector3 headDownPosition;
+
+    private bool isWall;
+    private WallSpriteSet wallSpriteSet;
+    private float wallCellSize = 1f;
+    private Vector2Int wallCell;
+    private bool wallRegistered;
 
     /// <summary>
     /// Gets the ID of the entity's prefab.
@@ -137,6 +142,11 @@ public class BuilderEntity : SaveableEntity
         }
 
         editableValue.Value = value;
+
+        if (this.isWall)
+        {
+            this.RefreshWallSprite();
+        }
 
         if (fitsFieldType &&
             this.originalItem != null &&
@@ -447,6 +457,11 @@ public class BuilderEntity : SaveableEntity
             this.InitializeEnemyBody(source);
         }
 
+        if (source is Wall wallSource)
+        {
+            this.InitializeWall(wallSource);
+        }
+
         if (source is ItemObject itemSource)
         {
             FieldInfo originalItemField =
@@ -523,6 +538,18 @@ public class BuilderEntity : SaveableEntity
 
             this.headSpriteRenderer.enabled = false;
         }
+    }
+
+    /// <summary>
+    /// Remembers that this entity is a wall and reads what it needs to pick a
+    /// sprite from the prefab.
+    /// </summary>
+    /// <param name="source">The wall on the prefab.</param>
+    private void InitializeWall(Wall source)
+    {
+        this.isWall = true;
+        this.wallSpriteSet = source.SpriteSet;
+        this.wallCellSize = source.CellSize;
     }
 
     private void CopyRuntimeEditableFields(object source)
@@ -826,6 +853,82 @@ public class BuilderEntity : SaveableEntity
         this.headSpriteRenderer.enabled = true;
     }
 
+    /// <summary>
+    /// Keeps this wall registered in the grid cell it is standing in, and
+    /// updates the sprite of this wall and its neighbours when the cell changes.
+    /// </summary>
+    private void UpdateWallCell()
+    {
+        Vector2Int cell =
+            WallGrid.ToCell(
+                this.transform.position,
+                this.wallCellSize);
+
+        if (this.wallRegistered &&
+            cell == this.wallCell)
+        {
+            return;
+        }
+
+        if (this.wallRegistered)
+        {
+            WallGrid.Builder.Unregister(this.wallCell, this);
+            WallGrid.Builder.RefreshNeighbours(this.wallCell);
+        }
+
+        this.wallCell = cell;
+        this.wallRegistered = true;
+
+        WallGrid.Builder.Register(
+            this.wallCell,
+            this,
+            this.RefreshWallSprite);
+
+        this.RefreshWallSprite();
+
+        WallGrid.Builder.RefreshNeighbours(this.wallCell);
+    }
+
+    /// <summary>
+    /// Picks the sprite from the neighbouring walls and the chosen orientation.
+    /// </summary>
+    private void RefreshWallSprite()
+    {
+        SpriteRenderer spriteRenderer =
+            this.GetComponent<SpriteRenderer>();
+
+        if (!this.wallRegistered ||
+            this.wallSpriteSet == null ||
+            spriteRenderer == null)
+        {
+            return;
+        }
+
+        Sprite sprite =
+            this.wallSpriteSet.GetSprite(
+                WallGrid.Builder.GetConnections(this.wallCell),
+                this.GetWallOrientation());
+
+        if (sprite != null)
+        {
+            spriteRenderer.sprite = sprite;
+        }
+    }
+
+    /// <summary>
+    /// Gets the orientation the player chose for this wall.
+    /// </summary>
+    /// <returns>The chosen orientation, or Down when none is set.</returns>
+    private WallOrientation GetWallOrientation()
+    {
+        object value =
+            this.GetRuntimeEditableValue(Wall.OrientationFieldName);
+
+        return value is WallOrientation orientation
+            ? orientation
+            : WallOrientation.Down;
+    }
+
     private void Start()
     {
         if (this.HasPendingReferences)
@@ -840,6 +943,11 @@ public class BuilderEntity : SaveableEntity
         {
             this.UpdateHeadRenderer();
         }
+
+        if (this.isWall)
+        {
+            this.UpdateWallCell();
+        }
     }
 
     private void OnDestroy()
@@ -852,6 +960,12 @@ public class BuilderEntity : SaveableEntity
             {
                 Destroy(head.gameObject);
             }
+        }
+
+        if (this.wallRegistered)
+        {
+            WallGrid.Builder.Unregister(this.wallCell, this);
+            WallGrid.Builder.RefreshNeighbours(this.wallCell);
         }
 
         BuilderRegistry.Unregister(this);
