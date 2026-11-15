@@ -25,18 +25,30 @@ MonoBehaviour:
   - tileID: Stone
     tile: {fileID: 11400000, guid: 7a2ea7798205ce74fb6b882ede57cd33, type: 2}
     behaviorTypeName: Default.Stone
-  - tileID: Mud
+  - tileID: Sand
     tile: {fileID: 11400000, guid: 3f603e28fb6817c4c92d7064f1f40201, type: 2}
+    behaviorTypeName: Default.Sand
+  - tileID: Mud
+    tile: {fileID: 11400000, guid: 19eb60c614a83714b86e09509056fd15, type: 2}
     behaviorTypeName: Default.Mud
   - tileID: Dry Grass
-    tile: {fileID: 11400000, guid: 19eb60c614a83714b86e09509056fd15, type: 2}
+    tile: {fileID: 11400000, guid: 86afd434e61aaa244abccf9cd49ea25b, type: 2}
     behaviorTypeName: Default.DryGrass
   - tileID: Flowered Grass
-    tile: {fileID: 11400000, guid: 86afd434e61aaa244abccf9cd49ea25b, type: 2}
+    tile: {fileID: 11400000, guid: 58cf9e74b2158d44f8f7cd4c49217c50, type: 2}
     behaviorTypeName: Default.FloweredGrass
   - tileID: Pebbles
-    tile: {fileID: 11400000, guid: 58cf9e74b2158d44f8f7cd4c49217c50, type: 2}
+    tile: {fileID: 11400000, guid: 9e659dd2fa492e74b87afb884610e7d8, type: 2}
     behaviorTypeName: Default.Pebbles
   - tileID: Cobblestone
-    tile: {fileID: 11400000, guid: 9e659dd2fa492e74b87afb884610e7d8, type: 2}
+    tile: {fileID: 11400000, guid: 7f3e92024533c0148a7fe23c951ec660, type: 2}
     behaviorTypeName: Default.Cobblestone
+  - tileID: Mossy Stone
+    tile: {fileID: 11400000, guid: d419b8413119e254cb00b8abfc2ba8d9, type: 2}
+    behaviorTypeName: Default.MossyStone
+  - tileID: Concrete
+    tile: {fileID: 11400000, guid: 6a1cbd4bdbc3cab4399998317f4238d1, type: 2}
+    behaviorTypeName: Default.Concrete
+  - tileID: Slate
+    tile: {fileID: 11400000, guid: 0d4d71f5089ab2e4e9a264ec47252cb8, type: 2}
+    behaviorTypeName: Default.Slate

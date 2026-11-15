@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1e1bb0e816ce4a44ab815a15a359f33e, type: 3}
+  m_Name: FarmTiles
+  m_EditorClassIdentifier: Assembly-CSharp::TileLibrary
+  tiles:
+  - tileID: Planks
+    tile: {fileID: 11400000, guid: e9582feba5f377c45b1590d4c0502f92, type: 2}
+    behaviorTypeName: Farm.Planks
+  - tileID: Red Planks
+    tile: {fileID: 11400000, guid: 1a86ae07f5934c047aeafff784bae3a8, type: 2}
+    behaviorTypeName: Farm.RedPlanks
+  - tileID: Dark Planks
+    tile: {fileID: 11400000, guid: 0c4597974a3ed6a49b11102cb77a4bdb, type: 2}
+    behaviorTypeName: Farm.DarkPlanks
+  - tileID: Logs
+    tile: {fileID: 11400000, guid: 288fedee565b55a4c8dc5ca11e2e990a, type: 2}
+    behaviorTypeName: Farm.Logs
+  - tileID: Straw
+    tile: {fileID: 11400000, guid: bc89eebc04e8f5344841714bb0d229be, type: 2}
+    behaviorTypeName: Farm.Straw
+  - tileID: Hay
+    tile: {fileID: 11400000, guid: 2d961ddb6948f9e4c9957bb521bb3e79, type: 2}
+    behaviorTypeName: Farm.Hay
