@@ -26,7 +26,7 @@ public class BuilderEntity : SaveableEntity
     private Vector3 headDownPosition;
 
     private bool isWall;
-    private WallSpriteSet wallSpriteSet;
+    private SpriteRenderer wallOverlayRenderer;
     private float wallCellSize = 1f;
     private Vector2Int wallCell;
     private bool wallRegistered;
@@ -541,15 +541,59 @@ public class BuilderEntity : SaveableEntity
     }
 
     /// <summary>
-    /// Remembers that this entity is a wall and reads what it needs to pick a
-    /// sprite from the prefab.
+    /// Remembers that this entity is a wall and copies the overlay child
+    /// object from the prefab, so the overlay can be driven by the
+    /// neighbouring walls in the builder.
     /// </summary>
     /// <param name="source">The wall on the prefab.</param>
     private void InitializeWall(Wall source)
     {
         this.isWall = true;
-        this.wallSpriteSet = source.SpriteSet;
         this.wallCellSize = source.CellSize;
+
+        if (this.wallOverlayRenderer != null)
+        {
+            return;
+        }
+
+        SpriteRenderer prefabOverlay = source.OverlayRenderer;
+
+        if (prefabOverlay == null)
+        {
+            Debug.LogWarning(
+                $"BuilderEntity '{this.PrefabID}' has no overlay " +
+                $"renderer on its Wall.");
+
+            return;
+        }
+
+        GameObject overlayObject =
+            Instantiate(
+                prefabOverlay.gameObject,
+                this.transform);
+
+        overlayObject.name = prefabOverlay.gameObject.name;
+
+        overlayObject.transform.localPosition =
+            prefabOverlay.transform.localPosition;
+
+        overlayObject.transform.localRotation =
+            prefabOverlay.transform.localRotation;
+
+        overlayObject.transform.localScale =
+            prefabOverlay.transform.localScale;
+
+        foreach (MonoBehaviour mb in
+                 overlayObject.GetComponentsInChildren<MonoBehaviour>(true))
+        {
+            mb.enabled = false;
+        }
+
+        this.wallOverlayRenderer =
+            overlayObject.GetComponent<SpriteRenderer>();
+
+        this.wallOverlayRenderer.enabled = true;
+        this.wallOverlayRenderer.sprite = null;
     }
 
     private void CopyRuntimeEditableFields(object source)
@@ -890,29 +934,29 @@ public class BuilderEntity : SaveableEntity
     }
 
     /// <summary>
-    /// Picks the sprite from the neighbouring walls and the chosen orientation.
+    /// Picks the overlay sprite and its rotation from the neighbouring walls
+    /// and the chosen orientation.
     /// </summary>
     private void RefreshWallSprite()
     {
-        SpriteRenderer spriteRenderer =
-            this.GetComponent<SpriteRenderer>();
+        WallSpriteSet spriteSet = WallSpriteSet.Instance;
 
         if (!this.wallRegistered ||
-            this.wallSpriteSet == null ||
-            spriteRenderer == null)
+            spriteSet == null ||
+            this.wallOverlayRenderer == null)
         {
             return;
         }
 
-        Sprite sprite =
-            this.wallSpriteSet.GetSprite(
-                WallGrid.Builder.GetConnections(this.wallCell),
-                this.GetWallOrientation());
+        WallOrientation orientation = this.GetWallOrientation();
 
-        if (sprite != null)
-        {
-            spriteRenderer.sprite = sprite;
-        }
+        this.wallOverlayRenderer.sprite =
+            spriteSet.GetOverlay(
+                WallGrid.Builder.GetConnections(this.wallCell),
+                orientation);
+
+        this.wallOverlayRenderer.transform.localRotation =
+            WallSpriteSet.GetRotation(orientation);
     }
 
     /// <summary>

@@ -1,142 +1,98 @@
 using UnityEngine;
 
 /// <summary>
-/// The sprites of one wall type. Each field is named after the neighbours the
-/// wall connects to, for example UpRight is a corner with walls above and to
-/// the right of it.
+/// The overlay sprites shared by all walls. There are 16 sprites, one for each
+/// combination of connections, drawn for orientation Up and stored at the
+/// flag value of WallConnections. Other orientations rotate the overlay.
+/// Orientations are ordered Up, Right, Down, Left.
 /// </summary>
 [CreateAssetMenu(fileName = "WallSpriteSet", menuName = "Dungeon/Wall Sprite Set")]
 public class WallSpriteSet : ScriptableObject
 {
-    [Header("No neighbours (chosen by orientation)")]
-    [SerializeField]
-    private Sprite isolatedUp;
+    private const string ResourcePath = "WallSpriteSet";
+    private const int SideCount = 4;
+    private const int ConnectionCount = 16;
+
+    private static WallSpriteSet instance;
+    private static bool warned;
 
     [SerializeField]
-    private Sprite isolatedRight;
-
-    [SerializeField]
-    private Sprite isolatedDown;
-
-    [SerializeField]
-    private Sprite isolatedLeft;
-
-    [Header("One neighbour (end pieces)")]
-    [SerializeField]
-    private Sprite connectedUp;
-
-    [SerializeField]
-    private Sprite connectedRight;
-
-    [SerializeField]
-    private Sprite connectedDown;
-
-    [SerializeField]
-    private Sprite connectedLeft;
-
-    [Header("Two neighbours (straight)")]
-    [SerializeField]
-    private Sprite upDown;
-
-    [SerializeField]
-    private Sprite leftRight;
-
-    [Header("Two neighbours (corners)")]
-    [SerializeField]
-    private Sprite upRight;
-
-    [SerializeField]
-    private Sprite rightDown;
-
-    [SerializeField]
-    private Sprite downLeft;
-
-    [SerializeField]
-    private Sprite leftUp;
-
-    [Header("Three neighbours (T-junctions)")]
-    [SerializeField]
-    private Sprite upRightDown;
-
-    [SerializeField]
-    private Sprite rightDownLeft;
-
-    [SerializeField]
-    private Sprite downLeftUp;
-
-    [SerializeField]
-    private Sprite leftUpRight;
-
-    [Header("Four neighbours (fill)")]
-    [SerializeField]
-    private Sprite allSides;
+    private Sprite[] overlays = new Sprite[ConnectionCount];
 
     /// <summary>
-    /// Gets the sprite for a wall.
+    /// Gets the shared sprite set, loaded from the Resources folder. The
+    /// asset is found by its name first, and otherwise any WallSpriteSet
+    /// asset in a Resources folder is used.
     /// </summary>
-    /// <param name="connections">The sides that connect to another wall.</param>
-    /// <param name="orientation">The orientation to use when there are no connections.</param>
-    /// <returns>The sprite, or null when the set has no sprite for this case.</returns>
-    public Sprite GetSprite(
-        WallConnections connections,
-        WallOrientation orientation)
+    public static WallSpriteSet Instance
     {
-        switch (connections)
+        get
         {
-            case WallConnections.None:
-                return this.GetIsolatedSprite(orientation);
-            case WallConnections.Up:
-                return this.connectedUp;
-            case WallConnections.Right:
-                return this.connectedRight;
-            case WallConnections.Down:
-                return this.connectedDown;
-            case WallConnections.Left:
-                return this.connectedLeft;
-            case WallConnections.Up | WallConnections.Down:
-                return this.upDown;
-            case WallConnections.Left | WallConnections.Right:
-                return this.leftRight;
-            case WallConnections.Up | WallConnections.Right:
-                return this.upRight;
-            case WallConnections.Right | WallConnections.Down:
-                return this.rightDown;
-            case WallConnections.Down | WallConnections.Left:
-                return this.downLeft;
-            case WallConnections.Left | WallConnections.Up:
-                return this.leftUp;
-            case WallConnections.Up | WallConnections.Right | WallConnections.Down:
-                return this.upRightDown;
-            case WallConnections.Right | WallConnections.Down | WallConnections.Left:
-                return this.rightDownLeft;
-            case WallConnections.Down | WallConnections.Left | WallConnections.Up:
-                return this.downLeftUp;
-            case WallConnections.Left | WallConnections.Up | WallConnections.Right:
-                return this.leftUpRight;
-            case WallConnections.All:
-                return this.allSides;
-            default:
-                return null;
+            if (instance == null)
+            {
+                instance = Resources.Load<WallSpriteSet>(ResourcePath);
+            }
+
+            if (instance == null)
+            {
+                WallSpriteSet[] all =
+                    Resources.LoadAll<WallSpriteSet>(string.Empty);
+
+                if (all.Length > 0)
+                {
+                    instance = all[0];
+                }
+            }
+
+            if (instance == null &&
+                !warned)
+            {
+                warned = true;
+
+                Debug.LogError(
+                    "No WallSpriteSet asset found. It must be a " +
+                    "WallSpriteSet (Create > Dungeon > Wall Sprite Set) " +
+                    "inside a folder named 'Resources'.");
+            }
+
+            return instance;
         }
     }
 
     /// <summary>
-    /// Gets the sprite of a wall without neighbours.
+    /// Gets the rotation to apply to the overlay for an orientation.
     /// </summary>
     /// <param name="orientation">The orientation of the wall.</param>
-    /// <returns>The sprite for the orientation.</returns>
-    private Sprite GetIsolatedSprite(WallOrientation orientation)
+    /// <returns>The clockwise rotation for the orientation.</returns>
+    public static Quaternion GetRotation(WallOrientation orientation)
     {
-        switch (orientation)
+        return Quaternion.Euler(0f, 0f, -90f * (int)orientation);
+    }
+
+    /// <summary>
+    /// Gets the overlay sprite for a wall. The sprites are drawn for
+    /// orientation Up, so the connections are rotated back into that frame.
+    /// </summary>
+    /// <param name="connections">The sides that connect to another wall.</param>
+    /// <param name="orientation">The orientation of the wall.</param>
+    /// <returns>The sprite, or null when the set has no sprite for this case.</returns>
+    public Sprite GetOverlay(
+        WallConnections connections,
+        WallOrientation orientation)
+    {
+        int steps = (int)orientation;
+        int mask = (int)connections & (ConnectionCount - 1);
+
+        int index =
+            ((mask >> steps) | (mask << (SideCount - steps))) &
+            (ConnectionCount - 1);
+
+        if (this.overlays == null ||
+            index >= this.overlays.Length)
         {
-            case WallOrientation.Up:
-                return this.isolatedUp;
-            case WallOrientation.Right:
-                return this.isolatedRight;
-            case WallOrientation.Left:
-                return this.isolatedLeft;
-            default:
-                return this.isolatedDown;
+            return null;
         }
+
+        return this.overlays[index];
     }
 }

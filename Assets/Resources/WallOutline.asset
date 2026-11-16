@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6772dfa53342c6240abcea7d861d7fc8, type: 3}
+  m_Name: WallOutline
+  m_EditorClassIdentifier: Assembly-CSharp::WallSpriteSet
+  overlays:
+  - {fileID: 5003946072499004523, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - {fileID: 7356430830990726571, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - {fileID: -6849432310203496455, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - {fileID: 2017686162704893642, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - {fileID: 1315072407535885486, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - {fileID: 2239428859108097413, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - {fileID: -5911844737720681505, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - {fileID: -7717094106454927766, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - {fileID: 1518730536626900859, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - {fileID: 9100399011788748873, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - {fileID: 3211530973273859958, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - {fileID: -2657594330465475589, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - {fileID: 4710281432020501225, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - {fileID: 7645961812278228064, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - {fileID: -7063583622260929205, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - {fileID: 243636480197512316, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
