@@ -381,7 +381,7 @@ public class RuntimePositionField : MonoBehaviour
     private Vector2 GridToWorld(Vector2 gridPosition)
     {
         return new Vector2(
-            gridPosition.x + 0.5f,
+            gridPosition.x,
             gridPosition.y);
     }
 

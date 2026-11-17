@@ -81,7 +81,7 @@ SpriteRenderer:
   m_SortingLayer: 2
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 1697304700098648660, guid: ca735b67fae83d342a7c03f8bd365d9c, type: 3}
+  m_Sprite: {fileID: 8300654891627151875, guid: ca735b67fae83d342a7c03f8bd365d9c, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -392,6 +392,8 @@ MonoBehaviour:
   cellSize: 1
   rotateSpriteWithOverlay: 1
   orientation: 0
+  cornerSprite: {fileID: -2558558764418616471, guid: ca735b67fae83d342a7c03f8bd365d9c, type: 3}
+  innerCornerSprite: {fileID: -1643769889043763052, guid: ca735b67fae83d342a7c03f8bd365d9c, type: 3}
 --- !u!61 &3299872983932712086
 BoxCollider2D:
   m_ObjectHideFlags: 0

@@ -392,6 +392,8 @@ MonoBehaviour:
   cellSize: 1
   rotateSpriteWithOverlay: 1
   orientation: 0
+  cornerSprite: {fileID: 5258907517455456954, guid: 531a0440014453b4698a1f35b424ae8b, type: 3}
+  innerCornerSprite: {fileID: -3204059297173261197, guid: 531a0440014453b4698a1f35b424ae8b, type: 3}
 --- !u!61 &3299872983932712086
 BoxCollider2D:
   m_ObjectHideFlags: 0
