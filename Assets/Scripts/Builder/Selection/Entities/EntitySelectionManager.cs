@@ -1,5 +1,4 @@
-﻿
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using DG.Tweening;
 using TMPro;
@@ -184,6 +183,14 @@ public class EntitySelectionManager : SelectionManagerBase
                 this.GetEntityWorldPosition(previewCell);
         }
 
+        foreach (SaveableEntity entity in this.extraMoveStartCells.Keys)
+        {
+            if (entity != null)
+            {
+                this.RefreshBuilderWall(entity);
+            }
+        }
+
         this.selectionVisualizer.Refresh();
 
         if (RuntimePropertyEditor.Instance != null)
@@ -278,6 +285,14 @@ public class EntitySelectionManager : SelectionManagerBase
             entity.transform.position =
                 this.GetEntityWorldPosition(
                     (Vector3Int)entry.Value);
+        }
+
+        foreach (SaveableEntity entity in this.moveStartCells.Keys)
+        {
+            if (entity != null)
+            {
+                this.RefreshBuilderWall(entity);
+            }
         }
 
         this.IsMovementMode = false;
@@ -663,6 +678,17 @@ public class EntitySelectionManager : SelectionManagerBase
                 this.GetBoundingRect(
                     entities.Select(
                         e => (Vector2)e.transform.position)));
+        }
+    }
+
+    private void RefreshBuilderWall(SaveableEntity entity)
+    {
+        BuilderEntity builderEntity =
+            entity.GetComponent<BuilderEntity>();
+
+        if (builderEntity != null)
+        {
+            builderEntity.RefreshWallPosition();
         }
     }
 }

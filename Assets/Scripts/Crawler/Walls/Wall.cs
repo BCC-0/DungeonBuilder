@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 
 /// <summary>
@@ -23,15 +23,21 @@ public class Wall : SaveableEntity
     [SerializeField]
     private float cellSize = 1f;
 
+    [SerializeField]
+    private bool rotateSpriteWithOverlay;
+
     [SaveField]
     [SerializeField]
-    private WallOrientation orientation = WallOrientation.Down;
+    private WallOrientation orientation = WallOrientation.Up;
 
     private Vector2Int cell;
     private bool registered;
     private bool frozen;
     private bool freezeScheduled;
     private bool overlayResolved;
+
+    private Vector3 baseLocalPosition;
+    private bool baseLocalPositionCached;
 
     /// <summary>
     /// Gets the sprites this wall uses.
@@ -47,6 +53,11 @@ public class Wall : SaveableEntity
     /// Gets the size of one grid cell in world units.
     /// </summary>
     public float CellSize => this.cellSize;
+
+    /// <summary>
+    /// Gets a value indicating whether the base sprite rotates with the overlay.
+    /// </summary>
+    public bool RotateSpriteWithOverlay => this.rotateSpriteWithOverlay;
 
     /// <summary>
     /// Gets a value indicating whether the overlay is fixed.
@@ -120,6 +131,7 @@ public class Wall : SaveableEntity
 
         this.overlayRenderer.sprite = sprite;
         this.overlayRenderer.transform.localRotation = rotation;
+        this.ApplyBaseRotation(rotation);
         this.overlayResolved = true;
     }
 
@@ -159,6 +171,40 @@ public class Wall : SaveableEntity
             this.freezeScheduled = true;
             this.StartCoroutine(this.FreezeAtEndOfFrame());
         }
+    }
+
+    /// <summary>
+    /// Rotates the base sprite together with the overlay when enabled. The
+    /// sprite is rotated around its visual center instead of its pivot, so the
+    /// position is corrected for the offset between the two.
+    /// </summary>
+    /// <param name="rotation">The rotation that was chosen for the overlay.</param>
+    private void ApplyBaseRotation(Quaternion rotation)
+    {
+        if (!this.rotateSpriteWithOverlay ||
+            this.SpriteRenderer == null ||
+            this.SpriteRenderer.sprite == null)
+        {
+            return;
+        }
+
+        Transform baseTransform = this.SpriteRenderer.transform;
+
+        if (!this.baseLocalPositionCached)
+        {
+            this.baseLocalPosition = baseTransform.localPosition;
+            this.baseLocalPositionCached = true;
+        }
+
+        Vector3 center =
+            Vector3.Scale(
+                this.SpriteRenderer.sprite.bounds.center,
+                baseTransform.localScale);
+
+        baseTransform.localRotation = rotation;
+
+        baseTransform.localPosition =
+            this.baseLocalPosition + center - (rotation * center);
     }
 
     private IEnumerator FreezeAtEndOfFrame()

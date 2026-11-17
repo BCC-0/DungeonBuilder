@@ -1,5 +1,5 @@
-using System.Collections;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
@@ -262,6 +262,14 @@ public class RuntimePositionField : MonoBehaviour
                     worldPosition.x,
                     worldPosition.y,
                     entity.transform.position.z);
+
+            BuilderEntity builderEntity =
+                entity.GetComponent<BuilderEntity>();
+
+            if (builderEntity != null)
+            {
+                builderEntity.RefreshWallPosition();
+            }
 
             // Keep the selection outline on the entity.
             EntitySelectionVisualizer visualizer =

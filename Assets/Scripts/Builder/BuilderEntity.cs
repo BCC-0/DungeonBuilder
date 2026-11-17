@@ -30,6 +30,8 @@ public class BuilderEntity : SaveableEntity
     private float wallCellSize = 1f;
     private Vector2Int wallCell;
     private bool wallRegistered;
+    private bool rotateWallBase;
+    private SpriteRenderer wallBaseRenderer;
 
     /// <summary>
     /// Gets the ID of the entity's prefab.
@@ -550,6 +552,7 @@ public class BuilderEntity : SaveableEntity
     {
         this.isWall = true;
         this.wallCellSize = source.CellSize;
+        this.rotateWallBase = source.RotateSpriteWithOverlay;
 
         if (this.wallOverlayRenderer != null)
         {
@@ -898,6 +901,20 @@ public class BuilderEntity : SaveableEntity
     }
 
     /// <summary>
+    /// Immediately refreshes this builder wall's grid registration after its
+    /// position changes. This only updates the builder wall grid.
+    /// </summary>
+    public void RefreshWallPosition()
+    {
+        if (!this.isWall)
+        {
+            return;
+        }
+
+        this.UpdateWallCell();
+    }
+
+    /// <summary>
     /// Keeps this wall registered in the grid cell it is standing in, and
     /// updates the sprite of this wall and its neighbours when the cell changes.
     /// </summary>
@@ -963,6 +980,53 @@ public class BuilderEntity : SaveableEntity
 
         this.wallOverlayRenderer.sprite = sprite;
         this.wallOverlayRenderer.transform.localRotation = rotation;
+        this.ApplyWallBaseRotation(rotation);
+    }
+
+    /// <summary>
+    /// Rotates the base sprite together with the overlay when the wall prefab
+    /// asks for it. The sprite is moved to a child object the first time, so
+    /// the root transform that is saved stays untouched.
+    /// </summary>
+    /// <param name="rotation">The rotation that was chosen for the overlay.</param>
+    private void ApplyWallBaseRotation(Quaternion rotation)
+    {
+        if (!this.rotateWallBase)
+        {
+            return;
+        }
+
+        SpriteRenderer rootRenderer =
+            this.GetComponent<SpriteRenderer>();
+
+        if (rootRenderer == null)
+        {
+            return;
+        }
+
+        if (this.wallBaseRenderer == null)
+        {
+            GameObject baseObject = new GameObject("WallBase");
+            baseObject.transform.SetParent(this.transform, false);
+
+            this.wallBaseRenderer =
+                baseObject.AddComponent<SpriteRenderer>();
+
+            this.wallBaseRenderer.sprite = rootRenderer.sprite;
+            this.wallBaseRenderer.color = rootRenderer.color;
+            this.wallBaseRenderer.sortingLayerID = rootRenderer.sortingLayerID;
+            this.wallBaseRenderer.sortingOrder = rootRenderer.sortingOrder;
+
+            rootRenderer.enabled = false;
+        }
+
+        Vector3 center =
+            this.wallBaseRenderer.sprite != null
+            ? this.wallBaseRenderer.sprite.bounds.center
+            : Vector3.zero;
+
+        this.wallBaseRenderer.transform.localRotation = rotation;
+        this.wallBaseRenderer.transform.localPosition = center - (rotation * center);
     }
 
     /// <summary>
