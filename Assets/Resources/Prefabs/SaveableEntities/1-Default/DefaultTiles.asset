@@ -52,3 +52,6 @@ MonoBehaviour:
   - tileID: Slate
     tile: {fileID: 11400000, guid: 0d4d71f5089ab2e4e9a264ec47252cb8, type: 2}
     behaviorTypeName: Default.Slate
+  - tileID: Bricks
+    tile: {fileID: 11400000, guid: 15cfeb3950d4fe04f9ae06d577e7dbbc, type: 2}
+    behaviorTypeName: Default.Bricks
