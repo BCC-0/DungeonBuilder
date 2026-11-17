@@ -1,29 +1,23 @@
+using System;
 using UnityEngine;
 
-/// <summary>
-/// The overlay sprites shared by all walls. There are 16 sprites, one for each
-/// combination of connections, drawn for orientation Up and stored at the
-/// flag value of WallConnections. Other orientations rotate the overlay.
-/// Orientations are ordered Up, Right, Down, Left.
-/// </summary>
 [CreateAssetMenu(fileName = "WallSpriteSet", menuName = "Dungeon/Wall Sprite Set")]
 public class WallSpriteSet : ScriptableObject
 {
     private const string ResourcePath = "WallSpriteSet";
     private const int SideCount = 4;
-    private const int ConnectionCount = 16;
+    private const int FullMask = 15;
 
     private static WallSpriteSet instance;
     private static bool warned;
 
+    [Tooltip("Used when there are no neighbours. Rotated by the wall orientation.")]
     [SerializeField]
-    private Sprite[] overlays = new Sprite[ConnectionCount];
+    private Sprite isolated;
 
-    /// <summary>
-    /// Gets the shared sprite set, loaded from the Resources folder. The
-    /// asset is found by its name first, and otherwise any WallSpriteSet
-    /// asset in a Resources folder is used.
-    /// </summary>
+    [SerializeField]
+    private WallShape[] shapes = Array.Empty<WallShape>();
+
     public static WallSpriteSet Instance
     {
         get
@@ -35,8 +29,7 @@ public class WallSpriteSet : ScriptableObject
 
             if (instance == null)
             {
-                WallSpriteSet[] all =
-                    Resources.LoadAll<WallSpriteSet>(string.Empty);
+                WallSpriteSet[] all = Resources.LoadAll<WallSpriteSet>(string.Empty);
 
                 if (all.Length > 0)
                 {
@@ -44,15 +37,10 @@ public class WallSpriteSet : ScriptableObject
                 }
             }
 
-            if (instance == null &&
-                !warned)
+            if (instance == null && !warned)
             {
                 warned = true;
-
-                Debug.LogError(
-                    "No WallSpriteSet asset found. It must be a " +
-                    "WallSpriteSet (Create > Dungeon > Wall Sprite Set) " +
-                    "inside a folder named 'Resources'.");
+                Debug.LogError("No WallSpriteSet asset found in a Resources folder.");
             }
 
             return instance;
@@ -60,39 +48,115 @@ public class WallSpriteSet : ScriptableObject
     }
 
     /// <summary>
-    /// Gets the rotation to apply to the overlay for an orientation.
+    /// Picks the overlay sprite and rotation. Connections always win; the
+    /// orientation is only used when there are no neighbours.
     /// </summary>
-    /// <param name="orientation">The orientation of the wall.</param>
-    /// <returns>The clockwise rotation for the orientation.</returns>
-    public static Quaternion GetRotation(WallOrientation orientation)
-    {
-        return Quaternion.Euler(0f, 0f, -90f * (int)orientation);
-    }
-
-    /// <summary>
-    /// Gets the overlay sprite for a wall. The sprites are drawn for
-    /// orientation Up, so the connections are rotated back into that frame.
-    /// </summary>
-    /// <param name="connections">The sides that connect to another wall.</param>
-    /// <param name="orientation">The orientation of the wall.</param>
-    /// <returns>The sprite, or null when the set has no sprite for this case.</returns>
-    public Sprite GetOverlay(
+    public bool TryGetOverlay(
         WallConnections connections,
-        WallOrientation orientation)
+        WallCorners corners,
+        WallOrientation orientation,
+        out Sprite sprite,
+        out Quaternion rotation)
     {
-        int steps = (int)orientation;
-        int mask = (int)connections & (ConnectionCount - 1);
+        int edges = (int)connections & FullMask;
 
-        int index =
-            ((mask >> steps) | (mask << (SideCount - steps))) &
-            (ConnectionCount - 1);
-
-        if (this.overlays == null ||
-            index >= this.overlays.Length)
+        if (edges == 0)
         {
-            return null;
+            sprite = this.isolated;
+            rotation = RotationFromSteps((int)orientation);
+            return sprite != null;
         }
 
-        return this.overlays[index];
+        int effective = EffectiveCorners(edges, (int)corners);
+
+        // Pass 0: shapes that care about the diagonals.
+        // Pass 1: shapes that ignore them (fallback).
+        for (int pass = 0; pass < 2; pass++)
+        {
+            bool wantIgnore = pass == 1;
+
+            foreach (WallShape shape in this.shapes)
+            {
+                if (shape == null ||
+                    shape.sprite == null ||
+                    shape.ignoreCorners != wantIgnore)
+                {
+                    continue;
+                }
+
+                int refEdges = (int)shape.edges & FullMask;
+                int refCorners = EffectiveCorners(refEdges, (int)shape.corners);
+
+                for (int steps = 0; steps < SideCount; steps++)
+                {
+                    if (Rotate(refEdges, steps) != edges)
+                    {
+                        continue;
+                    }
+
+                    if (!shape.ignoreCorners &&
+                        Rotate(refCorners, steps) != effective)
+                    {
+                        continue;
+                    }
+
+                    sprite = shape.sprite;
+                    rotation = RotationFromSteps(steps);
+                    return true;
+                }
+            }
+        }
+
+        sprite = null;
+        rotation = Quaternion.identity;
+        return false;
+    }
+
+    // A diagonal only counts when both sides next to it are connected.
+    // Corner bit i sits between edge bit i and edge bit i + 1.
+    private static int EffectiveCorners(int edges, int corners)
+    {
+        int result = 0;
+
+        for (int i = 0; i < SideCount; i++)
+        {
+            bool sideA = (edges & (1 << i)) != 0;
+            bool sideB = (edges & (1 << ((i + 1) % SideCount))) != 0;
+
+            if (sideA && sideB && (corners & (1 << i)) != 0)
+            {
+                result |= 1 << i;
+            }
+        }
+
+        return result;
+    }
+
+    // Rotates a 4-bit mask clockwise.
+    private static int Rotate(int mask, int steps)
+    {
+        return ((mask << steps) | (mask >> (SideCount - steps))) & FullMask;
+    }
+
+    private static Quaternion RotationFromSteps(int steps)
+    {
+        return Quaternion.Euler(0f, 0f, -90f * steps);
+    }
+
+    [Serializable]
+    public class WallShape
+    {
+        public string name;
+
+        [Tooltip("Edges that connect in the drawing.")]
+        public WallConnections edges;
+
+        [Tooltip("Diagonal walls that are present in the drawing. Only matters for diagonals between two connected edges.")]
+        public WallCorners corners;
+
+        [Tooltip("Use this sprite whatever the diagonals are, unless a more exact shape exists.")]
+        public bool ignoreCorners;
+
+        public Sprite sprite;
     }
 }

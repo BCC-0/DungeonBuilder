@@ -950,13 +950,19 @@ public class BuilderEntity : SaveableEntity
 
         WallOrientation orientation = this.GetWallOrientation();
 
-        this.wallOverlayRenderer.sprite =
-            spriteSet.GetOverlay(
+        if (!spriteSet.TryGetOverlay(
                 WallGrid.Builder.GetConnections(this.wallCell),
-                orientation);
+                WallGrid.Builder.GetCorners(this.wallCell),
+                orientation,
+                out Sprite sprite,
+                out Quaternion rotation))
+        {
+            this.wallOverlayRenderer.sprite = null;
+            return;
+        }
 
-        this.wallOverlayRenderer.transform.localRotation =
-            WallSpriteSet.GetRotation(orientation);
+        this.wallOverlayRenderer.sprite = sprite;
+        this.wallOverlayRenderer.transform.localRotation = rotation;
     }
 
     /// <summary>

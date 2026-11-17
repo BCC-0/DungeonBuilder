@@ -12,20 +12,75 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6772dfa53342c6240abcea7d861d7fc8, type: 3}
   m_Name: WallOutline
   m_EditorClassIdentifier: Assembly-CSharp::WallSpriteSet
-  overlays:
-  - {fileID: 5003946072499004523, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
-  - {fileID: 7356430830990726571, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
-  - {fileID: -6849432310203496455, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
-  - {fileID: 2017686162704893642, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
-  - {fileID: 1315072407535885486, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
-  - {fileID: 2239428859108097413, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
-  - {fileID: -5911844737720681505, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
-  - {fileID: -7717094106454927766, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
-  - {fileID: 1518730536626900859, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
-  - {fileID: 9100399011788748873, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
-  - {fileID: 3211530973273859958, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
-  - {fileID: -2657594330465475589, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
-  - {fileID: 4710281432020501225, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
-  - {fileID: 7645961812278228064, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
-  - {fileID: -7063583622260929205, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
-  - {fileID: 243636480197512316, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  isolated: {fileID: 5003946072499004523, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  shapes:
+  - name: End
+    edges: 1
+    corners: 0
+    ignoreCorners: 0
+    sprite: {fileID: 7356430830990726571, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - name: Straight
+    edges: 5
+    corners: 0
+    ignoreCorners: 0
+    sprite: {fileID: -6849432310203496455, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - name: Corner notch
+    edges: 3
+    corners: 0
+    ignoreCorners: 0
+    sprite: {fileID: 2017686162704893642, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - name: Corner filled
+    edges: 3
+    corners: 1
+    ignoreCorners: 0
+    sprite: {fileID: 1315072407535885486, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - name: T
+    edges: 11
+    corners: 0
+    ignoreCorners: 0
+    sprite: {fileID: 2239428859108097413, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - name: T right corner
+    edges: 11
+    corners: 1
+    ignoreCorners: 0
+    sprite: {fileID: -5911844737720681505, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - name: T left corner
+    edges: 11
+    corners: 8
+    ignoreCorners: 0
+    sprite: {fileID: -1492462155361529070, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - name: T full
+    edges: 11
+    corners: 9
+    ignoreCorners: 0
+    sprite: {fileID: 7906090866108200578, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - name: Cross
+    edges: -1
+    corners: 0
+    ignoreCorners: 0
+    sprite: {fileID: -8490416035374287446, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - name: Cross One Corner
+    edges: -1
+    corners: 1
+    ignoreCorners: 0
+    sprite: {fileID: -2379130354926210386, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - name: Cross Adjacent Corner
+    edges: -1
+    corners: 3
+    ignoreCorners: 0
+    sprite: {fileID: 2061498344424546801, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - name: Cross Diagonal Corner
+    edges: -1
+    corners: 5
+    ignoreCorners: 0
+    sprite: {fileID: -4891624065610973513, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - name: Cross Three Corners
+    edges: -1
+    corners: 7
+    ignoreCorners: 0
+    sprite: {fileID: 203162762702699377, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}
+  - name: Cross All Corners
+    edges: -1
+    corners: -1
+    ignoreCorners: 0
+    sprite: {fileID: -8267941672568321188, guid: 057770b03aeb4d045ab28f6c5de3ed2e, type: 3}

@@ -108,14 +108,18 @@ public class Wall : SaveableEntity
             return;
         }
 
-        this.overlayRenderer.sprite =
-            spriteSet.GetOverlay(
-                WallGrid.Game.GetConnections(this.cell),
-                this.orientation);
+        if (!spriteSet.TryGetOverlay(
+            WallGrid.Game.GetConnections(this.cell),
+            WallGrid.Game.GetCorners(this.cell),
+            this.orientation,
+            out Sprite sprite,
+            out Quaternion rotation))
+        {
+            return;
+        }
 
-        this.overlayRenderer.transform.localRotation =
-            WallSpriteSet.GetRotation(this.orientation);
-
+        this.overlayRenderer.sprite = sprite;
+        this.overlayRenderer.transform.localRotation = rotation;
         this.overlayResolved = true;
     }
 

@@ -26,3 +26,17 @@ public enum WallConnections
     Left = 8,
     All = Up | Right | Down | Left,
 }
+
+/// <summary>
+/// The diagonal neighbours of a wall, in clockwise order so they rotate
+/// the same way as WallConnections.
+/// </summary>
+[Flags]
+public enum WallCorners
+{
+    None = 0,
+    UpRight = 1,
+    DownRight = 2,
+    DownLeft = 4,
+    UpLeft = 8,
+}
