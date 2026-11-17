@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -16,6 +16,10 @@ public sealed class WallGrid
         Vector2Int.right,
         Vector2Int.down,
         Vector2Int.left,
+        new Vector2Int(1, 1),
+        new Vector2Int(1, -1),
+        new Vector2Int(-1, -1),
+        new Vector2Int(-1, 1),
     };
 
     private readonly Dictionary<Vector2Int, Entry> entries =
@@ -106,6 +110,36 @@ public sealed class WallGrid
         }
 
         return connections;
+    }
+
+    /// <summary>
+    /// Gets the diagonal cells of a cell that have a wall.
+    /// </summary>
+    public WallCorners GetCorners(Vector2Int cell)
+    {
+        WallCorners corners = WallCorners.None;
+
+        if (this.entries.ContainsKey(cell + new Vector2Int(1, 1)))
+        {
+            corners |= WallCorners.UpRight;
+        }
+
+        if (this.entries.ContainsKey(cell + new Vector2Int(1, -1)))
+        {
+            corners |= WallCorners.DownRight;
+        }
+
+        if (this.entries.ContainsKey(cell + new Vector2Int(-1, -1)))
+        {
+            corners |= WallCorners.DownLeft;
+        }
+
+        if (this.entries.ContainsKey(cell + new Vector2Int(-1, 1)))
+        {
+            corners |= WallCorners.UpLeft;
+        }
+
+        return corners;
     }
 
     /// <summary>

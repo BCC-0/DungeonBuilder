@@ -26,10 +26,12 @@ public class BuilderEntity : SaveableEntity
     private Vector3 headDownPosition;
 
     private bool isWall;
-    private WallSpriteSet wallSpriteSet;
+    private SpriteRenderer wallOverlayRenderer;
     private float wallCellSize = 1f;
     private Vector2Int wallCell;
     private bool wallRegistered;
+    private bool rotateWallBase;
+    private SpriteRenderer wallBaseRenderer;
 
     /// <summary>
     /// Gets the ID of the entity's prefab.
@@ -541,15 +543,60 @@ public class BuilderEntity : SaveableEntity
     }
 
     /// <summary>
-    /// Remembers that this entity is a wall and reads what it needs to pick a
-    /// sprite from the prefab.
+    /// Remembers that this entity is a wall and copies the overlay child
+    /// object from the prefab, so the overlay can be driven by the
+    /// neighbouring walls in the builder.
     /// </summary>
     /// <param name="source">The wall on the prefab.</param>
     private void InitializeWall(Wall source)
     {
         this.isWall = true;
-        this.wallSpriteSet = source.SpriteSet;
         this.wallCellSize = source.CellSize;
+        this.rotateWallBase = source.RotateSpriteWithOverlay;
+
+        if (this.wallOverlayRenderer != null)
+        {
+            return;
+        }
+
+        SpriteRenderer prefabOverlay = source.OverlayRenderer;
+
+        if (prefabOverlay == null)
+        {
+            Debug.LogWarning(
+                $"BuilderEntity '{this.PrefabID}' has no overlay " +
+                $"renderer on its Wall.");
+
+            return;
+        }
+
+        GameObject overlayObject =
+            Instantiate(
+                prefabOverlay.gameObject,
+                this.transform);
+
+        overlayObject.name = prefabOverlay.gameObject.name;
+
+        overlayObject.transform.localPosition =
+            prefabOverlay.transform.localPosition;
+
+        overlayObject.transform.localRotation =
+            prefabOverlay.transform.localRotation;
+
+        overlayObject.transform.localScale =
+            prefabOverlay.transform.localScale;
+
+        foreach (MonoBehaviour mb in
+                 overlayObject.GetComponentsInChildren<MonoBehaviour>(true))
+        {
+            mb.enabled = false;
+        }
+
+        this.wallOverlayRenderer =
+            overlayObject.GetComponent<SpriteRenderer>();
+
+        this.wallOverlayRenderer.enabled = true;
+        this.wallOverlayRenderer.sprite = null;
     }
 
     private void CopyRuntimeEditableFields(object source)
@@ -854,6 +901,20 @@ public class BuilderEntity : SaveableEntity
     }
 
     /// <summary>
+    /// Immediately refreshes this builder wall's grid registration after its
+    /// position changes. This only updates the builder wall grid.
+    /// </summary>
+    public void RefreshWallPosition()
+    {
+        if (!this.isWall)
+        {
+            return;
+        }
+
+        this.UpdateWallCell();
+    }
+
+    /// <summary>
     /// Keeps this wall registered in the grid cell it is standing in, and
     /// updates the sprite of this wall and its neighbours when the cell changes.
     /// </summary>
@@ -890,29 +951,82 @@ public class BuilderEntity : SaveableEntity
     }
 
     /// <summary>
-    /// Picks the sprite from the neighbouring walls and the chosen orientation.
+    /// Picks the overlay sprite and its rotation from the neighbouring walls
+    /// and the chosen orientation.
     /// </summary>
     private void RefreshWallSprite()
     {
-        SpriteRenderer spriteRenderer =
-            this.GetComponent<SpriteRenderer>();
+        WallSpriteSet spriteSet = WallSpriteSet.Instance;
 
         if (!this.wallRegistered ||
-            this.wallSpriteSet == null ||
-            spriteRenderer == null)
+            spriteSet == null ||
+            this.wallOverlayRenderer == null)
         {
             return;
         }
 
-        Sprite sprite =
-            this.wallSpriteSet.GetSprite(
-                WallGrid.Builder.GetConnections(this.wallCell),
-                this.GetWallOrientation());
+        WallOrientation orientation = this.GetWallOrientation();
 
-        if (sprite != null)
+        if (!spriteSet.TryGetOverlay(
+                WallGrid.Builder.GetConnections(this.wallCell),
+                WallGrid.Builder.GetCorners(this.wallCell),
+                orientation,
+                out Sprite sprite,
+                out Quaternion rotation))
         {
-            spriteRenderer.sprite = sprite;
+            this.wallOverlayRenderer.sprite = null;
+            return;
         }
+
+        this.wallOverlayRenderer.sprite = sprite;
+        this.wallOverlayRenderer.transform.localRotation = rotation;
+        this.ApplyWallBaseRotation(rotation);
+    }
+
+    /// <summary>
+    /// Rotates the base sprite together with the overlay when the wall prefab
+    /// asks for it. The sprite is moved to a child object the first time, so
+    /// the root transform that is saved stays untouched.
+    /// </summary>
+    /// <param name="rotation">The rotation that was chosen for the overlay.</param>
+    private void ApplyWallBaseRotation(Quaternion rotation)
+    {
+        if (!this.rotateWallBase)
+        {
+            return;
+        }
+
+        SpriteRenderer rootRenderer =
+            this.GetComponent<SpriteRenderer>();
+
+        if (rootRenderer == null)
+        {
+            return;
+        }
+
+        if (this.wallBaseRenderer == null)
+        {
+            GameObject baseObject = new GameObject("WallBase");
+            baseObject.transform.SetParent(this.transform, false);
+
+            this.wallBaseRenderer =
+                baseObject.AddComponent<SpriteRenderer>();
+
+            this.wallBaseRenderer.sprite = rootRenderer.sprite;
+            this.wallBaseRenderer.color = rootRenderer.color;
+            this.wallBaseRenderer.sortingLayerID = rootRenderer.sortingLayerID;
+            this.wallBaseRenderer.sortingOrder = rootRenderer.sortingOrder;
+
+            rootRenderer.enabled = false;
+        }
+
+        Vector3 center =
+            this.wallBaseRenderer.sprite != null
+            ? this.wallBaseRenderer.sprite.bounds.center
+            : Vector3.zero;
+
+        this.wallBaseRenderer.transform.localRotation = rotation;
+        this.wallBaseRenderer.transform.localPosition = center - (rotation * center);
     }
 
     /// <summary>

@@ -1,142 +1,162 @@
+﻿using System;
 using UnityEngine;
 
-/// <summary>
-/// The sprites of one wall type. Each field is named after the neighbours the
-/// wall connects to, for example UpRight is a corner with walls above and to
-/// the right of it.
-/// </summary>
 [CreateAssetMenu(fileName = "WallSpriteSet", menuName = "Dungeon/Wall Sprite Set")]
 public class WallSpriteSet : ScriptableObject
 {
-    [Header("No neighbours (chosen by orientation)")]
+    private const string ResourcePath = "WallSpriteSet";
+    private const int SideCount = 4;
+    private const int FullMask = 15;
+
+    private static WallSpriteSet instance;
+    private static bool warned;
+
+    [Tooltip("Used when there are no neighbours. Rotated by the wall orientation.")]
     [SerializeField]
-    private Sprite isolatedUp;
+    private Sprite isolated;
 
     [SerializeField]
-    private Sprite isolatedRight;
+    private WallShape[] shapes = Array.Empty<WallShape>();
 
-    [SerializeField]
-    private Sprite isolatedDown;
-
-    [SerializeField]
-    private Sprite isolatedLeft;
-
-    [Header("One neighbour (end pieces)")]
-    [SerializeField]
-    private Sprite connectedUp;
-
-    [SerializeField]
-    private Sprite connectedRight;
-
-    [SerializeField]
-    private Sprite connectedDown;
-
-    [SerializeField]
-    private Sprite connectedLeft;
-
-    [Header("Two neighbours (straight)")]
-    [SerializeField]
-    private Sprite upDown;
-
-    [SerializeField]
-    private Sprite leftRight;
-
-    [Header("Two neighbours (corners)")]
-    [SerializeField]
-    private Sprite upRight;
-
-    [SerializeField]
-    private Sprite rightDown;
-
-    [SerializeField]
-    private Sprite downLeft;
-
-    [SerializeField]
-    private Sprite leftUp;
-
-    [Header("Three neighbours (T-junctions)")]
-    [SerializeField]
-    private Sprite upRightDown;
-
-    [SerializeField]
-    private Sprite rightDownLeft;
-
-    [SerializeField]
-    private Sprite downLeftUp;
-
-    [SerializeField]
-    private Sprite leftUpRight;
-
-    [Header("Four neighbours (fill)")]
-    [SerializeField]
-    private Sprite allSides;
-
-    /// <summary>
-    /// Gets the sprite for a wall.
-    /// </summary>
-    /// <param name="connections">The sides that connect to another wall.</param>
-    /// <param name="orientation">The orientation to use when there are no connections.</param>
-    /// <returns>The sprite, or null when the set has no sprite for this case.</returns>
-    public Sprite GetSprite(
-        WallConnections connections,
-        WallOrientation orientation)
+    public static WallSpriteSet Instance
     {
-        switch (connections)
+        get
         {
-            case WallConnections.None:
-                return this.GetIsolatedSprite(orientation);
-            case WallConnections.Up:
-                return this.connectedUp;
-            case WallConnections.Right:
-                return this.connectedRight;
-            case WallConnections.Down:
-                return this.connectedDown;
-            case WallConnections.Left:
-                return this.connectedLeft;
-            case WallConnections.Up | WallConnections.Down:
-                return this.upDown;
-            case WallConnections.Left | WallConnections.Right:
-                return this.leftRight;
-            case WallConnections.Up | WallConnections.Right:
-                return this.upRight;
-            case WallConnections.Right | WallConnections.Down:
-                return this.rightDown;
-            case WallConnections.Down | WallConnections.Left:
-                return this.downLeft;
-            case WallConnections.Left | WallConnections.Up:
-                return this.leftUp;
-            case WallConnections.Up | WallConnections.Right | WallConnections.Down:
-                return this.upRightDown;
-            case WallConnections.Right | WallConnections.Down | WallConnections.Left:
-                return this.rightDownLeft;
-            case WallConnections.Down | WallConnections.Left | WallConnections.Up:
-                return this.downLeftUp;
-            case WallConnections.Left | WallConnections.Up | WallConnections.Right:
-                return this.leftUpRight;
-            case WallConnections.All:
-                return this.allSides;
-            default:
-                return null;
+            if (instance == null)
+            {
+                instance = Resources.Load<WallSpriteSet>(ResourcePath);
+            }
+
+            if (instance == null)
+            {
+                WallSpriteSet[] all = Resources.LoadAll<WallSpriteSet>(string.Empty);
+
+                if (all.Length > 0)
+                {
+                    instance = all[0];
+                }
+            }
+
+            if (instance == null && !warned)
+            {
+                warned = true;
+                Debug.LogError("No WallSpriteSet asset found in a Resources folder.");
+            }
+
+            return instance;
         }
     }
 
     /// <summary>
-    /// Gets the sprite of a wall without neighbours.
+    /// Picks the overlay sprite and rotation. Connections always win; the
+    /// orientation is only used when there are no neighbours.
     /// </summary>
-    /// <param name="orientation">The orientation of the wall.</param>
-    /// <returns>The sprite for the orientation.</returns>
-    private Sprite GetIsolatedSprite(WallOrientation orientation)
+    public bool TryGetOverlay(
+        WallConnections connections,
+        WallCorners corners,
+        WallOrientation orientation,
+        out Sprite sprite,
+        out Quaternion rotation)
     {
-        switch (orientation)
+        int edges = (int)connections & FullMask;
+
+        if (edges == 0)
         {
-            case WallOrientation.Up:
-                return this.isolatedUp;
-            case WallOrientation.Right:
-                return this.isolatedRight;
-            case WallOrientation.Left:
-                return this.isolatedLeft;
-            default:
-                return this.isolatedDown;
+            sprite = this.isolated;
+            rotation = RotationFromSteps((int)orientation);
+            return sprite != null;
         }
+
+        int effective = EffectiveCorners(edges, (int)corners);
+
+        // Pass 0: shapes that care about the diagonals.
+        // Pass 1: shapes that ignore them (fallback).
+        for (int pass = 0; pass < 2; pass++)
+        {
+            bool wantIgnore = pass == 1;
+
+            foreach (WallShape shape in this.shapes)
+            {
+                if (shape == null ||
+                    shape.sprite == null ||
+                    shape.ignoreCorners != wantIgnore)
+                {
+                    continue;
+                }
+
+                int refEdges = (int)shape.edges & FullMask;
+                int refCorners = EffectiveCorners(refEdges, (int)shape.corners);
+
+                for (int steps = 0; steps < SideCount; steps++)
+                {
+                    if (Rotate(refEdges, steps) != edges)
+                    {
+                        continue;
+                    }
+
+                    if (!shape.ignoreCorners &&
+                        Rotate(refCorners, steps) != effective)
+                    {
+                        continue;
+                    }
+
+                    sprite = shape.sprite;
+                    rotation = RotationFromSteps(steps);
+                    return true;
+                }
+            }
+        }
+
+        sprite = null;
+        rotation = Quaternion.identity;
+        return false;
+    }
+
+    // A diagonal only counts when both sides next to it are connected.
+    // Corner bit i sits between edge bit i and edge bit i + 1.
+    private static int EffectiveCorners(int edges, int corners)
+    {
+        int result = 0;
+
+        for (int i = 0; i < SideCount; i++)
+        {
+            bool sideA = (edges & (1 << i)) != 0;
+            bool sideB = (edges & (1 << ((i + 1) % SideCount))) != 0;
+
+            if (sideA && sideB && (corners & (1 << i)) != 0)
+            {
+                result |= 1 << i;
+            }
+        }
+
+        return result;
+    }
+
+    // Rotates a 4-bit mask clockwise.
+    private static int Rotate(int mask, int steps)
+    {
+        return ((mask << steps) | (mask >> (SideCount - steps))) & FullMask;
+    }
+
+    private static Quaternion RotationFromSteps(int steps)
+    {
+        return Quaternion.Euler(0f, 0f, -90f * steps);
+    }
+
+    [Serializable]
+    public class WallShape
+    {
+        public string name;
+
+        [Tooltip("Edges that connect in the drawing.")]
+        public WallConnections edges;
+
+        [Tooltip("Diagonal walls that are present in the drawing. Only matters for diagonals between two connected edges.")]
+        public WallCorners corners;
+
+        [Tooltip("Use this sprite whatever the diagonals are, unless a more exact shape exists.")]
+        public bool ignoreCorners;
+
+        public Sprite sprite;
     }
 }

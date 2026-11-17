@@ -1,4 +1,5 @@
-﻿using DG.Tweening;
+﻿
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -15,6 +16,9 @@ public class ItemBarSlot : MonoBehaviour
 
     [SerializeField]
     private Image itemImage;
+
+    [SerializeField]
+    private Image wallOverlayImage;
 
     private InventoryController inventoryController;
     private Tween itemTween;
@@ -65,6 +69,12 @@ public class ItemBarSlot : MonoBehaviour
         if (this.item == null)
         {
             this.itemImage.gameObject.SetActive(false);
+
+            if (this.wallOverlayImage != null)
+            {
+                this.wallOverlayImage.gameObject.SetActive(false);
+            }
+
             return;
         }
 
@@ -72,6 +82,8 @@ public class ItemBarSlot : MonoBehaviour
 
         this.itemImage.gameObject.SetActive(true);
         this.itemImage.sprite = this.item.Sprite;
+
+        this.UpdateWallOverlay();
 
         RectTransform imageTransform = this.itemImage.rectTransform;
         RectTransform parentRect = imageTransform.parent as RectTransform;
@@ -121,6 +133,43 @@ public class ItemBarSlot : MonoBehaviour
     }
 
     /// <summary>
+    /// Updates the wall overlay sprite based on the item's prefab.
+    /// Disables the overlay if the item does not have one.
+    /// </summary>
+    private void UpdateWallOverlay()
+    {
+        if (this.wallOverlayImage == null)
+        {
+            return;
+        }
+
+        this.wallOverlayImage.sprite = null;
+        this.wallOverlayImage.gameObject.SetActive(false);
+
+        if (this.item == null || this.item.Prefab == null)
+        {
+            return;
+        }
+
+        Wall wall = this.item.Prefab.GetComponentInChildren<Wall>(true);
+
+        if (wall == null || wall.OverlayRenderer == null)
+        {
+            return;
+        }
+
+        Sprite overlaySprite = wall.OverlayRenderer.sprite;
+
+        if (overlaySprite == null)
+        {
+            return;
+        }
+
+        this.wallOverlayImage.sprite = overlaySprite;
+        this.wallOverlayImage.gameObject.SetActive(true);
+    }
+
+    /// <summary>
     /// Selects this slot for assigning an item.
     /// </summary>
     public void Select()
@@ -161,12 +210,18 @@ public class ItemBarSlot : MonoBehaviour
         if (this.item == null)
         {
             this.itemImage.gameObject.SetActive(false);
+
+            if (this.wallOverlayImage != null)
+            {
+                this.wallOverlayImage.gameObject.SetActive(false);
+            }
         }
         else
         {
             this.itemImage.gameObject.SetActive(true);
-
             this.itemImage.sprite = this.item.Sprite;
+
+            this.UpdateWallOverlay();
         }
     }
 
@@ -179,5 +234,10 @@ public class ItemBarSlot : MonoBehaviour
     private void Awake()
     {
         this.originalImageSize = this.itemImage.rectTransform.rect.size;
+
+        if (this.wallOverlayImage != null)
+        {
+            this.wallOverlayImage.gameObject.SetActive(false);
+        }
     }
 }
