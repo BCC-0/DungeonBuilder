@@ -159,6 +159,17 @@ public class CameraController : MonoBehaviour
         this.UpdateZoomText();
     }
 
+    /// <summary>
+    /// Immediately stops all camera movement and resets input state.
+    /// </summary>
+    public void CancelMovement()
+    {
+        this.cameraMoveDirection = Vector2.zero;
+        this.inertiaVelocity = Vector3.zero;
+        this.lastPointerPosition = null;
+        this.isPanning = false;
+    }
+
     private void FixedUpdate()
     {
         Vector3 movement = this.cameraMoveDirection * this.moveSpeed * Time.deltaTime;

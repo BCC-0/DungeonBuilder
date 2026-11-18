@@ -105,11 +105,12 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     /// <param name="ctx">The input context.</param>
     public void OnOpenInventory(InputAction.CallbackContext ctx)
     {
-        if (this.IsTyping())
+        if (!ctx.performed || this.IsTyping())
         {
             return;
         }
 
+        this.CancelCameraInput();
         this.inventoryController.OpenInventory();
     }
 
@@ -232,10 +233,12 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     {
         if (this.IsTyping())
         {
+            this.CancelCameraInput();
             return;
         }
 
         Vector2 dir = ctx.ReadValue<Vector2>();
+
         if (ctx.canceled)
         {
             dir = Vector2.zero;
@@ -331,6 +334,12 @@ public class BuilderDesktopInputHandler : MonoBehaviour
 
     private void Update()
     {
+        if (this.IsTyping())
+        {
+            this.CancelCameraInput();
+            return;
+        }
+
         this.HandleMouseMovement();
         this.HandleCameraPan();
     }
@@ -352,6 +361,17 @@ public class BuilderDesktopInputHandler : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Cancels all active input that controls the camera.
+    /// </summary>
+    private void CancelCameraInput()
+    {
+        this.isPrimaryHeld = false;
+        this.isMiddleMouseHeld = false;
+
+        this.cameraController.CancelMovement();
+    }
+
     private bool IsPointerOverUI(Vector2 pos)
     {
         PointerEventData eventData = new PointerEventData(EventSystem.current)
@@ -370,5 +390,13 @@ public class BuilderDesktopInputHandler : MonoBehaviour
         return selected != null &&
             (selected.GetComponent<TMP_InputField>() != null ||
              selected.GetComponent<InputField>() != null);
+    }
+
+    private void OnApplicationFocus(bool hasFocus)
+    {
+        if (!hasFocus)
+        {
+            this.CancelCameraInput();
+        }
     }
 }
