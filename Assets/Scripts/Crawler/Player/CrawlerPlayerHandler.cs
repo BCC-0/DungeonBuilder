@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿
+using System.Collections;
 using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
@@ -68,6 +69,28 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
 
     private Coroutine inventoryBreathingCoroutine;
 
+    [Header("Death Animation")]
+    [SerializeField]
+    private SpriteRenderer playerSpriteRenderer;
+
+    [SerializeField]
+    private string deathAnimationTrigger = "Die";
+
+    [SerializeField]
+    private string deathAnimationState = "Death";
+
+    [SerializeField]
+    private float deathAnimationTimeout = 5f;
+
+    [Header("Death UI")]
+    [SerializeField]
+    private CanvasGroup deathCanvasGroup;
+
+    [SerializeField]
+    private float deathFadeDuration = 1f;
+
+    private bool isDead;
+
     /// <summary>
     /// Gets the last direction this player was facing.
     /// </summary>
@@ -90,7 +113,7 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
     /// <param name="info">The damage details.</param>
     public void TakeDamage(DamageInfo info)
     {
-        if (!TeamUtility.CanDamage(info.Team, this.Team))
+        if (this.isDead || !TeamUtility.CanDamage(info.Team, this.Team))
         {
             return;
         }
@@ -101,6 +124,11 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
         {
             this.ApplyKnockback(info.Direction, info.Knockback);
         }
+
+        if (this.playerData.CurrentHealth <= 0)
+        {
+            this.Die();
+        }
     }
 
     /// <summary>
@@ -110,7 +138,7 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
     /// <param name="force">The strength of the push.</param>
     public void ApplyKnockback(Vector2 direction, float force)
     {
-        if (force <= 0f)
+        if (force <= 0f || this.isDead)
         {
             return;
         }
@@ -144,7 +172,7 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
     /// </summary>
     public void Attack()
     {
-        if (this.CanMove)
+        if (this.CanMove && !this.isDead)
         {
             this.playerData.UseWeapon(this);
         }
@@ -155,7 +183,7 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
     /// </summary>
     public void UseTool()
     {
-        if (this.CanMove)
+        if (this.CanMove && !this.isDead)
         {
             this.playerData.UseTool(this);
         }
@@ -167,7 +195,7 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
     /// <returns>Returns whether the inventory will be open after this call.</returns>
     public bool OpenInventory()
     {
-        if (this.inventoryTransitioning)
+        if (this.inventoryTransitioning || this.isDead)
         {
             return this.playerData.IsInventoryOpen;
         }
@@ -233,7 +261,6 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
     {
         this.overrideController["Use"] = clip;
 
-        // this.animator.Update(0f);
         this.animator.SetTrigger("Use");
     }
 
@@ -243,7 +270,183 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
     /// <param name="time">The time to pause the player.</param>
     public void PausePlayerMovement(float time)
     {
-        this.StartCoroutine(this.PlayerPauser(time));
+        if (!this.isDead)
+        {
+            this.StartCoroutine(this.PlayerPauser(time));
+        }
+    }
+
+    /// <summary>
+    /// Handles the player's death and starts the death sequence.
+    /// </summary>
+    public void Die()
+    {
+        if (this.isDead)
+        {
+            return;
+        }
+
+        this.isDead = true;
+
+        this.SetCanMove(false);
+        this.movementDirection = Vector2.zero;
+        this.rigidbody2d.linearVelocity = Vector2.zero;
+
+        // Ensure gameplay isn't paused from an open inventory.
+        Time.timeScale = 1f;
+
+        if (this.inventoryBreathingCoroutine != null)
+        {
+            this.StopCoroutine(this.inventoryBreathingCoroutine);
+            this.inventoryBreathingCoroutine = null;
+        }
+
+        this.inventoryTween?.Kill();
+        this.inventoryTween = null;
+
+        this.playerData.HideInventory();
+        this.inventoryTransitioning = false;
+
+        this.inventoryCanvasGroup.interactable = false;
+        this.inventoryCanvasGroup.blocksRaycasts = false;
+
+        this.StartCoroutine(this.DeathSequence());
+    }
+
+    /// <summary>
+    /// Plays the death animation, hides the player,
+    /// and fades in the game over screen.
+    /// </summary>
+    private IEnumerator DeathSequence()
+    {
+        this.animator.updateMode = AnimatorUpdateMode.UnscaledTime;
+
+        bool canPlayDeathAnimation = true;
+
+        // Check that the death animation state exists.
+        // HasState expects the full state path, e.g. "Base Layer.Death".
+        string fullStatePath = "Base Layer." + this.deathAnimationState;
+        int fullStateHash = Animator.StringToHash(fullStatePath);
+
+        if (!this.animator.HasState(0, fullStateHash))
+        {
+            Debug.LogError(
+                $"Death animation state '{fullStatePath}' does not exist. " +
+                "Skipping the animation and continuing to Game Over."
+            );
+
+            canPlayDeathAnimation = false;
+        }
+
+        // Check that the death trigger exists.
+        bool hasDeathTrigger = false;
+
+        foreach (AnimatorControllerParameter parameter in this.animator.parameters)
+        {
+            if (parameter.name == this.deathAnimationTrigger &&
+                parameter.type == AnimatorControllerParameterType.Trigger)
+            {
+                hasDeathTrigger = true;
+                break;
+            }
+        }
+
+        if (!hasDeathTrigger)
+        {
+            Debug.LogError(
+                $"Death animation trigger '{this.deathAnimationTrigger}' " +
+                "does not exist. Skipping the animation and continuing to Game Over."
+            );
+
+            canPlayDeathAnimation = false;
+        }
+
+        // Play and wait for the death animation if it is configured correctly.
+        if (canPlayDeathAnimation)
+        {
+            this.animator.SetTrigger(this.deathAnimationTrigger);
+
+            int deathStateHash = Animator.StringToHash(this.deathAnimationState);
+            float elapsed = 0f;
+            bool animationStarted = false;
+
+            while (elapsed < 1f)
+            {
+                if (this.animator.GetCurrentAnimatorStateInfo(0).shortNameHash
+                    == deathStateHash)
+                {
+                    animationStarted = true;
+                    break;
+                }
+
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            if (!animationStarted)
+            {
+                Debug.LogWarning(
+                    $"Death animation '{this.deathAnimationState}' was not entered. " +
+                    "Continuing to Game Over."
+                );
+            }
+            else
+            {
+                elapsed = 0f;
+                bool animationFinished = false;
+
+                while (elapsed < this.deathAnimationTimeout)
+                {
+                    AnimatorStateInfo state =
+                        this.animator.GetCurrentAnimatorStateInfo(0);
+
+                    if (state.shortNameHash == deathStateHash &&
+                        state.normalizedTime >= 1f)
+                    {
+                        animationFinished = true;
+                        break;
+                    }
+
+                    elapsed += Time.unscaledDeltaTime;
+                    yield return null;
+                }
+
+                if (!animationFinished)
+                {
+                    Debug.LogWarning(
+                        $"Death animation '{this.deathAnimationState}' timed out. " +
+                        "Continuing to Game Over."
+                    );
+                }
+            }
+        }
+
+        // Hide the player.
+        if (this.playerSpriteRenderer != null)
+        {
+            this.playerSpriteRenderer.enabled = false;
+        }
+
+        this.animator.enabled = false;
+
+        // Pause gameplay.
+        Time.timeScale = 0f;
+
+        // Show the Game Over screen.
+        this.deathCanvasGroup.alpha = 0f;
+        this.deathCanvasGroup.interactable = false;
+        this.deathCanvasGroup.blocksRaycasts = false;
+        this.deathCanvasGroup.gameObject.SetActive(true);
+
+        this.deathCanvasGroup
+            .DOFade(1f, this.deathFadeDuration)
+            .SetEase(Ease.OutSine)
+            .SetUpdate(true)
+            .OnComplete(() =>
+            {
+                this.deathCanvasGroup.interactable = true;
+                this.deathCanvasGroup.blocksRaycasts = true;
+            });
     }
 
     private void OpenInventorySequence()
@@ -428,6 +631,11 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
         this.inventoryCanvasGroup.alpha = 0f;
         this.inventoryCanvasGroup.interactable = false;
         this.inventoryCanvasGroup.blocksRaycasts = false;
+
+        this.deathCanvasGroup.alpha = 0f;
+        this.deathCanvasGroup.interactable = false;
+        this.deathCanvasGroup.blocksRaycasts = false;
+        this.deathCanvasGroup.gameObject.SetActive(false);
     }
 
     private void Update()
@@ -437,9 +645,10 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
 
     private void FixedUpdate()
     {
-        if (this.CanMove)
+        if (this.CanMove && !this.isDead)
         {
-            Vector2 targetPosition = this.rigidbody2d.position + (this.movementDirection * this.playerData.MoveSpeed * Time.fixedDeltaTime);
+            Vector2 targetPosition = this.rigidbody2d.position +
+                (this.movementDirection * this.playerData.MoveSpeed * Time.fixedDeltaTime);
 
             this.rigidbody2d.MovePosition(targetPosition);
         }
@@ -447,11 +656,17 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
+        if (this.isDead)
+        {
+            return;
+        }
+
         GameObject gameObject = collision.gameObject;
 
         if (gameObject.CompareTag("Item"))
         {
             ItemObject itemObject = gameObject.GetComponent<ItemObject>();
+
             if (itemObject == null)
             {
                 Debug.LogError("Item object doesn't include ItemObject script!");
@@ -466,7 +681,7 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
 
     private void UpdateAnimator()
     {
-        if (!this.CanMove)
+        if (!this.CanMove || this.isDead)
         {
             return;
         }

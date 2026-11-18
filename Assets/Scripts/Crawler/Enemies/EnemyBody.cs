@@ -41,6 +41,7 @@ public abstract class EnemyBody : SaveableEntity, IDamageable
     /// <summary>
     /// The head that is attached to this body.
     /// </summary>
+    [SerializeField]
     [SaveField(referenceMode: ReferenceMode.Consuming)]
     private EnemyHead head;
 
