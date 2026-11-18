@@ -1,4 +1,5 @@
-﻿using System;
+﻿
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -32,6 +33,10 @@ public class BuilderEntity : SaveableEntity
     private bool wallRegistered;
     private bool rotateWallBase;
     private SpriteRenderer wallBaseRenderer;
+
+    private Sprite wallCornerSprite;
+    private Sprite wallInnerCornerSprite;
+    private Sprite wallBaseSprite;
 
     /// <summary>
     /// Gets the ID of the entity's prefab.
@@ -553,6 +558,8 @@ public class BuilderEntity : SaveableEntity
         this.isWall = true;
         this.wallCellSize = source.CellSize;
         this.rotateWallBase = source.RotateSpriteWithOverlay;
+        this.wallCornerSprite = source.CornerSprite;
+        this.wallInnerCornerSprite = source.InnerCornerSprite;
 
         if (this.wallOverlayRenderer != null)
         {
@@ -966,10 +973,12 @@ public class BuilderEntity : SaveableEntity
         }
 
         WallOrientation orientation = this.GetWallOrientation();
+        WallConnections connections = WallGrid.Builder.GetConnections(this.wallCell);
+        WallCorners corners = WallGrid.Builder.GetCorners(this.wallCell);
 
         if (!spriteSet.TryGetOverlay(
-                WallGrid.Builder.GetConnections(this.wallCell),
-                WallGrid.Builder.GetCorners(this.wallCell),
+                connections,
+                corners,
                 orientation,
                 out Sprite sprite,
                 out Quaternion rotation))
@@ -980,16 +989,33 @@ public class BuilderEntity : SaveableEntity
 
         this.wallOverlayRenderer.sprite = sprite;
         this.wallOverlayRenderer.transform.localRotation = rotation;
-        this.ApplyWallBaseRotation(rotation);
+        this.ApplyWallBaseRotation(
+            spriteSet,
+            orientation,
+            rotation,
+            connections,
+            corners);
     }
 
     /// <summary>
     /// Rotates the base sprite together with the overlay when the wall prefab
-    /// asks for it. The sprite is moved to a child object the first time, so
-    /// the root transform that is saved stays untouched.
+    /// asks for it. On an outer or inner corner the matching corner sprite is
+    /// used instead of the base sprite, when one is set. Inner corner sprites
+    /// are used directly, without an additional 180-degree rotation. The
+    /// sprite is moved to a child object the first time, so the root transform
+    /// that is saved stays untouched.
     /// </summary>
-    /// <param name="rotation">The rotation that was chosen for the overlay.</param>
-    private void ApplyWallBaseRotation(Quaternion rotation)
+    /// <param name="spriteSet">The sprites that pick the rotations.</param>
+    /// <param name="orientation">The orientation chosen for this wall.</param>
+    /// <param name="overlayRotation">The rotation that was chosen for the overlay.</param>
+    /// <param name="connections">The sides that connect to another wall.</param>
+    /// <param name="corners">The diagonals that contain a wall.</param>
+    private void ApplyWallBaseRotation(
+        WallSpriteSet spriteSet,
+        WallOrientation orientation,
+        Quaternion overlayRotation,
+        WallConnections connections,
+        WallCorners corners)
     {
         if (!this.rotateWallBase)
         {
@@ -1012,13 +1038,39 @@ public class BuilderEntity : SaveableEntity
             this.wallBaseRenderer =
                 baseObject.AddComponent<SpriteRenderer>();
 
-            this.wallBaseRenderer.sprite = rootRenderer.sprite;
+            this.wallBaseSprite = rootRenderer.sprite;
             this.wallBaseRenderer.color = rootRenderer.color;
             this.wallBaseRenderer.sortingLayerID = rootRenderer.sortingLayerID;
             this.wallBaseRenderer.sortingOrder = rootRenderer.sortingOrder;
 
             rootRenderer.enabled = false;
         }
+
+        Quaternion rotation = overlayRotation;
+        Sprite chosenSprite = this.wallBaseSprite;
+
+        if (spriteSet.TryGetCornerRotation(
+                connections,
+                corners,
+                orientation,
+                out WallCornerKind kind,
+                out Quaternion cornerRotation))
+        {
+            rotation = cornerRotation;
+
+            if (kind == WallCornerKind.Outer &&
+                this.wallCornerSprite != null)
+            {
+                chosenSprite = this.wallCornerSprite;
+            }
+            else if (kind == WallCornerKind.Inner &&
+                     this.wallInnerCornerSprite != null)
+            {
+                chosenSprite = this.wallInnerCornerSprite;
+            }
+        }
+
+        this.wallBaseRenderer.sprite = chosenSprite;
 
         Vector3 center =
             this.wallBaseRenderer.sprite != null

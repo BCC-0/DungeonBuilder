@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿
+using System.Collections;
 using UnityEngine;
 
 /// <summary>
@@ -29,6 +30,25 @@ public class Wall : SaveableEntity
     [SaveField]
     [SerializeField]
     private WallOrientation orientation = WallOrientation.Up;
+
+    [Tooltip("Optional. Replaces the base sprite on an outer corner. Used as it is " +
+             "on an outer corner (two adjacent connections with a wall on the " +
+             "diagonal between them). Only used when Rotate Sprite With Overlay " +
+             "is enabled. Draw it in the same orientation as the two-sided " +
+             "corner shape in the WallSpriteSet.")]
+    [SerializeField]
+    private Sprite cornerSprite;
+
+    [Tooltip("Optional. Replaces the base sprite on an inner corner. Used directly " +
+             "without additional rotation. An inner corner has two adjacent " +
+             "connections with no wall on the diagonal, or connections on all " +
+             "four sides with one diagonal missing. Only used when Rotate Sprite " +
+             "With Overlay is enabled. Draw it in the orientation you want it " +
+             "to appear.")]
+    [SerializeField]
+    private Sprite innerCornerSprite;
+
+    private Sprite baseSprite;
 
     private Vector2Int cell;
     private bool registered;
@@ -63,6 +83,16 @@ public class Wall : SaveableEntity
     /// Gets a value indicating whether the overlay is fixed.
     /// </summary>
     public bool IsFrozen => this.frozen;
+
+    /// <summary>
+    /// Gets the optional sprite used instead of the base sprite on outer corners.
+    /// </summary>
+    public Sprite CornerSprite => this.cornerSprite;
+
+    /// <summary>
+    /// Gets the optional sprite used instead of the base sprite on inner corners.
+    /// </summary>
+    public Sprite InnerCornerSprite => this.innerCornerSprite;
 
     /// <summary>
     /// Registers the wall once all entities of the map exist.
@@ -119,9 +149,12 @@ public class Wall : SaveableEntity
             return;
         }
 
+        WallConnections connections = WallGrid.Game.GetConnections(this.cell);
+        WallCorners corners = WallGrid.Game.GetCorners(this.cell);
+
         if (!spriteSet.TryGetOverlay(
-            WallGrid.Game.GetConnections(this.cell),
-            WallGrid.Game.GetCorners(this.cell),
+            connections,
+            corners,
             this.orientation,
             out Sprite sprite,
             out Quaternion rotation))
@@ -131,7 +164,7 @@ public class Wall : SaveableEntity
 
         this.overlayRenderer.sprite = sprite;
         this.overlayRenderer.transform.localRotation = rotation;
-        this.ApplyBaseRotation(rotation);
+        this.ApplyBaseRotation(spriteSet, rotation, connections, corners);
         this.overlayResolved = true;
     }
 
@@ -174,19 +207,64 @@ public class Wall : SaveableEntity
     }
 
     /// <summary>
-    /// Rotates the base sprite together with the overlay when enabled. The
-    /// sprite is rotated around its visual center instead of its pivot, so the
-    /// position is corrected for the offset between the two.
+    /// Rotates the base sprite together with the overlay when enabled. On an
+    /// outer or inner corner the matching corner sprite is used instead of the
+    /// base sprite, when one is set. Inner corner sprites are used directly,
+    /// without an additional 180-degree rotation. The sprite is rotated around
+    /// its visual center instead of its pivot, so the position is corrected for
+    /// the offset between the two.
     /// </summary>
-    /// <param name="rotation">The rotation that was chosen for the overlay.</param>
-    private void ApplyBaseRotation(Quaternion rotation)
+    /// <param name="spriteSet">The sprites that pick the rotations.</param>
+    /// <param name="overlayRotation">The rotation that was chosen for the overlay.</param>
+    /// <param name="connections">The sides that connect to another wall.</param>
+    /// <param name="corners">The diagonals that contain a wall.</param>
+    private void ApplyBaseRotation(
+        WallSpriteSet spriteSet,
+        Quaternion overlayRotation,
+        WallConnections connections,
+        WallCorners corners)
     {
         if (!this.rotateSpriteWithOverlay ||
-            this.SpriteRenderer == null ||
-            this.SpriteRenderer.sprite == null)
+            this.SpriteRenderer == null)
         {
             return;
         }
+
+        if (this.baseSprite == null)
+        {
+            this.baseSprite = this.SpriteRenderer.sprite;
+        }
+
+        if (this.baseSprite == null)
+        {
+            return;
+        }
+
+        Quaternion rotation = overlayRotation;
+        Sprite chosenSprite = this.baseSprite;
+
+        if (spriteSet.TryGetCornerRotation(
+                connections,
+                corners,
+                this.orientation,
+                out WallCornerKind kind,
+                out Quaternion cornerRotation))
+        {
+            rotation = cornerRotation;
+
+            if (kind == WallCornerKind.Outer &&
+                this.cornerSprite != null)
+            {
+                chosenSprite = this.cornerSprite;
+            }
+            else if (kind == WallCornerKind.Inner &&
+                     this.innerCornerSprite != null)
+            {
+                chosenSprite = this.innerCornerSprite;
+            }
+        }
+
+        this.SpriteRenderer.sprite = chosenSprite;
 
         Transform baseTransform = this.SpriteRenderer.transform;
 
