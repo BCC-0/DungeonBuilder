@@ -89,6 +89,9 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
     [SerializeField]
     private float deathFadeDuration = 1f;
 
+    [SerializeField]
+    private float deathSpriteFadeDuration = 1f;
+
     private bool isDead;
 
     /// <summary>
@@ -317,6 +320,7 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
     /// Plays the death animation, hides the player,
     /// and fades in the game over screen.
     /// </summary>
+
     private IEnumerator DeathSequence()
     {
         this.animator.updateMode = AnimatorUpdateMode.UnscaledTime;
@@ -324,7 +328,6 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
         bool canPlayDeathAnimation = true;
 
         // Check that the death animation state exists.
-        // HasState expects the full state path, e.g. "Base Layer.Death".
         string fullStatePath = "Base Layer." + this.deathAnimationState;
         int fullStateHash = Animator.StringToHash(fullStatePath);
 
@@ -361,7 +364,7 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
             canPlayDeathAnimation = false;
         }
 
-        // Play and wait for the death animation if it is configured correctly.
+        // Play and wait for the death animation if configured correctly.
         if (canPlayDeathAnimation)
         {
             this.animator.SetTrigger(this.deathAnimationTrigger);
@@ -421,16 +424,22 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
             }
         }
 
-        // Hide the player.
+        // Pause gameplay before fading out the player.
+        Time.timeScale = 0f;
+
+        // Fade out the player using unscaled time.
         if (this.playerSpriteRenderer != null)
         {
+            yield return this.playerSpriteRenderer
+                .DOFade(0f, this.deathSpriteFadeDuration)
+                .SetEase(Ease.OutSine)
+                .SetUpdate(true)
+                .WaitForCompletion();
+
             this.playerSpriteRenderer.enabled = false;
         }
 
         this.animator.enabled = false;
-
-        // Pause gameplay.
-        Time.timeScale = 0f;
 
         // Show the Game Over screen.
         this.deathCanvasGroup.alpha = 0f;
@@ -448,6 +457,7 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
                 this.deathCanvasGroup.blocksRaycasts = true;
             });
     }
+
 
     private void OpenInventorySequence()
     {
