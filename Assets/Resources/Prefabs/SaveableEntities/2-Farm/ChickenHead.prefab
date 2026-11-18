@@ -70,7 +70,7 @@ MonoBehaviour:
   eggDamage: 1
   eggKnockback: 5
   eggPrefab: {fileID: 7781836826731624205, guid: 1a2b117329b01fb4d8f18793fa77d8a1, type: 3}
-  eggSpawnOffset: {x: 0, y: 0.5}
+  eggSpawnOffset: {x: 0, y: 0.3}
   eggSpawnDelay: 0.2
   animator: {fileID: 4110574955272484897}
   minAmbientInterval: 4

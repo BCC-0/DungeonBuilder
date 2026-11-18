@@ -253,14 +253,6 @@ public class MapEditorManager : MonoBehaviour
     /// </summary>
     public void OnCancelMove() => this.ActiveController.OnCancelMove();
 
-    /// <summary>
-    /// Rotates the currently selected items.
-    /// </summary>
-    public void OnRotateSelection()
-    {
-        Debug.Log("Rotate");
-    }
-
     private void Awake()
     {
         Instance = this;
