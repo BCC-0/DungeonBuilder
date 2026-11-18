@@ -6,7 +6,9 @@ using UnityEngine;
 /// Keeps track of the grid cells that contain a wall, so walls can find their
 /// neighbours and update their sprite when a neighbour appears, moves or is
 /// removed. The builder and the game each have their own grid, because builder
-/// entities and real walls never connect to each other.
+/// entities and real walls never connect to each other. A cell can hold more
+/// than one wall, for example in the builder while a wall is being moved over
+/// another wall, so removing one wall never hides the others.
 /// </summary>
 public sealed class WallGrid
 {
@@ -22,8 +24,8 @@ public sealed class WallGrid
         new Vector2Int(-1, 1),
     };
 
-    private readonly Dictionary<Vector2Int, Entry> entries =
-        new Dictionary<Vector2Int, Entry>();
+    private readonly Dictionary<Vector2Int, List<Entry>> entries =
+        new Dictionary<Vector2Int, List<Entry>>();
 
     private WallGrid()
     {
@@ -55,26 +57,40 @@ public sealed class WallGrid
     }
 
     /// <summary>
-    /// Registers a wall in a cell.
+    /// Registers a wall in a cell. Walls that are already in the cell stay
+    /// registered.
     /// </summary>
     /// <param name="cell">The cell the wall is in.</param>
     /// <param name="owner">The object that owns the wall.</param>
     /// <param name="refresh">The action that updates the sprite of the wall.</param>
     public void Register(Vector2Int cell, object owner, Action refresh)
     {
-        this.entries[cell] = new Entry(owner, refresh);
+        if (!this.entries.TryGetValue(cell, out List<Entry> list))
+        {
+            list = new List<Entry>();
+            this.entries[cell] = list;
+        }
+
+        list.RemoveAll(e => e.Owner == owner);
+        list.Add(new Entry(owner, refresh));
     }
 
     /// <summary>
-    /// Removes a wall from a cell. Nothing happens when another wall has
-    /// taken over the cell.
+    /// Removes a wall from a cell. Other walls in the same cell stay
+    /// registered, so the cell only becomes empty when its last wall is gone.
     /// </summary>
     /// <param name="cell">The cell the wall was in.</param>
     /// <param name="owner">The object that owns the wall.</param>
     public void Unregister(Vector2Int cell, object owner)
     {
-        if (this.entries.TryGetValue(cell, out Entry entry) &&
-            entry.Owner == owner)
+        if (!this.entries.TryGetValue(cell, out List<Entry> list))
+        {
+            return;
+        }
+
+        list.RemoveAll(e => e.Owner == owner);
+
+        if (list.Count == 0)
         {
             this.entries.Remove(cell);
         }
@@ -89,22 +105,22 @@ public sealed class WallGrid
     {
         WallConnections connections = WallConnections.None;
 
-        if (this.entries.ContainsKey(cell + Vector2Int.up))
+        if (this.Has(cell + Vector2Int.up))
         {
             connections |= WallConnections.Up;
         }
 
-        if (this.entries.ContainsKey(cell + Vector2Int.right))
+        if (this.Has(cell + Vector2Int.right))
         {
             connections |= WallConnections.Right;
         }
 
-        if (this.entries.ContainsKey(cell + Vector2Int.down))
+        if (this.Has(cell + Vector2Int.down))
         {
             connections |= WallConnections.Down;
         }
 
-        if (this.entries.ContainsKey(cell + Vector2Int.left))
+        if (this.Has(cell + Vector2Int.left))
         {
             connections |= WallConnections.Left;
         }
@@ -115,26 +131,28 @@ public sealed class WallGrid
     /// <summary>
     /// Gets the diagonal cells of a cell that have a wall.
     /// </summary>
+    /// <param name="cell">The cell to check.</param>
+    /// <returns>The diagonals that contain a wall.</returns>
     public WallCorners GetCorners(Vector2Int cell)
     {
         WallCorners corners = WallCorners.None;
 
-        if (this.entries.ContainsKey(cell + new Vector2Int(1, 1)))
+        if (this.Has(cell + new Vector2Int(1, 1)))
         {
             corners |= WallCorners.UpRight;
         }
 
-        if (this.entries.ContainsKey(cell + new Vector2Int(1, -1)))
+        if (this.Has(cell + new Vector2Int(1, -1)))
         {
             corners |= WallCorners.DownRight;
         }
 
-        if (this.entries.ContainsKey(cell + new Vector2Int(-1, -1)))
+        if (this.Has(cell + new Vector2Int(-1, -1)))
         {
             corners |= WallCorners.DownLeft;
         }
 
-        if (this.entries.ContainsKey(cell + new Vector2Int(-1, 1)))
+        if (this.Has(cell + new Vector2Int(-1, 1)))
         {
             corners |= WallCorners.UpLeft;
         }
@@ -150,7 +168,13 @@ public sealed class WallGrid
     {
         foreach (Vector2Int offset in NeighbourOffsets)
         {
-            if (this.entries.TryGetValue(cell + offset, out Entry entry))
+            if (!this.entries.TryGetValue(cell + offset, out List<Entry> list))
+            {
+                continue;
+            }
+
+            // Copy, so a refresh that changes the grid cannot break the loop.
+            foreach (Entry entry in list.ToArray())
             {
                 entry.Refresh();
             }
@@ -162,6 +186,12 @@ public sealed class WallGrid
     {
         Builder.entries.Clear();
         Game.entries.Clear();
+    }
+
+    private bool Has(Vector2Int cell)
+    {
+        return this.entries.TryGetValue(cell, out List<Entry> list) &&
+               list.Count > 0;
     }
 
     private sealed class Entry
