@@ -212,6 +212,7 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
 
         if (open)
         {
+            EntityWorldUI.SetGlobalEnabled(false);
             this.SetCanMove(false);
             this.movementDirection = Vector2.zero;
 
@@ -578,6 +579,7 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
 
             // Resume gameplay.
             Time.timeScale = 1f;
+            EntityWorldUI.SetGlobalEnabled(true);
         });
 
         this.inventoryTween = sequence;

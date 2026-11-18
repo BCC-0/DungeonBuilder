@@ -80,6 +80,15 @@ public abstract class EnemyBody : SaveableEntity, IDamageable
     [SerializeField]
     private bool canReceiveKnockback = true;
 
+    [Header("World UI")]
+    [SerializeField]
+    private GameObject worldUIPrefab;
+
+    [SerializeField]
+    private Vector2 worldUIOffset = new Vector2(0f, 2f);
+
+    private EntityWorldUI entityWorldUI;
+
     private float bobTime;
 
     private int currentHealth;
@@ -126,7 +135,7 @@ public abstract class EnemyBody : SaveableEntity, IDamageable
     /// <summary>
     /// Gets the name of this enemy.
     /// </summary>
-    public string DisplayName => string.IsNullOrEmpty(this.displayName) ? this.name : this.displayName;
+    public string DisplayName => this.displayName;
 
     /// <summary>
     /// Gets the team of this enemy.
@@ -282,6 +291,11 @@ public abstract class EnemyBody : SaveableEntity, IDamageable
             this.currentHealth - Mathf.RoundToInt(damage.Amount),
             0);
 
+        this.entityWorldUI?.UpdateUI(
+            this.DisplayName,
+            this.currentHealth,
+            this.maxHealth);
+
         this.FlashHurtEffect();
 
         if (damage.Knockback > 0f)
@@ -299,7 +313,7 @@ public abstract class EnemyBody : SaveableEntity, IDamageable
     /// Applies knockback if this enemy can receive it.
     /// </summary>
     /// <param name="direction">The direction to give knockback in.</param>
-    /// <param name="force">The force of the knockback.</param>
+    /// <param name="force">The force to give knockback in.</param>
     public void ApplyKnockback(Vector2 direction, float force)
     {
         if (!this.canReceiveKnockback ||
@@ -317,7 +331,7 @@ public abstract class EnemyBody : SaveableEntity, IDamageable
     /// Override for enemy-specific reactions.
     /// </summary>
     /// <param name="direction">The direction to give knockback in.</param>
-    /// <param name="force">The force of the knockback.</param>
+    /// <param name="force">The force to give knockback in.</param>
     protected virtual void OnKnockbackApplied(
         Vector2 direction,
         float force)
@@ -386,6 +400,38 @@ public abstract class EnemyBody : SaveableEntity, IDamageable
 
         this.Rb = this.GetComponent<Rigidbody2D>();
         this.currentHealth = this.maxHealth;
+    }
+
+    private void Start()
+    {
+        if (this.worldUIPrefab == null)
+        {
+            return;
+        }
+
+        Canvas canvas = FindAnyObjectByType<Canvas>();
+        Camera camera = FindAnyObjectByType<Camera>();
+
+        if (canvas == null || camera == null)
+        {
+            Debug.LogWarning(
+                "Could not initialize EntityWorldUI: Canvas or Camera not found.",
+                this);
+
+            return;
+        }
+
+        this.entityWorldUI = new EntityWorldUI(
+            this.worldUIPrefab,
+            canvas,
+            camera,
+            this.worldUIOffset
+        );
+
+        this.entityWorldUI.UpdateUI(
+            this.DisplayName,
+            this.currentHealth,
+            this.maxHealth);
     }
 
     /// <summary>
@@ -475,24 +521,32 @@ public abstract class EnemyBody : SaveableEntity, IDamageable
 
     private void LateUpdate()
     {
-        if (this.visualRoot == null)
+        if (this.visualRoot != null)
         {
-            return;
+            float offset = 0f;
+
+            if (this.IsMoving)
+            {
+                this.bobTime += Time.deltaTime * this.bobSpeed;
+                offset = Mathf.Abs(Mathf.Sin(this.bobTime)) * this.bobHeight;
+            }
+            else
+            {
+                this.bobTime = 0f;
+            }
+
+            this.visualRoot.localPosition = new Vector3(0f, offset, 0f);
         }
 
-        float offset = 0f;
-
-        if (this.IsMoving)
+        if (this.entityWorldUI != null && this.ExistsInWorld)
         {
-            this.bobTime += Time.deltaTime * this.bobSpeed;
-            offset = Mathf.Abs(Mathf.Sin(this.bobTime)) * this.bobHeight;
+            this.entityWorldUI.UpdateUIPosition(this.transform.position);
         }
-        else
-        {
-            this.bobTime = 0f;
-        }
+    }
 
-        this.visualRoot.localPosition = new Vector3(0f, offset, 0f);
+    private void OnDestroy()
+    {
+        this.entityWorldUI?.Destroy();
     }
 
     /// <summary>
