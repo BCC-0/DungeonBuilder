@@ -216,6 +216,7 @@ MonoBehaviour:
   maxHealth: 10
   moveSpeed: 2
   detectionRange: 8
+  head: {fileID: 0}
   headAnchor: {fileID: 8365387579630754373}
   headDownPosition: {x: 0, y: 0.625, z: 0}
   headRightPosition: {x: 0.375, y: 0.5, z: 0}
@@ -226,6 +227,8 @@ MonoBehaviour:
   bobHeight: 0.0625
   bobSpeed: 8
   canReceiveKnockback: 1
+  worldUIPrefab: {fileID: 8618921704680522894, guid: e3e1404445a2b3b43b3814de6884c868, type: 3}
+  worldUIOffset: {x: 0, y: 2}
   knockbackDuration: 0.2
   bodyAnimator: {fileID: 9182072126310494902}
 --- !u!50 &2839116584964622822

@@ -1746,6 +1746,7 @@ MonoBehaviour:
   deathAnimationTimeout: 5
   deathCanvasGroup: {fileID: 1357572514}
   deathFadeDuration: 1
+  deathSpriteFadeDuration: 1
 --- !u!50 &836631104
 Rigidbody2D:
   serializedVersion: 5
