@@ -29,14 +29,18 @@ public class SaveFieldAttribute : PropertyAttribute
     /// <param name="min">The minimum value.</param>
     /// <param name="max">The maximum value.</param>
     /// <param name="referenceMode">How a SaveableEntity reference should behave.</param>
-    /// <param name="minReferences">How many reference this field can have.</param>
-    /// <param name="maxReferences">How many reference this field can have.</param>
+    /// <param name="minReferences">How many references this field should have minimally.</param>
+    /// <param name="maxReferences">How many references this field can have.</param>
+    /// <param name="priority">The inspector display priority. Higher values appear first.</param>
+    /// <param name="displayName">The custom inspector display name.</param>
     public SaveFieldAttribute(
         float min = float.MinValue,
         float max = float.MaxValue,
         ReferenceMode referenceMode = ReferenceMode.Consuming,
         int minReferences = 1,
-        int maxReferences = 1)
+        int maxReferences = 1,
+        int priority = 0,
+        string displayName = null)
     {
         this.HasRange = min != float.MinValue || max != float.MaxValue;
         this.Min = min;
@@ -44,6 +48,8 @@ public class SaveFieldAttribute : PropertyAttribute
         this.ReferenceMode = referenceMode;
         this.MinReferences = minReferences;
         this.MaxReferences = maxReferences;
+        this.Priority = priority;
+        this.DisplayName = displayName;
     }
 
     /// <summary>
@@ -75,4 +81,15 @@ public class SaveFieldAttribute : PropertyAttribute
     /// Gets how many SaveableEntity references this could contain.
     /// </summary>
     public int MaxReferences { get; }
+
+    /// <summary>
+    /// Gets the inspector display priority.
+    /// Higher values appear first.
+    /// </summary>
+    public int Priority { get; }
+
+    /// <summary>
+    /// Gets the custom inspector display name.
+    /// </summary>
+    public string DisplayName { get; }
 }

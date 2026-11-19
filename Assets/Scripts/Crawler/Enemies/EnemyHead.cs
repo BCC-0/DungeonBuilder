@@ -27,6 +27,11 @@ public abstract class EnemyHead : SaveableEntity
     public EnemyBody.Direction FacingDirection { get; private set; } = EnemyBody.Direction.Down;
 
     /// <summary>
+    /// Gets the sprite of this head, used by the body to draw it.
+    /// </summary>
+    public Sprite Sprite => this.SpriteRenderer != null ? this.SpriteRenderer.sprite : null;
+
+    /// <summary>
     /// Gets the direction used to determine the head's sorting order.
     /// Derived heads can override this when their displayed direction differs
     /// from the body's facing direction.
@@ -34,21 +39,10 @@ public abstract class EnemyHead : SaveableEntity
     protected virtual EnemyBody.Direction SortingDirection => this.FacingDirection;
 
     /// <summary>
-    /// Gets the sprite of this head, used by the body to draw it.
-    /// </summary>
-    public Sprite Sprite => this.SpriteRenderer != null ? this.SpriteRenderer.sprite : null;
-
-    /// <summary>
     /// Gets the position of the body this head sits on.
     /// </summary>
     protected Vector2 Origin =>
         this.body != null ? (Vector2)this.body.transform.position : (Vector2)this.transform.position;
-
-    [SaveField(referenceMode: ReferenceMode.Shared)]
-    private SaveableEntity testEntity;
-
-    [SaveField(referenceMode: ReferenceMode.Consuming)]
-    private SaveableEntity testConsumeEntity;
 
     /// <summary>
     /// Sets the direction this head should face.

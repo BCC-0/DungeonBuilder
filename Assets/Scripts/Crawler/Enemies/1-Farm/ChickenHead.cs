@@ -10,19 +10,19 @@ using Direction = EnemyBody.Direction;
 public class ChickenHead : EnemyHead
 {
     [Header("Attack")]
-    [SaveField(1, 10)]
+    [SaveField(1, 10, displayName: "Attack speed")]
     [SerializeField]
     private float attackSpeed = 1f;
 
-    [SaveField(1, 20)]
+    [SaveField(1, 20, displayName: "Egg speed")]
     [SerializeField]
     private float eggSpeed = 6f;
 
-    [SaveField(1, 50)]
+    [SaveField(1, 50, displayName: "Egg damage")]
     [SerializeField]
     private int eggDamage = 1;
 
-    [SaveField(0, 20)]
+    [SaveField(0, 10, displayName: "Knockback")]
     [SerializeField]
     private int eggKnockback = 5;
 

@@ -486,7 +486,9 @@ public class RuntimePropertyEditor : MonoBehaviour
             return;
         }
 
-        foreach (KeyValuePair<string, RuntimeEditableValue> entry in fields)
+        foreach (KeyValuePair<string, RuntimeEditableValue> entry in
+            fields.OrderByDescending(entry =>
+                this.GetFieldPriority(entry.Value?.Field)))
         {
             string fieldName = entry.Key;
             RuntimeEditableValue editableValue = entry.Value;
@@ -542,8 +544,11 @@ public class RuntimePropertyEditor : MonoBehaviour
                 continue;
             }
 
+            string displayName =
+                this.GetFieldDisplayName(editableValue.Field);
+
             property.Initialize(
-                this.GetDisplayName(fieldName),
+                displayName,
                 fieldName,
                 builderEntities,
                 this.Rebuild);
@@ -657,12 +662,69 @@ public class RuntimePropertyEditor : MonoBehaviour
                 continue;
             }
 
+            SaveFieldAttribute attribute =
+                field.GetCustomAttribute<SaveFieldAttribute>();
+
+            string displayName =
+                !string.IsNullOrEmpty(attribute?.DisplayName)
+                    ? attribute.DisplayName
+                    : this.GetDisplayName(field.Name);
+
             property.Initialize(
-                this.GetDisplayName(field.Name),
+                displayName,
                 field,
                 targets,
                 this.Rebuild);
         }
+    }
+
+    private int GetFieldPriority(FieldInfo field)
+    {
+        if (field == null)
+        {
+            return 0;
+        }
+
+        RuntimeEditableAttribute runtimeAttribute =
+            field.GetCustomAttribute<RuntimeEditableAttribute>();
+
+        if (runtimeAttribute != null)
+        {
+            return runtimeAttribute.Priority;
+        }
+
+        SaveFieldAttribute saveAttribute =
+            field.GetCustomAttribute<SaveFieldAttribute>();
+
+        return saveAttribute != null
+            ? saveAttribute.Priority
+            : 0;
+    }
+
+    private string GetFieldDisplayName(FieldInfo field)
+    {
+        if (field == null)
+        {
+            return string.Empty;
+        }
+
+        RuntimeEditableAttribute runtimeAttribute =
+            field.GetCustomAttribute<RuntimeEditableAttribute>();
+
+        if (!string.IsNullOrEmpty(runtimeAttribute?.DisplayName))
+        {
+            return runtimeAttribute.DisplayName;
+        }
+
+        SaveFieldAttribute saveAttribute =
+            field.GetCustomAttribute<SaveFieldAttribute>();
+
+        if (!string.IsNullOrEmpty(saveAttribute?.DisplayName))
+        {
+            return saveAttribute.DisplayName;
+        }
+
+        return this.GetDisplayName(field.Name);
     }
 
     private List<FieldInfo> GetSaveFields(Type type)
@@ -691,7 +753,10 @@ public class RuntimePropertyEditor : MonoBehaviour
             type = type.BaseType;
         }
 
-        return fields;
+        return fields
+            .OrderByDescending(field =>
+                field.GetCustomAttribute<SaveFieldAttribute>().Priority)
+            .ToList();
     }
 
     private FieldInfo FindField(Type type, string fieldName)

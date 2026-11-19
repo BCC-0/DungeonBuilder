@@ -13,21 +13,21 @@ public abstract class EnemyBody : SaveableEntity, IDamageable
 {
     private static List<EnemyBody> activeEnemies = new List<EnemyBody>();
 
-    [SaveField]
+    [SaveField(priority: 10)]
     private string displayName;
 
     /// <summary>
     /// The maximum health.
     /// </summary>
     [SerializeField]
-    [SaveField(1, 500)]
+    [SaveField(1, 500, priority: 8, displayName: "health")]
     private int maxHealth = 10;
 
     /// <summary>
     /// The movement speed.
     /// </summary>
     [SerializeField]
-    [SaveField(0, 12)]
+    [SaveField(0, 12, priority: 7, displayName: "speed")]
     private float moveSpeed = 2f;
 
     /// <summary>
@@ -35,14 +35,14 @@ public abstract class EnemyBody : SaveableEntity, IDamageable
     /// this range the enemy wanders instead of reacting to the player.
     /// </summary>
     [SerializeField]
-    [SaveField(1, 30)]
+    [SaveField(1, 30, priority: 6, displayName: "range")]
     private float detectionRange = 8f;
 
     /// <summary>
     /// The head that is attached to this body.
     /// </summary>
     [SerializeField]
-    [SaveField(referenceMode: ReferenceMode.Consuming)]
+    [SaveField(referenceMode: ReferenceMode.Consuming, priority: 9)]
     private EnemyHead head;
 
     /// <summary>
