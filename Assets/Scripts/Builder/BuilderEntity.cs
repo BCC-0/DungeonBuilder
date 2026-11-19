@@ -875,6 +875,7 @@ public class BuilderEntity : SaveableEntity
             headSource.sprite == null)
         {
             this.headSpriteRenderer.enabled = false;
+            this.HideHeadOutline();
             return;
         }
 
@@ -1135,5 +1136,17 @@ public class BuilderEntity : SaveableEntity
         }
 
         BuilderRegistry.Unregister(this);
+    }
+
+    private void HideHeadOutline()
+    {
+        EntitySelectionOutline outline =
+            this.headSpriteRenderer
+                .GetComponentInChildren<EntitySelectionOutline>(true);
+
+        if (outline != null)
+        {
+            outline.HideSelection();
+        }
     }
 }

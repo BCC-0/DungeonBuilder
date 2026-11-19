@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using DG.Tweening;
+using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
@@ -39,6 +40,7 @@ public class CameraController : MonoBehaviour
     private bool isZooming = false;
     private Vector2? lastPointerPosition = null;
     private bool isPanning = false;
+    private Tween navigationTween;
 
     /// <summary>
     /// Gets a value indicating whether the camera is currently panning.
@@ -168,6 +170,33 @@ public class CameraController : MonoBehaviour
         this.inertiaVelocity = Vector3.zero;
         this.lastPointerPosition = null;
         this.isPanning = false;
+    }
+
+
+    /// <summary>
+    /// Smoothly moves the camera to the given world position.
+    /// Keeps the camera's current Z position.
+    /// </summary>
+    /// <param name="worldPosition">The world position to move to.</param>
+    /// <param name="duration">The duration of the movement.</param>
+    public void MoveTo(Vector3 worldPosition, float duration = 0.5f)
+    {
+        this.CancelMovement();
+
+        if (this.navigationTween != null &&
+            this.navigationTween.IsActive())
+        {
+            this.navigationTween.Kill();
+        }
+
+        Vector3 targetPosition = new Vector3(
+            worldPosition.x,
+            worldPosition.y,
+            this.transform.position.z);
+
+        this.navigationTween = this.transform
+            .DOMove(targetPosition, duration)
+            .SetEase(Ease.InOutCubic);
     }
 
     private void FixedUpdate()

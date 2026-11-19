@@ -1,9 +1,11 @@
-﻿using System;
+﻿
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// A script that populates the inspector of the builder and allows
@@ -21,6 +23,13 @@ public class RuntimePropertyEditor : MonoBehaviour
     [SerializeField]
     private GameObject positionRowPrefab;
 
+    [SerializeField]
+    private Button backButton;
+
+    [Header("Reference Navigation")]
+    [SerializeField]
+    private float referenceCameraMoveDuration = 0.5f;
+
     private List<GameObject> generatedRows = new List<GameObject>();
 
     private string lastSelectionKey;
@@ -30,6 +39,22 @@ public class RuntimePropertyEditor : MonoBehaviour
 
     private RuntimePositionField positionField;
     private EntitySelectionManager selectionManager;
+    private CameraController cameraController;
+
+    private Stack<NavigationState> navigationHistory =
+        new Stack<NavigationState>();
+
+    /// <summary>
+    /// Stores the selection and camera position before navigating
+    /// to another referenced entity.
+    /// </summary>
+    private class NavigationState
+    {
+        public List<SaveableEntity> SelectedEntities;
+        public List<Vector2Int> SelectedTiles;
+        public Vector3 CameraPosition;
+        public bool HasCameraPosition;
+    }
 
     /// <summary>
     /// Gets the instance of the runtime property editor.
@@ -40,7 +65,7 @@ public class RuntimePropertyEditor : MonoBehaviour
     }
 
     /// <summary>
-    /// Rebuild the inspector.
+    /// Rebuilds the inspector.
     /// </summary>
     public void Rebuild()
     {
@@ -63,12 +88,129 @@ public class RuntimePropertyEditor : MonoBehaviour
         if (MapEditorManager.Instance.SelectedEntities.Count > 0)
         {
             this.BuildEntityInspector();
+        }
+        else if (MapEditorManager.Instance.SelectedTiles.Count > 0)
+        {
+            this.BuildTileInspector();
+        }
+    }
+
+    /// <summary>
+    /// Navigates to a referenced entity.
+    /// The previous selection and camera position are stored so
+    /// the Back button can restore them.
+    /// </summary>
+    /// <param name="entity">The referenced entity.</param>
+    public void NavigateToReference(SaveableEntity entity)
+    {
+        if (entity == null ||
+            MapEditorManager.Instance == null)
+        {
             return;
         }
 
-        if (MapEditorManager.Instance.SelectedTiles.Count > 0)
+        MapEditorManager manager =
+            MapEditorManager.Instance;
+
+        // Remember the current selection.
+        NavigationState state = new NavigationState
         {
-            this.BuildTileInspector();
+            SelectedEntities = manager.SelectedEntities != null
+                ? new List<SaveableEntity>(manager.SelectedEntities)
+                : new List<SaveableEntity>(),
+
+            SelectedTiles = manager.SelectedTiles != null
+                ? new List<Vector2Int>(manager.SelectedTiles)
+                : new List<Vector2Int>(),
+        };
+
+        // Remember the current camera position.
+        if (this.cameraController != null)
+        {
+            state.CameraPosition =
+                this.cameraController.transform.position;
+
+            state.HasCameraPosition = true;
+        }
+
+        this.navigationHistory.Push(state);
+
+        // Determine this before changing the selection.
+        bool isConsumed = entity.ConsumedBy != null;
+
+        manager.SelectEntityForReference(entity);
+        this.selectionManager?.RefreshSelection();
+
+        this.Rebuild();
+        this.UpdateBackButton();
+
+        SaveableEntity cameraTarget =
+            isConsumed
+                ? this.GetConsumerInWorld(entity)
+                : entity.GetWorldRepresentative();
+
+        if (this.cameraController != null &&
+            cameraTarget != null)
+        {
+            this.cameraController.MoveTo(
+                cameraTarget.transform.position,
+                this.referenceCameraMoveDuration);
+        }
+    }
+
+    /// <summary>
+    /// Returns to the previously selected entity or tile selection.
+    /// </summary>
+    public void NavigateBack()
+    {
+        if (this.navigationHistory.Count == 0 ||
+            MapEditorManager.Instance == null)
+        {
+            return;
+        }
+
+        NavigationState state =
+            this.navigationHistory.Pop();
+
+        MapEditorManager manager =
+            MapEditorManager.Instance;
+
+        // Restore the previous selection.
+        manager.SelectedEntities =
+            new List<SaveableEntity>(state.SelectedEntities);
+
+        manager.SelectedTiles =
+            new List<Vector2Int>(state.SelectedTiles);
+
+        this.selectionManager?.RefreshSelection();
+
+        this.Rebuild();
+        this.UpdateBackButton();
+
+        SaveableEntity first =
+            state.SelectedEntities.FirstOrDefault(e => e != null);
+
+        SaveableEntity cameraTarget =
+            first != null
+                ? this.GetCameraTarget(first)
+                : null;
+
+        if (this.cameraController == null)
+        {
+            return;
+        }
+
+        if (cameraTarget != null)
+        {
+            this.cameraController.MoveTo(
+                cameraTarget.transform.position,
+                this.referenceCameraMoveDuration);
+        }
+        else if (state.HasCameraPosition)
+        {
+            this.cameraController.MoveTo(
+                state.CameraPosition,
+                this.referenceCameraMoveDuration);
         }
     }
 
@@ -87,7 +229,6 @@ public class RuntimePropertyEditor : MonoBehaviour
     /// <summary>
     /// Begins reference selection.
     /// </summary>
-    /// <param name="propertyField">The field to set the reference to.</param>
     public void BeginReferenceSelection(
         RuntimePropertyField propertyField)
     {
@@ -97,15 +238,11 @@ public class RuntimePropertyEditor : MonoBehaviour
     /// <summary>
     /// Begins reference selection with a specified index.
     /// </summary>
-    /// <param name="propertyField">The field to set the reference to.</param>
-    /// <param name="index">The index of the field.</param>
     public void BeginReferenceSelection(
         RuntimePropertyField propertyField,
         int index)
     {
-
-
-        if (selectionManager == null)
+        if (this.selectionManager == null)
         {
             return;
         }
@@ -113,9 +250,9 @@ public class RuntimePropertyEditor : MonoBehaviour
         this.referenceField = propertyField;
         this.referenceIndex = index;
 
-        selectionManager.BeginReferenceSelection();
+        this.selectionManager.BeginReferenceSelection();
 
-        if (!selectionManager.IsReferenceSelectionMode)
+        if (!this.selectionManager.IsReferenceSelectionMode)
         {
             this.referenceField = null;
             this.referenceIndex = -1;
@@ -125,7 +262,6 @@ public class RuntimePropertyEditor : MonoBehaviour
     /// <summary>
     /// Confirms the reference selection and sets the property field.
     /// </summary>
-    /// <param name="entities">The entities that were referenced.</param>
     public void ConfirmReferenceSelection(
         IReadOnlyList<SaveableEntity> entities)
     {
@@ -151,15 +287,13 @@ public class RuntimePropertyEditor : MonoBehaviour
                 }
                 else
                 {
-                    propertyField.AddReferences(
-                        entities);
+                    propertyField.AddReferences(entities);
                 }
             }
             else if (entities != null &&
                      entities.Count == 1)
             {
-                propertyField.SetReference(
-                    entities[0]);
+                propertyField.SetReference(entities[0]);
             }
         }
 
@@ -167,17 +301,15 @@ public class RuntimePropertyEditor : MonoBehaviour
     }
 
     /// <summary>
-    /// Applies picked entities to the reference field that started the
-    /// reference selection.
+    /// Applies picked entities to the reference field that started
+    /// the reference selection.
     /// </summary>
-    /// <param name="entities">The entities that were picked.</param>
     /// <returns>
-    /// True when reference selection is finished (single reference set, list
-    /// element replaced, or the field is gone). False when it should stay open,
-    /// e.g. for lists where more entities can be added, or when the pick did
-    /// not fit the field.
+    /// True when reference selection is finished. False when it should
+    /// stay open, for example when a list can accept more references.
     /// </returns>
-    public bool TryApplyReferences(IReadOnlyList<SaveableEntity> entities)
+    public bool TryApplyReferences(
+        IReadOnlyList<SaveableEntity> entities)
     {
         RuntimePropertyField propertyField = this.referenceField;
 
@@ -200,7 +332,9 @@ public class RuntimePropertyEditor : MonoBehaviour
         {
             if (this.referenceIndex >= 0)
             {
-                propertyField.SetReference(this.referenceIndex, valid[0]);
+                propertyField.SetReference(
+                    this.referenceIndex,
+                    valid[0]);
             }
             else
             {
@@ -215,20 +349,35 @@ public class RuntimePropertyEditor : MonoBehaviour
     }
 
     /// <summary>
-    /// Cancel the reference selection, doesn't set a reference to the property field.
+    /// Cancels reference selection without setting a reference.
     /// </summary>
     public void CancelReferenceSelection()
     {
         this.referenceField = null;
         this.referenceIndex = -1;
 
-        this.selectionManager.CancelReferenceSelection();
+        if (this.selectionManager != null)
+        {
+            this.selectionManager.CancelReferenceSelection();
+        }
     }
 
     private void Awake()
     {
-        this.selectionManager = FindAnyObjectByType<EntitySelectionManager>();
+        this.selectionManager =
+            FindAnyObjectByType<EntitySelectionManager>();
+
+        this.cameraController =
+            FindAnyObjectByType<CameraController>();
+
         Instance = this;
+
+        if (this.backButton != null)
+        {
+            this.backButton.onClick.RemoveListener(this.NavigateBack);
+            this.backButton.onClick.AddListener(this.NavigateBack);
+            this.backButton.gameObject.SetActive(false);
+        }
     }
 
     private void Update()
@@ -254,7 +403,21 @@ public class RuntimePropertyEditor : MonoBehaviour
             return;
         }
 
+        // A selection change made outside reference navigation starts
+        // a new navigation history.
+        this.navigationHistory.Clear();
+        this.UpdateBackButton();
+
         this.Rebuild();
+    }
+
+    private void UpdateBackButton()
+    {
+        if (this.backButton != null)
+        {
+            this.backButton.gameObject.SetActive(
+                this.navigationHistory.Count > 0);
+        }
     }
 
     private void Clear()
@@ -281,13 +444,20 @@ public class RuntimePropertyEditor : MonoBehaviour
             return;
         }
 
-        this.positionField =
-            this.CreateRow<RuntimePositionField>(
-                this.positionRowPrefab);
+        // Consumed entities do not have their own world position.
+        bool hasConsumedEntity = selected.Any(
+            entity => entity != null && entity.ConsumedBy != null);
 
-        if (this.positionField != null)
+        if (!hasConsumedEntity)
         {
-            this.positionField.Initialize(selected);
+            this.positionField =
+                this.CreateRow<RuntimePositionField>(
+                    this.positionRowPrefab);
+
+            if (this.positionField != null)
+            {
+                this.positionField.Initialize(selected);
+            }
         }
 
         List<BuilderEntity> builderEntities =
@@ -399,7 +569,8 @@ public class RuntimePropertyEditor : MonoBehaviour
             return;
         }
 
-        SaveableTilemap tilemap = MapEditorManager.Instance.ActiveController.Tilemap;
+        SaveableTilemap tilemap =
+            MapEditorManager.Instance.ActiveController.Tilemap;
 
         if (tilemap == null)
         {
@@ -411,14 +582,17 @@ public class RuntimePropertyEditor : MonoBehaviour
         }
 
         // Position is always available for selected tiles.
-        this.positionField = this.CreateRow<RuntimePositionField>(this.positionRowPrefab);
+        this.positionField =
+            this.CreateRow<RuntimePositionField>(
+                this.positionRowPrefab);
 
         if (this.positionField != null)
         {
             this.positionField.Initialize(selected, tilemap);
         }
 
-        List<TileBehaviour> behaviours = new List<TileBehaviour>();
+        List<TileBehaviour> behaviours =
+            new List<TileBehaviour>();
 
         foreach (Vector2Int position in selected)
         {
@@ -441,7 +615,8 @@ public class RuntimePropertyEditor : MonoBehaviour
 
         // Only properties common to every selected behaviour
         // should be displayed.
-        List<FieldInfo> fields = this.GetSaveFields(behaviours[0].GetType());
+        List<FieldInfo> fields =
+            this.GetSaveFields(behaviours[0].GetType());
 
         foreach (FieldInfo field in fields)
         {
@@ -525,7 +700,10 @@ public class RuntimePropertyEditor : MonoBehaviour
         {
             FieldInfo field = type.GetField(
                 fieldName,
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+                BindingFlags.Instance |
+                BindingFlags.Public |
+                BindingFlags.NonPublic |
+                BindingFlags.DeclaredOnly);
 
             if (field != null)
             {
@@ -564,8 +742,7 @@ public class RuntimePropertyEditor : MonoBehaviour
             Type elementType =
                 type.GetGenericArguments()[0];
 
-            return typeof(SaveableEntity).IsAssignableFrom(
-                elementType);
+            return typeof(SaveableEntity).IsAssignableFrom(elementType);
         }
 
         return false;
@@ -578,7 +755,9 @@ public class RuntimePropertyEditor : MonoBehaviour
             return fieldName;
         }
 
-        return char.ToUpper(fieldName[0]) + fieldName.Substring(1) + ":";
+        return char.ToUpper(fieldName[0]) +
+               fieldName.Substring(1) +
+               ":";
     }
 
     private T CreateRow<T>(GameObject prefab)
@@ -602,7 +781,8 @@ public class RuntimePropertyEditor : MonoBehaviour
             return null;
         }
 
-        GameObject row = Instantiate(prefab, this.propertyContainer);
+        GameObject row =
+            Instantiate(prefab, this.propertyContainer);
 
         this.generatedRows.Add(row);
 
@@ -617,6 +797,7 @@ public class RuntimePropertyEditor : MonoBehaviour
 
             this.generatedRows.Remove(row);
             Destroy(row);
+
             return null;
         }
 
@@ -668,5 +849,27 @@ public class RuntimePropertyEditor : MonoBehaviour
         }
 
         return string.Empty;
+    }
+
+    private SaveableEntity GetConsumerInWorld(SaveableEntity entity)
+    {
+        SaveableEntity current = entity;
+        int safety = 32;
+
+        while (current.ConsumedBy != null && safety-- > 0)
+        {
+            current = current.ConsumedBy;
+        }
+
+        SaveableEntity representative = current.GetWorldRepresentative();
+
+        return representative != null ? representative : current;
+    }
+
+    private SaveableEntity GetCameraTarget(SaveableEntity entity)
+    {
+        return entity.ConsumedBy != null
+            ? this.GetConsumerInWorld(entity)
+            : entity.GetWorldRepresentative();
     }
 }

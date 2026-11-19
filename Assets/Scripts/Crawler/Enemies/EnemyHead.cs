@@ -1,5 +1,4 @@
-﻿
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
 /// Base class for enemy heads. A head is consumed by an <see cref="EnemyBody"/>
@@ -44,6 +43,12 @@ public abstract class EnemyHead : SaveableEntity
     /// </summary>
     protected Vector2 Origin =>
         this.body != null ? (Vector2)this.body.transform.position : (Vector2)this.transform.position;
+
+    [SaveField(referenceMode: ReferenceMode.Shared)]
+    private SaveableEntity testEntity;
+
+    [SaveField(referenceMode: ReferenceMode.Consuming)]
+    private SaveableEntity testConsumeEntity;
 
     /// <summary>
     /// Sets the direction this head should face.
