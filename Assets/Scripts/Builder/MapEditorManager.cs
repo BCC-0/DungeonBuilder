@@ -214,6 +214,31 @@ public class MapEditorManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Selects an entity for reference navigation without changing
+    /// the active tool or editing layer.
+    /// </summary>
+    /// <param name="entity">The entity to select.</param>
+    public void SelectEntityForReference(SaveableEntity entity)
+    {
+        if (entity == null)
+        {
+            return;
+        }
+
+        this.selectedTiles.Clear();
+        this.selectedEntities.Clear();
+        this.selectedEntities.Add(entity);
+
+        EntitySelectionVisualizer visualizer =
+            FindAnyObjectByType<EntitySelectionVisualizer>();
+
+        if (visualizer != null)
+        {
+            visualizer.Refresh();
+        }
+    }
+
+    /// <summary>
     /// Selects the drag tool.
     /// </summary>
     public void SelectDrag() => this.SelectTool(EditorTool.Drag, 0);

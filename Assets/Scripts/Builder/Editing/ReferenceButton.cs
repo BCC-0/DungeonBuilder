@@ -1,5 +1,4 @@
 ﻿using System;
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -17,14 +16,16 @@ public class ReferenceButton : MonoBehaviour
     [SerializeField]
     private Button removeButton;
 
+    private SaveableEntity entity;
     private AspectRatioFitter aspectRatioFitter;
 
     /// <summary>
-    /// Sets the entity displayed by this button.
+    /// Sets the entity displayed and navigated to by this button.
     /// </summary>
-    /// <param name="entity">The entity to display.</param>
     public void SetEntity(SaveableEntity entity)
     {
+        this.entity = entity;
+
         if (entity == null)
         {
             this.entityImage.sprite = null;
@@ -43,20 +44,45 @@ public class ReferenceButton : MonoBehaviour
     }
 
     /// <summary>
-    /// Sets whether the entity is consumed.
+    /// Navigates to the entity represented by this reference button.
+    /// Assign this method to the Button's OnClick event in the Inspector.
     /// </summary>
-    /// <param name="consumed">Whether the entity is consumed.</param>
-    public void SetConsumed(bool consumed)
+    public void NavigateToEntity()
     {
-        this.modeIndicator.gameObject.SetActive(consumed);
+        Debug.Log("A");
+        if (this.entity == null)
+        {
+            Debug.Log("Entity = null");
+            return;
+        }
+
+        if (RuntimePropertyEditor.Instance != null)
+        {
+            RuntimePropertyEditor.Instance.NavigateToReference(this.entity);
+        }
     }
 
     /// <summary>
-    /// Sets the action that is called when the remove button is pressed.
+    /// Sets whether the entity is consumed.
     /// </summary>
-    /// <param name="action">The action to call.</param>
+    public void SetConsumed(bool consumed)
+    {
+        if (this.modeIndicator != null)
+        {
+            this.modeIndicator.gameObject.SetActive(consumed);
+        }
+    }
+
+    /// <summary>
+    /// Sets the action called when the remove button is pressed.
+    /// </summary>
     public void SetRemoveAction(Action action)
     {
+        if (this.removeButton == null)
+        {
+            return;
+        }
+
         this.removeButton.onClick.RemoveAllListeners();
 
         if (action != null)
@@ -69,9 +95,13 @@ public class ReferenceButton : MonoBehaviour
     /// Keeps the image inside its parent area while preserving the ratio
     /// of the sprite.
     /// </summary>
-    /// <param name="sprite">The sprite that is displayed.</param>
     private void UpdateAspectRatio(Sprite sprite)
     {
+        if (this.entityImage == null)
+        {
+            return;
+        }
+
         if (this.aspectRatioFitter == null)
         {
             this.aspectRatioFitter =
@@ -79,11 +109,13 @@ public class ReferenceButton : MonoBehaviour
 
             if (this.aspectRatioFitter == null)
             {
-                this.aspectRatioFitter = this.entityImage.gameObject.AddComponent<AspectRatioFitter>();
+                this.aspectRatioFitter =
+                    this.entityImage.gameObject.AddComponent<AspectRatioFitter>();
             }
         }
 
-        this.aspectRatioFitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+        this.aspectRatioFitter.aspectMode =
+            AspectRatioFitter.AspectMode.FitInParent;
 
         if (sprite == null || sprite.rect.height <= 0f)
         {

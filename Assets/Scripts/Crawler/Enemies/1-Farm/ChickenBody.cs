@@ -7,14 +7,12 @@ using UnityEngine;
 public class ChickenBody : EnemyBody
 {
     [Header("Movement")]
-    [SaveField(min: 1, max: 10)]
+    [SaveField(min: 1, max: 10, displayName: "distance")]
     private int minDistance = 3;
 
     private float distanceTolerance = 0.2f;
     private float randomWalkDuration = 1f;
 
-    [SaveField]
-    private bool testToggle;
     [Header("Knockback")]
     [SerializeField]
     private float knockbackDuration = 0.2f;

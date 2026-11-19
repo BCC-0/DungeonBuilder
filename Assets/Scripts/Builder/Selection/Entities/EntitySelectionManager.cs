@@ -310,6 +310,16 @@ public class EntitySelectionManager : SelectionManagerBase
         }
     }
 
+    /// <summary>
+    /// Re-applies the selection stored in <see cref="MapEditorManager"/> so the
+    /// visualizer and selection buttons match it. Used after the selection was
+    /// changed from outside, for example by reference navigation.
+    /// </summary>
+    public void RefreshSelection()
+    {
+        this.SetSelection(MapEditorManager.Instance.SelectedEntities);
+    }
+
     /// <inheritdoc/>
     protected override void ClearSelection()
     {
@@ -393,18 +403,21 @@ public class EntitySelectionManager : SelectionManagerBase
     }
 
     /// <summary>
-    /// Gets the current rect of the selection.
+    /// Gets the current rect of the selection. Consumed entities have no
+    /// world position of their own and are ignored.
     /// </summary>
-    /// <returns>A rect containing the selected entities.</returns>
+    /// <returns>A rect containing the selected entities that exist in the world.</returns>
     protected override Rect GetCurrentSelectionBounds()
     {
-        List<SaveableEntity> entities =
-            MapEditorManager.Instance.SelectedEntities;
+        List<Vector2> positions =
+            MapEditorManager.Instance.SelectedEntities
+                .Where(e => e != null && e.ConsumedBy == null)
+                .Select(e => (Vector2)e.transform.position)
+                .ToList();
 
-        return this.GetBoundingRect(
-            entities
-                .Where(e => e != null)
-                .Select(e => (Vector2)e.transform.position));
+        return positions.Count > 0
+            ? this.GetBoundingRect(positions)
+            : default(Rect);
     }
 
     /// <summary>
@@ -646,7 +659,7 @@ public class EntitySelectionManager : SelectionManagerBase
 
     /// <summary>
     /// Writes the given selection to <see cref="MapEditorManager"/> and refreshes
-    /// the visualizer.
+    /// the visualizer. Consumed entities stay selected so their inspector remains open.
     /// </summary>
     /// <param name="entities">The entities to select.</param>
     private void SetSelection(List<SaveableEntity> entities)
@@ -654,7 +667,7 @@ public class EntitySelectionManager : SelectionManagerBase
         entities = entities?
             .Where(e =>
                 e != null &&
-                e.ExistsInWorld)
+                (e.ExistsInWorld || e.ConsumedBy != null))
             .ToList()
             ?? new List<SaveableEntity>();
 
@@ -668,7 +681,8 @@ public class EntitySelectionManager : SelectionManagerBase
             return;
         }
 
-        if (entities == null || entities.Count == 0)
+        if (entities.Count == 0 ||
+            entities.Any(e => e.ConsumedBy != null))
         {
             this.DisableSelectionButtons();
         }

@@ -12,6 +12,10 @@ public class EntitySelectionVisualizer : MonoBehaviour
     /// Clears existing outlines and re-applies them based on the current
     /// contents of <see cref="MapEditorManager.SelectedEntities"/>.
     /// </summary>
+    /// <summary>
+    /// Clears existing outlines and re-applies them based on the current
+    /// reference or entity selection.
+    /// </summary>
     public void Refresh()
     {
         this.Clear();
@@ -23,10 +27,23 @@ public class EntitySelectionVisualizer : MonoBehaviour
                 continue;
             }
 
-            this.SetEntityOutline(entity, true);
-            this.highlightedEntities.Add(entity);
+            // Preserve existing highlighting for consumed references.
+            // For other references, highlight the entity currently being focused.
+            SaveableEntity visualizedEntity =
+                entity.ConsumedBy != null
+                    ? this.GetConsumerInWorld(entity)
+                        : entity.GetWorldRepresentative();
 
-            if (entity is BuilderEntity builderEntity)
+            if (visualizedEntity == null ||
+                this.highlightedEntities.Contains(visualizedEntity))
+            {
+                continue;
+            }
+
+            this.SetEntityOutline(visualizedEntity, true);
+            this.highlightedEntities.Add(visualizedEntity);
+
+            if (visualizedEntity is BuilderEntity builderEntity)
             {
                 BuilderEntity head = builderEntity.GetConsumedHead();
 
@@ -151,5 +168,20 @@ public class EntitySelectionVisualizer : MonoBehaviour
         {
             outline.HideSelection();
         }
+    }
+
+    private SaveableEntity GetConsumerInWorld(SaveableEntity entity)
+    {
+        SaveableEntity current = entity;
+        int safety = 32;
+
+        while (current.ConsumedBy != null && safety-- > 0)
+        {
+            current = current.ConsumedBy;
+        }
+
+        SaveableEntity representative = current.GetWorldRepresentative();
+
+        return representative != null ? representative : current;
     }
 }

@@ -206,6 +206,32 @@ public abstract class SaveableEntity : MonoBehaviour
     }
 
     /// <summary>
+    /// Gets the entity whose world position represents this entity.
+    /// Follows consumption chains until it reaches an entity that is not consumed.
+    /// </summary>
+    /// <returns>The final consuming entity, or this entity if no consumer exists.</returns>
+    public SaveableEntity GetWorldRepresentative()
+    {
+        SaveableEntity current = this;
+        HashSet<SaveableEntity> visited = new HashSet<SaveableEntity>();
+
+        while (current != null && current.ConsumedBy != null)
+        {
+            if (!visited.Add(current))
+            {
+                Debug.LogWarning(
+                    "SaveableEntity: Circular consumption chain detected.");
+
+                return this;
+            }
+
+            current = current.ConsumedBy;
+        }
+
+        return current != null ? current : this;
+    }
+
+    /// <summary>
     /// Whether a type is a list of entities.
     /// </summary>
     /// <param name="type">The type to check.</param>
