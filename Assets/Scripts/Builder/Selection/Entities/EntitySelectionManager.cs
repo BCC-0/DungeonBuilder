@@ -43,26 +43,17 @@ public class EntitySelectionManager : SelectionManagerBase
 
     private Sequence referenceTextSequence;
 
-    /// <summary>
-    /// The position of the reference text block as configured in the scene.
-    /// This position is used whenever the reference overlay is visible.
-    /// </summary>
     private Vector2 referenceTextVisiblePosition;
 
-    /// <summary>
-    /// Visualizer that outlines the current entity selection.
-    /// </summary>
     private EntitySelectionVisualizer selectionVisualizer;
 
-    /// <summary>
-    /// Cell positions of the selected entities when movement started.
-    /// </summary>
-    private Dictionary<SaveableEntity, Vector2Int> moveStartCells = new();
+    private Dictionary<SaveableEntity, Vector2Int> moveStartCells = new ();
 
-    /// <summary>
-    /// Cell positions of the selected entities when movement is continued on mobile.
-    /// </summary>
-    private Dictionary<SaveableEntity, Vector2Int> extraMoveStartCells = new();
+    private Dictionary<SaveableEntity, Vector3> moveStartPositions = new ();
+
+    private Dictionary<SaveableEntity, Vector2Int> extraMoveStartCells = new ();
+
+    private UndoRedoManager undoRedoManager;
 
     /// <summary>
     /// Cell under the pointer when movement started.
@@ -87,12 +78,15 @@ public class EntitySelectionManager : SelectionManagerBase
             return;
         }
 
-        foreach (SaveableEntity entity in MapEditorManager.Instance.SelectedEntities)
+        List<SaveableEntity> toDelete =
+            MapEditorManager.Instance.SelectedEntities
+                .Where(e => e != null)
+                .ToList();
+
+        if (toDelete.Count > 0)
         {
-            if (entity != null)
-            {
-                Destroy(entity.gameObject);
-            }
+            MapEditorManager.Instance.RegisterAction(
+                EntityPresenceAction.DeleteNow(toDelete));
         }
 
         this.ClearSelection();
@@ -124,12 +118,15 @@ public class EntitySelectionManager : SelectionManagerBase
         this.moveStartPointerCell =
             (Vector2Int)this.Grid.WorldToCell(this.CurrentPos);
 
+        this.moveStartPositions.Clear();
+
         foreach (SaveableEntity entity in selectedEntities)
         {
             Vector2Int cell =
                 (Vector2Int)this.Grid.WorldToCell(entity.transform.position);
 
             this.moveStartCells[entity] = cell;
+            this.moveStartPositions[entity] = entity.transform.position;
         }
 
         this.extraMoveStartCells =
@@ -219,6 +216,9 @@ public class EntitySelectionManager : SelectionManagerBase
         HashSet<SaveableEntity> movingEntities =
             new HashSet<SaveableEntity>(selectedEntities);
 
+        List<SaveableEntity> replaced = new List<SaveableEntity>();
+        MoveEntitiesAction move = new MoveEntitiesAction();
+
         foreach (KeyValuePair<SaveableEntity, Vector2Int> entry
             in this.extraMoveStartCells)
         {
@@ -243,15 +243,41 @@ public class EntitySelectionManager : SelectionManagerBase
                         (Vector2Int)this.Grid.WorldToCell(
                             other.transform.position) == finalCell);
 
-            if (entityAtDestination != null)
+            if (entityAtDestination != null &&
+                !replaced.Contains(entityAtDestination))
             {
-                Destroy(entityAtDestination.gameObject);
+                replaced.Add(entityAtDestination);
+            }
+
+            if (this.moveStartPositions.TryGetValue(
+                    entity,
+                    out Vector3 startPosition))
+            {
+                move.Add(entity, startPosition, entity.transform.position);
             }
         }
+
+        // Registered in this order, so undo moves the entities back first
+        // and then brings the replaced entities back.
+        MapEditorManager manager = MapEditorManager.Instance;
+        manager.BeginTransaction();
+
+        if (replaced.Count > 0)
+        {
+            manager.RegisterAction(EntityPresenceAction.DeleteNow(replaced));
+        }
+
+        if (move.HasChanges)
+        {
+            manager.RegisterAction(move);
+        }
+
+        manager.EndTransaction();
 
         this.IsMovementMode = false;
         this.IsMoving = false;
         this.moveStartCells.Clear();
+        this.moveStartPositions.Clear();
         this.extraMoveStartCells.Clear();
 
         this.DisableMoveButtons();
@@ -450,12 +476,22 @@ public class EntitySelectionManager : SelectionManagerBase
     /// <inheritdoc/>
     protected override void Awake()
     {
-        this.selectionVisualizer = FindAnyObjectByType<EntitySelectionVisualizer>();
+        this.selectionVisualizer =
+            FindAnyObjectByType<EntitySelectionVisualizer>();
 
         this.SetupReferenceOverlay();
         this.HideReferenceOverlay();
 
         base.Awake();
+
+        this.undoRedoManager =
+            FindAnyObjectByType<UndoRedoManager>();
+
+        if (this.undoRedoManager != null)
+        {
+            this.undoRedoManager.HistoryChanged +=
+                this.OnHistoryChanged;
+        }
     }
 
     /// <summary>
@@ -703,6 +739,31 @@ public class EntitySelectionManager : SelectionManagerBase
         if (builderEntity != null)
         {
             builderEntity.RefreshWallPosition();
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (this.undoRedoManager != null)
+        {
+            this.undoRedoManager.HistoryChanged -=
+                this.OnHistoryChanged;
+        }
+    }
+
+    private void OnHistoryChanged()
+    {
+        if (this.IsMovementMode ||
+            this.IsReferenceSelectionMode)
+        {
+            return;
+        }
+
+        this.RefreshSelection();
+
+        if (RuntimePropertyEditor.Instance != null)
+        {
+            RuntimePropertyEditor.Instance.RefreshPosition();
         }
     }
 }

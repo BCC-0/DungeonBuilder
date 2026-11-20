@@ -57,6 +57,8 @@ public class MapEditorManager : MonoBehaviour
     private EditorControllerBase tileController;
     private EditorControllerBase entityController;
 
+    private UndoRedoManager undoRedoManager;
+
     private EditorTool currentTool;
     private EditLayer currentLayer;
 
@@ -214,6 +216,40 @@ public class MapEditorManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Registers an action to the undoredomanager.
+    /// </summary>
+    /// <param name="action">The action to register.</param>
+    public void RegisterAction(IUndoableAction action) => this.undoRedoManager.RegisterAction(action);
+
+    /// <summary>
+    /// Starts a transaction for the undoredomanager.
+    /// </summary>
+    public void BeginTransaction() => this.undoRedoManager.BeginTransaction();
+
+    /// <summary>
+    /// Ends a transaction for the undoredomanager.
+    /// </summary>
+    public void EndTransaction() => this.undoRedoManager.EndTransaction();
+
+    /// <summary>
+    /// Undoes last action.
+    /// </summary>
+    public void Undo()
+    {
+        this.undoRedoManager.Undo();
+        this.RefreshAfterHistory();
+    }
+
+    /// <summary>
+    /// Redoes last action.
+    /// </summary>
+    public void Redo()
+    {
+        this.undoRedoManager.Redo();
+        this.RefreshAfterHistory();
+    }
+
+    /// <summary>
     /// Selects an entity for reference navigation without changing
     /// the active tool or editing layer.
     /// </summary>
@@ -278,11 +314,41 @@ public class MapEditorManager : MonoBehaviour
     /// </summary>
     public void OnCancelMove() => this.ActiveController.OnCancelMove();
 
+    private void RefreshAfterHistory()
+    {
+        // Deleted (deactivated) entities must not stay selected.
+        this.selectedEntities.RemoveAll(e => e == null || !e.gameObject.activeSelf);
+
+        EntitySelectionManager selection = FindAnyObjectByType<EntitySelectionManager>();
+        if (selection != null)
+        {
+            selection.RefreshSelection();
+        }
+
+        EntitySelectionVisualizer visualizer = FindAnyObjectByType<EntitySelectionVisualizer>();
+        if (visualizer != null)
+        {
+            visualizer.Refresh();
+        }
+
+        if (RuntimePropertyEditor.Instance != null)
+        {
+            RuntimePropertyEditor.Instance.ForceRebuild();
+        }
+
+        TileSelectionManager tileSelection = FindAnyObjectByType<TileSelectionManager>();
+        if (tileSelection != null)
+        {
+            tileSelection.RefreshSelection();
+        }
+    }
+
     private void Awake()
     {
         Instance = this;
         this.tileController = FindAnyObjectByType<TileEditorController>();
         this.entityController = FindAnyObjectByType<EntityEditorController>();
+        this.undoRedoManager = FindAnyObjectByType<UndoRedoManager>();
         this.SelectDrag();
         this.SetLayer(EditLayer.Foreground);
     }

@@ -53,12 +53,25 @@ public class TileSelectionManager : SelectionManagerBase
     /// <inheritdoc/>
     public override void DeleteSelected()
     {
+        TileStrokeAction action = new TileStrokeAction(this.ApplyTileState);
+
         foreach (Vector2Int tile in MapEditorManager.Instance.SelectedTiles)
         {
-            this.saveableTilemap.SetTile(
-                tile.x,
-                tile.y,
-                tileID: null);
+            TileState before =
+                TileState.FromData(this.saveableTilemap.GetTileData(tile));
+
+            if (before.Equals(TileState.Empty))
+            {
+                continue;
+            }
+
+            this.saveableTilemap.SetTile(tile.x, tile.y, tileID: null);
+            action.Record(tile, before, TileState.Empty);
+        }
+
+        if (action.HasChanges)
+        {
+            MapEditorManager.Instance.RegisterAction(action);
         }
 
         this.ClearSelection();
@@ -124,16 +137,39 @@ public class TileSelectionManager : SelectionManagerBase
             return;
         }
 
-        List<Vector2Int> movedTiles = new(this.extraMoveStartTiles.Keys);
+        List<Vector2Int> movedTiles = new (this.extraMoveStartTiles.Keys);
+
+        TileStrokeAction action = new TileStrokeAction(this.ApplyTileState);
+
+        // The source cells were emptied when the move started.
+        foreach (KeyValuePair<Vector2Int, TileData> entry in this.moveStartTiles)
+        {
+            action.Record(
+                entry.Key,
+                TileState.FromData(entry.Value),
+                TileState.Empty);
+        }
 
         foreach (KeyValuePair<Vector2Int, TileData> entry in this.extraMoveStartTiles)
         {
+            action.Record(
+                entry.Key,
+                TileState.FromData(this.saveableTilemap.GetTileData(entry.Key)),
+                TileState.FromData(entry.Value));
+
             this.saveableTilemap.SetTile(
                 entry.Key.x,
                 entry.Key.y,
                 entry.Value.TileID,
                 entry.Value.HasCollision,
                 entry.Value.Tag);
+        }
+
+        action.SetSelection(this.moveStartTiles.Keys, movedTiles);
+
+        if (action.HasChanges)
+        {
+            MapEditorManager.Instance.RegisterAction(action);
         }
 
         this.movementPreviewTilemap.ClearAllTiles();
@@ -174,6 +210,17 @@ public class TileSelectionManager : SelectionManagerBase
 
         this.DisableMoveButtons();
         this.ClearSelection();
+    }
+
+    /// <summary>
+    /// Refreshses the selection of tiles.
+    /// </summary>
+    public void RefreshSelection()
+    {
+        this.SetSelection(
+            MapEditorManager.Instance.SelectedTiles
+                .Where(t => this.saveableTilemap.GetTileData(t) != null)
+                .ToList());
     }
 
     /// <inheritdoc/>
@@ -383,5 +430,15 @@ public class TileSelectionManager : SelectionManagerBase
         }
 
         this.SetSelection(previewSelection);
+    }
+
+    private void ApplyTileState(Vector2Int cell, TileState state)
+    {
+        this.saveableTilemap.SetTile(
+            cell.x,
+            cell.y,
+            state.TileID,
+            state.HasCollision,
+            state.Tag);
     }
 }

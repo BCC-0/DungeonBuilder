@@ -26,6 +26,12 @@ public class ChickenHead : EnemyHead
     [SerializeField]
     private int eggKnockback = 5;
 
+    [SaveField(minReferences: 1, maxReferences: 5, displayName: "test reference", referenceMode: ReferenceMode.Shared)]
+    private SaveableEntity testReference;
+
+    [SaveField(minReferences: 1, maxReferences: 5, displayName: "test consume reference", referenceMode: ReferenceMode.Consuming)]
+    private SaveableEntity testConsumeReference;
+
     [SerializeField]
     private EggProjectile eggPrefab;
 

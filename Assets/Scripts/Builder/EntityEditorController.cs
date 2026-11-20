@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 /// <summary>
 /// Controls entity placement, movement, and deletion in the foreground layer.
@@ -36,6 +36,28 @@ public class EntityEditorController : EditorControllerBase
             case EditorAction.Erase:
                 this.TryErase();
                 break;
+        }
+    }
+
+    /// <summary>
+    /// Everything placed or erased during one stroke becomes one undo step.
+    /// </summary>
+    protected override void OnStrokeBegin()
+    {
+        if (MapEditorManager.Instance != null)
+        {
+            MapEditorManager.Instance.BeginTransaction();
+        }
+    }
+
+    /// <summary>
+    /// Closes the group of the stroke.
+    /// </summary>
+    protected override void OnStrokeEnd()
+    {
+        if (MapEditorManager.Instance != null)
+        {
+            MapEditorManager.Instance.EndTransaction();
         }
     }
 
@@ -83,13 +105,17 @@ public class EntityEditorController : EditorControllerBase
 
         BuilderEntity builder = go.AddComponent<BuilderEntity>();
         builder.Initialize(identity.PrefabID);
+
+        if (MapEditorManager.Instance != null)
+        {
+            MapEditorManager.Instance.RegisterAction(
+                EntityPresenceAction.Placed(builder));
+        }
     }
 
     /// <summary>
-    /// Attempts to erase an entity near the pointer position.
-    /// </summary>
-    /// <summary>
     /// Attempts to erase an entity whose sprite bounds contain the pointer position.
+    /// The entity is deactivated instead of destroyed, so the erase can be undone.
     /// </summary>
     private void TryErase()
     {
@@ -117,7 +143,15 @@ public class EntityEditorController : EditorControllerBase
 
             if (containsPointer)
             {
-                Destroy(buildEntity.gameObject);
+                EntityPresenceAction deletion =
+                    EntityPresenceAction.DeleteNow(
+                        new SaveableEntity[] { buildEntity });
+
+                if (MapEditorManager.Instance != null)
+                {
+                    MapEditorManager.Instance.RegisterAction(deletion);
+                }
+
                 return;
             }
         }

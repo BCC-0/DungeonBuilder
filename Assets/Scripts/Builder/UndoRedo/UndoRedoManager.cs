@@ -12,15 +12,14 @@ public class UndoRedoManager : MonoBehaviour
 
     private readonly List<IUndoableAction> actionLog = new ();
 
+    private CompositeAction openTransaction;
+    private int transactionDepth;
+    private IUndoableAction lastRegistered;
+
     /// <summary>
     /// An action called when history is changed.
     /// </summary>
     public event Action HistoryChanged;
-
-    /// <summary>
-    /// Gets the instance of the undo redo manager.
-    /// </summary>
-    public static UndoRedoManager Instance { get; private set; }
 
     /// <summary>
     /// Gets a value indicating whether we can currently undo.
@@ -33,9 +32,62 @@ public class UndoRedoManager : MonoBehaviour
     public bool CanRedo => this.redoStack.Count > 0;
 
     /// <summary>
+    /// Gets a value indicating whether a transaction is currently open.
+    /// </summary>
+    public bool IsInTransaction => this.openTransaction != null;
+
+    /// <summary>
     /// Gets the permanent action log.
     /// </summary>
     public IReadOnlyList<IUndoableAction> ActionLog => this.actionLog;
+
+    /// <summary>
+    /// Starts grouping registered actions into one undo step.
+    /// Calls can be nested, only the outermost EndTransaction commits.
+    /// </summary>
+    public void BeginTransaction()
+    {
+        this.openTransaction ??= new CompositeAction();
+        this.transactionDepth++;
+    }
+
+    /// <summary>
+    /// Ends a transaction. When the outermost transaction ends, everything
+    /// registered in between is pushed as one undo step (nothing if it is empty).
+    /// </summary>
+    public void EndTransaction()
+    {
+        if (this.openTransaction == null)
+        {
+            return;
+        }
+
+        this.transactionDepth--;
+
+        if (this.transactionDepth > 0)
+        {
+            return;
+        }
+
+        this.CommitTransaction();
+    }
+
+    /// <summary>
+    /// Reverts everything done in the open transaction and discards it.
+    /// </summary>
+    public void CancelTransaction()
+    {
+        if (this.openTransaction == null)
+        {
+            return;
+        }
+
+        CompositeAction cancelled = this.openTransaction;
+        this.openTransaction = null;
+        this.transactionDepth = 0;
+
+        cancelled.Undo();
+    }
 
     /// <summary>
     /// Registers a completed operation.
@@ -50,12 +102,27 @@ public class UndoRedoManager : MonoBehaviour
             return;
         }
 
-        this.undoStack.Push(action);
+        if (this.openTransaction != null)
+        {
+            this.openTransaction.Add(action);
+            return;
+        }
 
-        // A new operation invalidates the redo history.
+        if (this.lastRegistered is IMergeableAction mergeable &&
+            this.undoStack.Count > 0 &&
+            ReferenceEquals(this.undoStack.Peek(), this.lastRegistered) &&
+            mergeable.TryMerge(action))
+        {
+            this.redoStack.Clear();
+            this.HistoryChanged?.Invoke();
+            return;
+        }
+
+        this.undoStack.Push(action);
+        this.lastRegistered = action;
+
         this.redoStack.Clear();
 
-        // Keep the permanent log separate from undo/redo.
         this.actionLog.Add(action);
 
         this.HistoryChanged?.Invoke();
@@ -66,12 +133,15 @@ public class UndoRedoManager : MonoBehaviour
     /// </summary>
     public void Undo()
     {
+        this.CommitOpenTransaction();
+
         if (!this.CanUndo)
         {
             return;
         }
 
         IUndoableAction action = this.undoStack.Pop();
+        this.lastRegistered = null;
 
         try
         {
@@ -80,7 +150,6 @@ public class UndoRedoManager : MonoBehaviour
         }
         catch (Exception exception)
         {
-            // Preserve the action if undo failed.
             this.undoStack.Push(action);
             Debug.LogException(exception);
         }
@@ -93,12 +162,15 @@ public class UndoRedoManager : MonoBehaviour
     /// </summary>
     public void Redo()
     {
+        this.CommitOpenTransaction();
+
         if (!this.CanRedo)
         {
             return;
         }
 
         IUndoableAction action = this.redoStack.Pop();
+        this.lastRegistered = null;
 
         try
         {
@@ -107,7 +179,6 @@ public class UndoRedoManager : MonoBehaviour
         }
         catch (Exception exception)
         {
-            // Preserve the action if redo failed.
             this.redoStack.Push(action);
             Debug.LogException(exception);
         }
@@ -121,6 +192,10 @@ public class UndoRedoManager : MonoBehaviour
     /// </summary>
     public void ClearHistory()
     {
+        this.openTransaction = null;
+        this.transactionDepth = 0;
+        this.lastRegistered = null;
+
         this.undoStack.Clear();
         this.redoStack.Clear();
 
@@ -138,22 +213,24 @@ public class UndoRedoManager : MonoBehaviour
         this.HistoryChanged?.Invoke();
     }
 
-    private void Awake()
+    private void CommitOpenTransaction()
     {
-        if (Instance != null && Instance != this)
+        if (this.openTransaction != null)
         {
-            Destroy(this.gameObject);
-            return;
+            this.transactionDepth = 0;
+            this.CommitTransaction();
         }
-
-        Instance = this;
     }
 
-    private void OnDestroy()
+    private void CommitTransaction()
     {
-        if (Instance == this)
+        CompositeAction done = this.openTransaction;
+        this.openTransaction = null;
+        this.transactionDepth = 0;
+
+        if (done != null && !done.IsEmpty)
         {
-            Instance = null;
+            this.RegisterAction(done);
         }
     }
 }

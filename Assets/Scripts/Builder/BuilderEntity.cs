@@ -331,6 +331,29 @@ public class BuilderEntity : SaveableEntity
     }
 
     /// <summary>
+    /// Immediately refreshes this builder wall's grid registration after its
+    /// position changes. This only updates the builder wall grid.
+    /// </summary>
+    public void RefreshWallPosition()
+    {
+        if (!this.isWall)
+        {
+            return;
+        }
+
+        this.UpdateWallCell();
+    }
+
+    /// <summary>
+    /// Gets the consumed head that belongs to this enemy body.
+    /// </summary>
+    /// <returns>The consumed head, or null when there is none.</returns>
+    public BuilderEntity GetConsumedHead()
+    {
+        return this.FindConsumedHead();
+    }
+
+    /// <summary>
     /// Registers this builder entity and disables the entities behaviour.
     /// </summary>
     protected override void Awake()
@@ -420,8 +443,8 @@ public class BuilderEntity : SaveableEntity
     /// <param name="target">The target to remove.</param>
     /// <param name="exceptField">The field to keep it in.</param>
     protected override void RemoveReferencesTo(
-    SaveableEntity target,
-    string exceptField)
+        SaveableEntity target,
+        string exceptField)
     {
         foreach (KeyValuePair<string, RuntimeEditableValue> entry in
                  this.runtimeEditableFields)
@@ -507,12 +530,6 @@ public class BuilderEntity : SaveableEntity
         this.CopySaveFields(source);
     }
 
-    /// <summary>
-    /// Remembers that this entity is an enemy body, reads where its head is
-    /// drawn when the enemy faces down, and creates the child object that
-    /// renders the head.
-    /// </summary>
-    /// <param name="source">The enemy body on the prefab.</param>
     private void InitializeEnemyBody(SaveableEntity source)
     {
         this.isEnemyBody = true;
@@ -547,12 +564,6 @@ public class BuilderEntity : SaveableEntity
         }
     }
 
-    /// <summary>
-    /// Remembers that this entity is a wall and copies the overlay child
-    /// object from the prefab, so the overlay can be driven by the
-    /// neighbouring walls in the builder.
-    /// </summary>
-    /// <param name="source">The wall on the prefab.</param>
     private void InitializeWall(Wall source)
     {
         this.isWall = true;
@@ -807,15 +818,6 @@ public class BuilderEntity : SaveableEntity
     }
 
     /// <summary>
-    /// Gets the consumed head that belongs to this enemy body.
-    /// </summary>
-    /// <returns>The consumed head, or null when there is none.</returns>
-    public BuilderEntity GetConsumedHead()
-    {
-        return this.FindConsumedHead();
-    }
-
-    /// <summary>
     /// Finds the head builder entity that this enemy body consumes.
     /// </summary>
     /// <returns>The consumed head, or null when there is none.</returns>
@@ -908,19 +910,6 @@ public class BuilderEntity : SaveableEntity
         this.headSpriteRenderer.enabled = true;
     }
 
-    /// <summary>
-    /// Immediately refreshes this builder wall's grid registration after its
-    /// position changes. This only updates the builder wall grid.
-    /// </summary>
-    public void RefreshWallPosition()
-    {
-        if (!this.isWall)
-        {
-            return;
-        }
-
-        this.UpdateWallCell();
-    }
 
     /// <summary>
     /// Keeps this wall registered in the grid cell it is standing in, and
@@ -928,6 +917,12 @@ public class BuilderEntity : SaveableEntity
     /// </summary>
     private void UpdateWallCell()
     {
+        if (this.ConsumedBy != null)
+        {
+            this.UnregisterWall();
+            return;
+        }
+
         Vector2Int cell =
             WallGrid.ToCell(
                 this.transform.position,
@@ -1096,6 +1091,26 @@ public class BuilderEntity : SaveableEntity
             : WallOrientation.Down;
     }
 
+    private void OnEnable()
+    {
+        if (this.isWall)
+        {
+            this.UpdateWallCell();
+        }
+    }
+
+    private void UnregisterWall()
+    {
+        if (!this.wallRegistered)
+        {
+            return;
+        }
+
+        WallGrid.Builder.Unregister(this.wallCell, this);
+        WallGrid.Builder.RefreshNeighbours(this.wallCell);
+        this.wallRegistered = false;
+    }
+
     private void Start()
     {
         if (this.HasPendingReferences)
@@ -1149,4 +1164,9 @@ public class BuilderEntity : SaveableEntity
             outline.HideSelection();
         }
     }
+
+    private void OnDisable()
+{
+    this.UnregisterWall();
+}
 }
