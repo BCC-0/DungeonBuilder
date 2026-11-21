@@ -16,6 +16,8 @@ public class UndoRedoManager : MonoBehaviour
     private int transactionDepth;
     private IUndoableAction lastRegistered;
 
+    private bool isApplyingHistory;
+
     /// <summary>
     /// An action called when history is changed.
     /// </summary>
@@ -96,6 +98,11 @@ public class UndoRedoManager : MonoBehaviour
     /// <param name="action">The action to register.</param>
     public void RegisterAction(IUndoableAction action)
     {
+        if (this.isApplyingHistory)
+        {
+            return;
+        }
+
         if (action == null)
         {
             Debug.LogWarning("Cannot register a null undo action.");
@@ -142,6 +149,7 @@ public class UndoRedoManager : MonoBehaviour
 
         IUndoableAction action = this.undoStack.Pop();
         this.lastRegistered = null;
+        this.isApplyingHistory = true;
 
         try
         {
@@ -152,6 +160,10 @@ public class UndoRedoManager : MonoBehaviour
         {
             this.undoStack.Push(action);
             Debug.LogException(exception);
+        }
+        finally
+        {
+            this.isApplyingHistory = false;
         }
 
         this.HistoryChanged?.Invoke();

@@ -162,11 +162,18 @@ public class MapEditorManager : MonoBehaviour
 
         float targetAlpha = layer == EditLayer.Foreground ? 1f : 0.2f;
 
+        HashSet<SpriteRenderer> renderers = new HashSet<SpriteRenderer>();
+
         foreach (SaveableEntity entity in FindObjectsByType<SaveableEntity>())
         {
-            SpriteRenderer sr = entity.GetComponent<SpriteRenderer>();
-            if (sr != null)
+            foreach (SpriteRenderer sr in
+                     entity.GetComponentsInChildren<SpriteRenderer>(true))
             {
+                if (sr == null || !renderers.Add(sr))
+                {
+                    continue;
+                }
+
                 sr.DOKill();
                 sr.DOFade(targetAlpha, 0.25f);
             }
@@ -314,32 +321,42 @@ public class MapEditorManager : MonoBehaviour
     /// </summary>
     public void OnCancelMove() => this.ActiveController.OnCancelMove();
 
+    /// <summary>
+    /// Refreshes the selection, inspector and visuals after an undo or redo.
+    /// Only the selection manager of the active layer is refreshed, because
+    /// both managers share the same selection buttons and the inactive one
+    /// would hide them again.
+    /// </summary>
     private void RefreshAfterHistory()
     {
-        // Deleted (deactivated) entities must not stay selected.
         this.selectedEntities.RemoveAll(e => e == null || !e.gameObject.activeSelf);
 
-        EntitySelectionManager selection = FindAnyObjectByType<EntitySelectionManager>();
-        if (selection != null)
+        if (this.currentLayer == EditLayer.Foreground)
         {
-            selection.RefreshSelection();
-        }
+            EntitySelectionManager selection = FindAnyObjectByType<EntitySelectionManager>();
+            if (selection != null)
+            {
+                selection.RefreshSelection();
+            }
 
-        EntitySelectionVisualizer visualizer = FindAnyObjectByType<EntitySelectionVisualizer>();
-        if (visualizer != null)
+            EntitySelectionVisualizer visualizer = FindAnyObjectByType<EntitySelectionVisualizer>();
+            if (visualizer != null)
+            {
+                visualizer.Refresh();
+            }
+        }
+        else
         {
-            visualizer.Refresh();
+            TileSelectionManager tileSelection = FindAnyObjectByType<TileSelectionManager>();
+            if (tileSelection != null)
+            {
+                tileSelection.RefreshSelection();
+            }
         }
 
         if (RuntimePropertyEditor.Instance != null)
         {
             RuntimePropertyEditor.Instance.ForceRebuild();
-        }
-
-        TileSelectionManager tileSelection = FindAnyObjectByType<TileSelectionManager>();
-        if (tileSelection != null)
-        {
-            tileSelection.RefreshSelection();
         }
     }
 

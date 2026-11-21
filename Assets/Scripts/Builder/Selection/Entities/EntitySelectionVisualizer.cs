@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using static UnityEngine.EventSystems.EventTrigger;
 
 /// <summary>
 /// Applies outline visuals to the currently selected entities.
@@ -71,12 +72,7 @@ public class EntitySelectionVisualizer : MonoBehaviour
 
             if (entity is BuilderEntity body)
             {
-                BuilderEntity head = body.GetConsumedHead();
-
-                if (head != null)
-                {
-                    this.SetHeadOutline(body, head, false);
-                }
+                this.HideHeadOutlines(body);
             }
         }
 
@@ -183,5 +179,21 @@ public class EntitySelectionVisualizer : MonoBehaviour
         SaveableEntity representative = current.GetWorldRepresentative();
 
         return representative != null ? representative : current;
+    }
+
+    private void HideHeadOutlines(BuilderEntity body)
+    {
+        Transform headRenderer = body.transform.Find("HeadRenderer");
+
+        if (headRenderer == null)
+        {
+            return;
+        }
+
+        foreach (EntitySelectionOutline outline in
+                 headRenderer.GetComponentsInChildren<EntitySelectionOutline>(true))
+        {
+            outline.HideSelection();
+        }
     }
 }

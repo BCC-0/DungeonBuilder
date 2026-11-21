@@ -1,5 +1,4 @@
-﻿
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -480,6 +479,44 @@ public class BuilderEntity : SaveableEntity
         }
     }
 
+    /// <summary>
+    /// Applies world presence, then restores renderers that are controlled by other logic.
+    /// </summary>
+    /// <param name="exists">Whether this entity should exist in the world.</param>
+    protected override void SetWorldPresence(bool exists)
+    {
+        base.SetWorldPresence(exists);
+
+        if (!exists)
+        {
+            if (this.headSpriteRenderer != null)
+            {
+                this.headSpriteRenderer.enabled = false;
+            }
+
+            return;
+        }
+
+        this.HideSelectionOutline();
+
+        if (this.isWall &&
+            this.rotateWallBase &&
+            this.wallBaseRenderer != null)
+        {
+            SpriteRenderer rootRenderer = this.GetComponent<SpriteRenderer>();
+
+            if (rootRenderer != null)
+            {
+                rootRenderer.enabled = false;
+            }
+        }
+
+        if (this.isEnemyBody)
+        {
+            this.UpdateHeadRenderer();
+        }
+    }
+
     private void InitializeSourceData(SaveableEntity source)
     {
         if (source is EnemyBody)
@@ -857,12 +894,20 @@ public class BuilderEntity : SaveableEntity
     /// <summary>
     /// Draws the consumed head on the child object at the down anchor
     /// position, one sorting order above this entity's own sprite, or hides
-    /// it when no head is consumed.
+    /// it when no head is consumed or this body is consumed itself.
     /// </summary>
     private void UpdateHeadRenderer()
     {
         if (this.headSpriteRenderer == null)
         {
+            return;
+        }
+
+        if (this.ConsumedBy != null)
+        {
+            this.headSpriteRenderer.enabled = false;
+            this.HideHeadOutline();
+            this.HideSelectionOutline();
             return;
         }
 
@@ -1166,7 +1211,23 @@ public class BuilderEntity : SaveableEntity
     }
 
     private void OnDisable()
-{
-    this.UnregisterWall();
-}
+    {
+        this.UnregisterWall();
+    }
+
+    private void HideSelectionOutline()
+    {
+        foreach (EntitySelectionOutline outline in
+                 this.GetComponentsInChildren<EntitySelectionOutline>(true))
+        {
+            if (this.headSpriteRenderer != null &&
+                outline.transform.IsChildOf(this.headSpriteRenderer.transform))
+            {
+                continue;
+            }
+
+            outline.HideSelection();
+            return;
+        }
+    }
 }

@@ -61,7 +61,6 @@ public class ReferenceButton : MonoBehaviour
     /// </summary>
     public void NavigateToEntity()
     {
-        Debug.Log("A");
         if (this.entity == null)
         {
             Debug.Log("Entity = null");
