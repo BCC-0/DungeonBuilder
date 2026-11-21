@@ -234,6 +234,9 @@ public class RuntimePropertyField : MonoBehaviour
         SaveFieldAttribute attribute =
             this.field.GetCustomAttribute<SaveFieldAttribute>();
 
+        ReferenceSnapshot before = this.CaptureReferenceState();
+        List<SaveableEntity> deleted = new List<SaveableEntity>();
+
         foreach (object target in this.targets)
         {
             if (target == null)
@@ -271,8 +274,7 @@ public class RuntimePropertyField : MonoBehaviour
             }
         }
 
-        this.SetupReferenceList();
-        this.onValueChanged?.Invoke();
+        this.FinishReferenceChange(before, deleted);
     }
 
     /// <summary>
@@ -293,6 +295,9 @@ public class RuntimePropertyField : MonoBehaviour
 
         SaveFieldAttribute attribute =
             this.field.GetCustomAttribute<SaveFieldAttribute>();
+
+        ReferenceSnapshot before = this.CaptureReferenceState();
+        List<SaveableEntity> deleted = new List<SaveableEntity>();
 
         foreach (object target in this.targets)
         {
@@ -344,12 +349,11 @@ public class RuntimePropertyField : MonoBehaviour
                 attribute.ReferenceMode == ReferenceMode.Consuming &&
                 owner != null)
             {
-                entity.SetConsumedBy(owner);
+                entity.SetConsumedBy(owner, this.ConsumingFieldName);
             }
         }
 
-        this.SetupReferenceList();
-        this.onValueChanged?.Invoke();
+        this.FinishReferenceChange(before, deleted);
     }
 
     /// <summary>
@@ -368,6 +372,8 @@ public class RuntimePropertyField : MonoBehaviour
 
         SaveFieldAttribute attribute =
             this.field.GetCustomAttribute<SaveFieldAttribute>();
+        ReferenceSnapshot before = this.CaptureReferenceState();
+        List<SaveableEntity> deleted = new List<SaveableEntity>();
 
         foreach (object target in this.targets)
         {
@@ -454,8 +460,7 @@ public class RuntimePropertyField : MonoBehaviour
             }
         }
 
-        this.SetupReferenceList();
-        this.onValueChanged?.Invoke();
+        this.FinishReferenceChange(before, deleted);
     }
 
     private static string FormatNumber(float value)
@@ -480,6 +485,8 @@ public class RuntimePropertyField : MonoBehaviour
 
         SaveFieldAttribute attribute =
             this.field.GetCustomAttribute<SaveFieldAttribute>();
+        ReferenceSnapshot before = this.CaptureReferenceState();
+        List<SaveableEntity> deleted = new List<SaveableEntity>();
 
         foreach (object target in this.targets)
         {
@@ -519,7 +526,7 @@ public class RuntimePropertyField : MonoBehaviour
                     attribute.ReferenceMode == ReferenceMode.Consuming &&
                     entity.ConsumedBy == owner)
                 {
-                    Destroy(entity.gameObject);
+                    deleted.Add(entity);
                 }
             }
             else
@@ -534,13 +541,12 @@ public class RuntimePropertyField : MonoBehaviour
                     attribute.ReferenceMode == ReferenceMode.Consuming &&
                     entity.ConsumedBy == owner)
                 {
-                    Destroy(entity.gameObject);
+                    deleted.Add(entity);
                 }
             }
         }
 
-        this.SetupReferenceList();
-        this.onValueChanged?.Invoke();
+        this.FinishReferenceChange(before, deleted);
     }
 
     /// <summary>
@@ -596,6 +602,22 @@ public class RuntimePropertyField : MonoBehaviour
         return null;
     }
 
+    private static void WriteFieldValue(
+        FieldInfo field,
+        string builderFieldName,
+        object target,
+        object value)
+    {
+        if (builderFieldName != null &&
+            target is BuilderEntity builderEntity)
+        {
+            builderEntity.SetRuntimeEditableValue(builderFieldName, value);
+            return;
+        }
+
+        field.SetValue(target, value);
+    }
+
     /// <summary>
     /// Determines whether a reference should be visible in this property field.
     ///
@@ -607,7 +629,7 @@ public class RuntimePropertyField : MonoBehaviour
         SaveableEntity entity,
         SaveableEntity owner)
     {
-        if (entity == null)
+        if (entity == null || !entity.gameObject.activeSelf)
         {
             return false;
         }
@@ -1192,18 +1214,7 @@ public class RuntimePropertyField : MonoBehaviour
     /// </summary>
     private void SetValue(object target, object value)
     {
-        if (this.builderFieldName != null &&
-            target is BuilderEntity builderEntity)
-        {
-            builderEntity.SetRuntimeEditableValue(
-                this.builderFieldName,
-                value);
-            return;
-        }
-
-        this.field.SetValue(
-            target,
-            value);
+        WriteFieldValue(this.field, this.builderFieldName, target, value);
     }
 
     private void OnInputChanged(string value)
@@ -1303,10 +1314,10 @@ public class RuntimePropertyField : MonoBehaviour
                 value);
         }
 
-        this.ApplyValue(result);
+        this.ApplyValue(result, true);
     }
 
-    private void ApplyValue(object value)
+    private void ApplyValue(object value, bool continuous = false)
     {
         if (this.targets == null)
         {
@@ -1330,6 +1341,19 @@ public class RuntimePropertyField : MonoBehaviour
                     : (object)numericValue;
         }
 
+        FieldInfo capturedField = this.field;
+        string capturedBuilderName = this.builderFieldName;
+
+        SetFieldValueAction action = new SetFieldValueAction(
+            this.ConsumingFieldName,
+            (target, newValue) => WriteFieldValue(
+                capturedField,
+                capturedBuilderName,
+                target,
+                newValue),
+            null,
+            continuous);
+
         foreach (object target in this.targets)
         {
             if (target == null)
@@ -1337,9 +1361,17 @@ public class RuntimePropertyField : MonoBehaviour
                 continue;
             }
 
-            this.SetValue(
-                target,
-                value);
+            object before = this.GetFieldValue(target);
+
+            this.SetValue(target, value);
+
+            action.Add(target, before, this.GetFieldValue(target));
+        }
+
+        if (action.HasChanges &&
+            MapEditorManager.Instance != null)
+        {
+            MapEditorManager.Instance.RegisterAction(action);
         }
 
         this.onValueChanged?.Invoke();
@@ -1469,5 +1501,48 @@ public class RuntimePropertyField : MonoBehaviour
         }
 
         return false;
+    }
+
+    private ReferenceSnapshot CaptureReferenceState()
+    {
+        return ReferenceSnapshot.Capture(this.targets, this.field);
+    }
+
+    private void FinishReferenceChange(
+        ReferenceSnapshot before,
+        List<SaveableEntity> deleted)
+    {
+        EntityPresenceAction deletion =
+            deleted.Count > 0
+                ? EntityPresenceAction.DeleteNow(deleted)
+                : null;
+
+        ReferenceSnapshot after =
+            ReferenceSnapshot.Capture(this.targets, this.field);
+
+        MapEditorManager manager = MapEditorManager.Instance;
+
+        if (manager != null &&
+            (deletion != null || !before.IsSameAs(after)))
+        {
+            manager.BeginTransaction();
+
+            if (deletion != null)
+            {
+                manager.RegisterAction(deletion);
+            }
+
+            manager.RegisterAction(new ReferenceStateAction(before, after));
+            manager.EndTransaction();
+        }
+
+        if (RuntimePropertyEditor.Instance != null)
+        {
+            RuntimePropertyEditor.Instance.ForceRebuild();
+            return;
+        }
+
+        this.SetupReferenceList();
+        this.onValueChanged?.Invoke();
     }
 }

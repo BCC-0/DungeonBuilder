@@ -1,9 +1,8 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
-using TMPro;
 using UnityEngine.UI;
 
 /// <summary>
@@ -23,7 +22,8 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     private bool isPrimaryHeld;
     private bool isMiddleMouseHeld;
 
-    // private bool command;
+    private bool command;
+
     private EditorControllerBase ActiveController => MapEditorManager.Instance.ActiveController;
 
     /// <summary>
@@ -312,7 +312,7 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     }
 
     /// <summary>
-    /// Enables the player to do a command action: (E.g. command + z undoes, command + r redoes, command + s saves).
+    /// Enables the player to do a command action: (E.g. command + z undoes, command + y redoes, command + s saves).
     /// </summary>
     /// <param name="ctx">The input context.</param>
     public void OnCommand(InputAction.CallbackContext ctx)
@@ -324,11 +324,62 @@ public class BuilderDesktopInputHandler : MonoBehaviour
 
         if (ctx.started)
         {
-            // this.command = true;
+            this.command = true;
         }
         else if (ctx.canceled)
         {
-            // this.command = false;
+            this.command = false;
+        }
+    }
+
+    /// <summary>
+    /// Ctrl + S should save the game.
+    /// </summary>
+    /// <param name="ctx">The input context.</param>
+    public void OnSave(InputAction.CallbackContext ctx)
+    {
+        if (this.IsTyping())
+        {
+            return;
+        }
+
+        if (ctx.started && this.command)
+        {
+            MapEditorManager.Instance.SaveMap();
+        }
+    }
+
+    /// <summary>
+    /// Ctrl + Z should undo.
+    /// </summary>
+    /// <param name="ctx">The input context.</param>
+    public void OnUndo(InputAction.CallbackContext ctx)
+    {
+        if (this.IsTyping())
+        {
+            return;
+        }
+
+        if (ctx.started && this.command)
+        {
+            MapEditorManager.Instance.Undo();
+        }
+    }
+
+    /// <summary>
+    /// Ctrl + Y should undo.
+    /// </summary>
+    /// <param name="ctx">The input context.</param>
+    public void OnRedo(InputAction.CallbackContext ctx)
+    {
+        if (this.IsTyping())
+        {
+            return;
+        }
+
+        if (ctx.started && this.command)
+        {
+            MapEditorManager.Instance.Redo();
         }
     }
 
@@ -385,11 +436,26 @@ public class BuilderDesktopInputHandler : MonoBehaviour
 
     private bool IsTyping()
     {
-        GameObject selected = EventSystem.current?.currentSelectedGameObject;
+        GameObject selected =
+            EventSystem.current != null
+                ? EventSystem.current.currentSelectedGameObject
+                : null;
 
-        return selected != null &&
-            (selected.GetComponent<TMP_InputField>() != null ||
-             selected.GetComponent<InputField>() != null);
+        if (selected == null)
+        {
+            return false;
+        }
+
+        TMP_InputField tmpField = selected.GetComponent<TMP_InputField>();
+
+        if (tmpField != null && tmpField.isFocused)
+        {
+            return true;
+        }
+
+        InputField legacyField = selected.GetComponent<InputField>();
+
+        return legacyField != null && legacyField.isFocused;
     }
 
     private void OnApplicationFocus(bool hasFocus)

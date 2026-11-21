@@ -17,6 +17,7 @@ public abstract class EditorControllerBase : MonoBehaviour
     private Vector2 currentPos;
     private bool primaryHolding;
     private bool secondaryHolding;
+    private bool strokeActive;
 
     /// <summary>
     /// The different possible actions when editing entities/tiles.
@@ -89,6 +90,9 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// <param name="tool">The tool to activate.</param>
     public void SetTool(EditorTool tool)
     {
+        // Changing tool always finishes the stroke that is in progress.
+        this.EndStroke();
+
         this.CurrentTool = tool;
     }
 
@@ -119,6 +123,7 @@ public abstract class EditorControllerBase : MonoBehaviour
         }
 
         this.primaryHolding = false;
+        this.EndStrokeIfReleased();
     }
 
     /// <summary>
@@ -136,6 +141,7 @@ public abstract class EditorControllerBase : MonoBehaviour
     public void OnSecondaryUp()
     {
         this.secondaryHolding = false;
+        this.EndStrokeIfReleased();
     }
 
     /// <summary>
@@ -183,6 +189,7 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// </summary>
     protected void ApplyTool()
     {
+        this.EnsureStroke();
         this.OnApplyTool(this.CurrentTool);
     }
 
@@ -191,6 +198,21 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// </summary>
     /// <param name="tool">The active editor tool.</param>
     protected abstract void OnApplyTool(EditorTool tool);
+
+    /// <summary>
+    /// Called when a brush or eraser stroke starts, before the first change.
+    /// Everything changed until <see cref="OnStrokeEnd"/> is one undo step.
+    /// </summary>
+    protected virtual void OnStrokeBegin()
+    {
+    }
+
+    /// <summary>
+    /// Called when the stroke ends (input released, or the tool changed).
+    /// </summary>
+    protected virtual void OnStrokeEnd()
+    {
+    }
 
     /// <summary>
     /// Converts the current tool and input state into a high-level action.
@@ -209,6 +231,16 @@ public abstract class EditorControllerBase : MonoBehaviour
 
             _ => EditorAction.None
         };
+    }
+
+    /// <summary>
+    /// Makes sure a stroke is not left open when this controller is disabled.
+    /// </summary>
+    private void OnDisable()
+    {
+        this.primaryHolding = false;
+        this.secondaryHolding = false;
+        this.EndStroke();
     }
 
     /// <summary>
@@ -242,6 +274,9 @@ public abstract class EditorControllerBase : MonoBehaviour
             }
         }
 
+        // The input can also be released here, without OnPrimaryUp being called.
+        this.EndStrokeIfReleased();
+
         if (this.CurrentTool == EditorTool.Selection && this.selectionManager.IsDragging)
         {
             this.selectionManager.UpdateDrag(this.CurrentPos);
@@ -251,5 +286,37 @@ public abstract class EditorControllerBase : MonoBehaviour
         {
             this.ApplyTool();
         }
+    }
+
+    private void EnsureStroke()
+    {
+        if (this.strokeActive ||
+            (this.CurrentTool != EditorTool.Brush &&
+             this.CurrentTool != EditorTool.Eraser))
+        {
+            return;
+        }
+
+        this.strokeActive = true;
+        this.OnStrokeBegin();
+    }
+
+    private void EndStrokeIfReleased()
+    {
+        if (!this.primaryHolding && !this.secondaryHolding)
+        {
+            this.EndStroke();
+        }
+    }
+
+    private void EndStroke()
+    {
+        if (!this.strokeActive)
+        {
+            return;
+        }
+
+        this.strokeActive = false;
+        this.OnStrokeEnd();
     }
 }

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -53,12 +53,28 @@ public static class BuilderRegistry
     }
 
     /// <summary>
-    /// Returns all registered builder entities.
+    /// Returns all registered builder entities that are not deleted.
+    /// Entities that were deleted in the builder are only deactivated (so undo
+    /// can bring them back) and are left out, so they are not hit, referenced
+    /// or saved.
     /// </summary>
     /// <returns>The list of Builder entities this registry has registered.</returns>
     public static List<BuilderEntity> GetAll()
     {
-        return new List<BuilderEntity>(Builders.Values);
+        List<BuilderEntity> result = new List<BuilderEntity>(Builders.Count);
+
+        foreach (BuilderEntity entity in Builders.Values)
+        {
+            // activeSelf, not activeInHierarchy: a hidden parent must not
+            // make every entity look deleted.
+            if (entity != null &&
+                entity.gameObject.activeSelf)
+            {
+                result.Add(entity);
+            }
+        }
+
+        return result;
     }
 
     /// <summary>

@@ -239,6 +239,8 @@ public class RuntimePositionField : MonoBehaviour
                 return;
             }
 
+            Vector3 oldPosition = entity.transform.position;
+
             Vector2Int destinationCell =
                 new Vector2Int(
                     Mathf.RoundToInt(gridPosition.x),
@@ -249,19 +251,36 @@ public class RuntimePositionField : MonoBehaviour
                     destinationCell,
                     entity);
 
-            if (entityAtDestination != null)
-            {
-                Destroy(entityAtDestination.gameObject);
-            }
-
             Vector2 worldPosition =
                 this.GridToWorld(gridPosition);
 
-            entity.transform.position =
+            Vector3 newPosition =
                 new Vector3(
                     worldPosition.x,
                     worldPosition.y,
-                    entity.transform.position.z);
+                    oldPosition.z);
+
+            MapEditorManager manager = MapEditorManager.Instance;
+
+            // The delete and the move are undone together.
+            if (manager != null)
+            {
+                manager.BeginTransaction();
+            }
+
+            if (entityAtDestination != null)
+            {
+                EntityPresenceAction deletion =
+                    EntityPresenceAction.DeleteNow(
+                        new SaveableEntity[] { entityAtDestination });
+
+                if (manager != null)
+                {
+                    manager.RegisterAction(deletion);
+                }
+            }
+
+            entity.transform.position = newPosition;
 
             BuilderEntity builderEntity =
                 entity.GetComponent<BuilderEntity>();
@@ -269,6 +288,19 @@ public class RuntimePositionField : MonoBehaviour
             if (builderEntity != null)
             {
                 builderEntity.RefreshWallPosition();
+            }
+
+            if (manager != null)
+            {
+                MoveEntitiesAction move = new MoveEntitiesAction();
+                move.Add(entity, oldPosition, newPosition);
+
+                if (move.HasChanges)
+                {
+                    manager.RegisterAction(move);
+                }
+
+                manager.EndTransaction();
             }
 
             // Keep the selection outline on the entity.
@@ -333,6 +365,15 @@ public class RuntimePositionField : MonoBehaviour
                     $"Could not move tile from " +
                     $"({oldPosition.x}, {oldPosition.y}) " +
                     $"to ({newPosition.x}, {newPosition.y}).");
+            }
+
+            if (MapEditorManager.Instance != null)
+            {
+                MapEditorManager.Instance.RegisterAction(
+                    new MoveTileAction(
+                        this.tilemap,
+                        oldPosition,
+                        newPosition));
             }
         }
         catch (EditException exception)

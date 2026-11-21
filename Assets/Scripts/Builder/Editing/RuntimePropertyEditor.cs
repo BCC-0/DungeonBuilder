@@ -229,8 +229,8 @@ public class RuntimePropertyEditor : MonoBehaviour
     /// <summary>
     /// Begins reference selection.
     /// </summary>
-    public void BeginReferenceSelection(
-        RuntimePropertyField propertyField)
+    /// <param name="propertyField">The field to reference for.</param>
+    public void BeginReferenceSelection(RuntimePropertyField propertyField)
     {
         this.BeginReferenceSelection(propertyField, -1);
     }
@@ -238,6 +238,8 @@ public class RuntimePropertyEditor : MonoBehaviour
     /// <summary>
     /// Begins reference selection with a specified index.
     /// </summary>
+    /// <param name="propertyField">The field to reference for.</param>
+    /// <param name="index">The index to reference for.</param>
     public void BeginReferenceSelection(
         RuntimePropertyField propertyField,
         int index)
@@ -262,6 +264,7 @@ public class RuntimePropertyEditor : MonoBehaviour
     /// <summary>
     /// Confirms the reference selection and sets the property field.
     /// </summary>
+    /// <param name="entities">The entities to reference.</param>
     public void ConfirmReferenceSelection(
         IReadOnlyList<SaveableEntity> entities)
     {
@@ -308,6 +311,7 @@ public class RuntimePropertyEditor : MonoBehaviour
     /// True when reference selection is finished. False when it should
     /// stay open, for example when a list can accept more references.
     /// </returns>
+    /// <param name="entities">The entities to reference.</param>
     public bool TryApplyReferences(
         IReadOnlyList<SaveableEntity> entities)
     {
@@ -360,6 +364,15 @@ public class RuntimePropertyEditor : MonoBehaviour
         {
             this.selectionManager.CancelReferenceSelection();
         }
+    }
+
+    /// <summary>
+    /// Forces to rebuild the inspector. Needed after redo/undo action or consuming a referenced entity.
+    /// </summary>
+    public void ForceRebuild()
+    {
+        this.lastSelectionKey = null;
+        this.Rebuild();
     }
 
     private void Awake()

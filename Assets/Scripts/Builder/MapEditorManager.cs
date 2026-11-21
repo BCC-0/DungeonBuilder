@@ -57,6 +57,8 @@ public class MapEditorManager : MonoBehaviour
     private EditorControllerBase tileController;
     private EditorControllerBase entityController;
 
+    private UndoRedoManager undoRedoManager;
+
     private EditorTool currentTool;
     private EditLayer currentLayer;
 
@@ -160,11 +162,18 @@ public class MapEditorManager : MonoBehaviour
 
         float targetAlpha = layer == EditLayer.Foreground ? 1f : 0.2f;
 
+        HashSet<SpriteRenderer> renderers = new HashSet<SpriteRenderer>();
+
         foreach (SaveableEntity entity in FindObjectsByType<SaveableEntity>())
         {
-            SpriteRenderer sr = entity.GetComponent<SpriteRenderer>();
-            if (sr != null)
+            foreach (SpriteRenderer sr in
+                     entity.GetComponentsInChildren<SpriteRenderer>(true))
             {
+                if (sr == null || !renderers.Add(sr))
+                {
+                    continue;
+                }
+
                 sr.DOKill();
                 sr.DOFade(targetAlpha, 0.25f);
             }
@@ -211,6 +220,40 @@ public class MapEditorManager : MonoBehaviour
     {
         // TODO: Should add username to path before releasing.
         SaveManager.SaveBuilderMap(this.mapName);
+    }
+
+    /// <summary>
+    /// Registers an action to the undoredomanager.
+    /// </summary>
+    /// <param name="action">The action to register.</param>
+    public void RegisterAction(IUndoableAction action) => this.undoRedoManager.RegisterAction(action);
+
+    /// <summary>
+    /// Starts a transaction for the undoredomanager.
+    /// </summary>
+    public void BeginTransaction() => this.undoRedoManager.BeginTransaction();
+
+    /// <summary>
+    /// Ends a transaction for the undoredomanager.
+    /// </summary>
+    public void EndTransaction() => this.undoRedoManager.EndTransaction();
+
+    /// <summary>
+    /// Undoes last action.
+    /// </summary>
+    public void Undo()
+    {
+        this.undoRedoManager.Undo();
+        this.RefreshAfterHistory();
+    }
+
+    /// <summary>
+    /// Redoes last action.
+    /// </summary>
+    public void Redo()
+    {
+        this.undoRedoManager.Redo();
+        this.RefreshAfterHistory();
     }
 
     /// <summary>
@@ -278,11 +321,51 @@ public class MapEditorManager : MonoBehaviour
     /// </summary>
     public void OnCancelMove() => this.ActiveController.OnCancelMove();
 
+    /// <summary>
+    /// Refreshes the selection, inspector and visuals after an undo or redo.
+    /// Only the selection manager of the active layer is refreshed, because
+    /// both managers share the same selection buttons and the inactive one
+    /// would hide them again.
+    /// </summary>
+    private void RefreshAfterHistory()
+    {
+        this.selectedEntities.RemoveAll(e => e == null || !e.gameObject.activeSelf);
+
+        if (this.currentLayer == EditLayer.Foreground)
+        {
+            EntitySelectionManager selection = FindAnyObjectByType<EntitySelectionManager>();
+            if (selection != null)
+            {
+                selection.RefreshSelection();
+            }
+
+            EntitySelectionVisualizer visualizer = FindAnyObjectByType<EntitySelectionVisualizer>();
+            if (visualizer != null)
+            {
+                visualizer.Refresh();
+            }
+        }
+        else
+        {
+            TileSelectionManager tileSelection = FindAnyObjectByType<TileSelectionManager>();
+            if (tileSelection != null)
+            {
+                tileSelection.RefreshSelection();
+            }
+        }
+
+        if (RuntimePropertyEditor.Instance != null)
+        {
+            RuntimePropertyEditor.Instance.ForceRebuild();
+        }
+    }
+
     private void Awake()
     {
         Instance = this;
         this.tileController = FindAnyObjectByType<TileEditorController>();
         this.entityController = FindAnyObjectByType<EntityEditorController>();
+        this.undoRedoManager = FindAnyObjectByType<UndoRedoManager>();
         this.SelectDrag();
         this.SetLayer(EditLayer.Foreground);
     }

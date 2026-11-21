@@ -114,6 +114,25 @@ public class Wall : SaveableEntity
     }
 
     /// <summary>
+    /// Removes the wall from the grid when it leaves the world, for example when
+    /// it is consumed, and registers it again when it returns.
+    /// </summary>
+    /// <param name="exists">Whether this wall should exist in the world.</param>
+    protected override void SetWorldPresence(bool exists)
+    {
+        base.SetWorldPresence(exists);
+
+        if (exists)
+        {
+            this.RegisterInGrid();
+        }
+        else
+        {
+            this.UnregisterFromGridAndRefreshNeighbours();
+        }
+    }
+
+    /// <summary>
     /// Registers the wall when it was not registered by a map load, for
     /// example when it is spawned while playing. Overrides must call the
     /// base method.
@@ -175,6 +194,11 @@ public class Wall : SaveableEntity
     /// </summary>
     protected void RegisterInGrid()
     {
+        if (this.ConsumedBy != null)
+        {
+            return;
+        }
+
         Vector2Int newCell =
             WallGrid.ToCell(
                 this.transform.position,
@@ -305,5 +329,19 @@ public class Wall : SaveableEntity
         this.registered = false;
 
         WallGrid.Game.Unregister(this.cell, this);
+    }
+
+    private void UnregisterFromGridAndRefreshNeighbours()
+    {
+        if (!this.registered)
+        {
+            return;
+        }
+
+        Vector2Int oldCell = this.cell;
+
+        this.UnregisterFromGrid();
+
+        WallGrid.Game.RefreshNeighbours(oldCell);
     }
 }
