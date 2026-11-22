@@ -11794,6 +11794,7 @@ MonoBehaviour:
   - {fileID: 239851346}
   - {fileID: 1258271126}
   - {fileID: 1205804170}
+  - {fileID: 549142573}
   backgroundLayerImage: {fileID: 205616415}
   foregroundLayerImage: {fileID: 559147937}
   layerTransitionDuration: 0.25
@@ -14242,7 +14243,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1740556538}
         m_TargetAssemblyTypeName: MapEditorManager, Assembly-CSharp
-        m_MethodName: SelectSelection
+        m_MethodName: SelectPick
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}

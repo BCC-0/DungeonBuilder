@@ -381,6 +381,97 @@ public class InventoryController : MonoBehaviour
     }
 
     /// <summary>
+    /// Picks the inventory item that places the given tile into the toolbar.
+    /// </summary>
+    /// <param name="tileID">The global tile ID to look for.</param>
+    public void PickTile(string tileID)
+    {
+        foreach (InventoryFolder folder in this.folders)
+        {
+            foreach (InventoryItem item in folder.Items)
+            {
+                if (item.IsTile &&
+                    item.Tile != null &&
+                    TileLibrary.GetIDForTileGlobal(item.Tile) == tileID)
+                {
+                    this.PickItem(item);
+                    return;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Picks the inventory item that places the given prefab into the toolbar.
+    /// </summary>
+    /// <param name="prefabID">The prefab ID to look for.</param>
+    public void PickPrefab(string prefabID)
+    {
+        foreach (InventoryFolder folder in this.folders)
+        {
+            foreach (InventoryItem item in folder.Items)
+            {
+                if (!item.IsTile &&
+                    item.Prefab != null &&
+                    item.Prefab.TryGetComponent(out PrefabIdentity identity) &&
+                    identity.PrefabID == prefabID)
+                {
+                    this.PickItem(item);
+                    return;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Puts the item in the first free toolbar slot and selects it.
+    /// If the item is already in the toolbar, that slot is selected instead.
+    /// If the toolbar is full, the first slot is replaced.
+    /// </summary>
+    /// <param name="item">The item to add to the toolbar. Null is ignored.</param>
+    public void PickItem(InventoryItem item)
+    {
+        if (item == null || this.isOpen || this.itemSlots.Length == 0)
+        {
+            return;
+        }
+
+        int targetIndex = 0;
+        bool foundFree = false;
+
+        for (int i = 0; i < this.itemSlots.Length; i++)
+        {
+            if (this.itemSlots[i].Item == item)
+            {
+                this.SelectSlot(i);
+                return;
+            }
+
+            if (!foundFree && this.itemSlots[i].Item == null)
+            {
+                targetIndex = i;
+                foundFree = true;
+            }
+        }
+
+        ItemBarSlot slot = this.itemSlots[targetIndex];
+
+        RectTransform imageRect = slot.ItemImageRect;
+
+        if (imageRect == null)
+        {
+            imageRect = slot.GetComponent<RectTransform>();
+        }
+
+        slot.SetItem(
+            item,
+            GetScreenPoint(imageRect),
+            this.GetInventorySize(item, slot));
+
+        this.SelectSlot(targetIndex);
+    }
+
+    /// <summary>
     /// Converts the world position of a UI element to a screen point,
     /// using the camera of the canvas it belongs to.
     /// </summary>
@@ -447,6 +538,26 @@ public class InventoryController : MonoBehaviour
             firstItem,
             firstScreenPos,
             firstInventorySize);
+    }
+
+    private Vector2 GetInventorySize(InventoryItem item, ItemBarSlot slot)
+    {
+        foreach (Transform child in this.itemContainer)
+        {
+            if (child.TryGetComponent(out InventoryItemUI itemUI) &&
+                itemUI.Item == item &&
+                child is RectTransform rect)
+            {
+                return rect.rect.size;
+            }
+        }
+
+        if (slot.InventorySize.x > 0f && slot.InventorySize.y > 0f)
+        {
+            return slot.InventorySize;
+        }
+
+        return this.itemPrefab.GetComponent<RectTransform>().rect.size;
     }
 
     /// <summary>

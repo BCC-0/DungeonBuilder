@@ -10,6 +10,7 @@ public class TileEditorController : EditorControllerBase
     private TileBase selectedTile;
 
     private TileStrokeAction stroke;
+    private InventoryController inventory;
 
     /// <summary>
     /// Gets or sets the currently selected tile.
@@ -86,11 +87,32 @@ public class TileEditorController : EditorControllerBase
     }
 
     /// <summary>
-    /// Sets the correct selection manager.
+    /// Picks the tile under the pointer into the toolbar.
     /// </summary>
+    protected override void OnPick()
+    {
+        if (this.SaveableTilemap == null || this.inventory == null)
+        {
+            return;
+        }
+
+        Vector3Int cellPos = this.SaveableTilemap.Tilemap.WorldToCell(this.CurrentPos);
+
+        TileState state = TileState.FromData(
+            this.SaveableTilemap.GetTileData(new Vector2Int(cellPos.x, cellPos.y)));
+
+        if (string.IsNullOrEmpty(state.TileID))
+        {
+            return;
+        }
+
+        this.inventory.PickTile(state.TileID);
+    }
+
     private void Start()
     {
         this.SelectionManager = FindAnyObjectByType<TileSelectionManager>();
+        this.inventory = FindAnyObjectByType<InventoryController>();
     }
 
     /// <summary>
