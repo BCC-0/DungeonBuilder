@@ -255,6 +255,14 @@ public class TileSelectionManager : SelectionManagerBase
         return this.GetTileBoundingRect(tiles);
     }
 
+    /// <inheritdoc/>
+    protected override bool HasSelectableAt(Vector2 position)
+    {
+        Vector2Int cellPos = (Vector2Int)this.saveableTilemap.Tilemap.WorldToCell(position);
+
+        return this.saveableTilemap.Tilemap.HasTile(new Vector3Int(cellPos.x, cellPos.y, 0));
+    }
+
     /// <summary>
     /// Selects the tile at the clicked cell, if one exists.
     /// </summary>

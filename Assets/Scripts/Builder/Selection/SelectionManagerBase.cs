@@ -82,6 +82,11 @@ public abstract class SelectionManagerBase : MonoBehaviour
     public bool IsReferenceSelectionMode => this.isReferenceSelectionMode;
 
     /// <summary>
+    /// Gets a value indicating whether the selection is currently being moved.
+    /// </summary>
+    public bool IsInMovementMode => this.isMovementMode;
+
+    /// <summary>
     /// Gets or sets the current position of the used pointer.
     /// </summary>
     public Vector2 CurrentPos
@@ -289,6 +294,29 @@ public abstract class SelectionManagerBase : MonoBehaviour
     }
 
     /// <summary>
+    /// Gets a value indicating whether a click at the given world position would select something.
+    /// </summary>
+    /// <param name="worldPos">The world position to check.</param>
+    /// <returns>True when something selectable is under the position.</returns>
+    public bool CanSelectAt(Vector2 worldPos)
+    {
+        return this.HasSelectableAt(worldPos);
+    }
+
+    /// <summary>
+    /// Checks whether a screen position lies on the visible selection or move buttons.
+    /// Presses there are consumed even while the buttons ignore raycasts, so they do not
+    /// start editing behind the panel.
+    /// </summary>
+    /// <param name="screenPos">The screen position to test.</param>
+    /// <returns>True when the position is on the buttons.</returns>
+    public bool IsPointerOverSelectionButtons(Vector2 screenPos)
+    {
+        return this.IsPointerOverRect(this.selectionButtons, screenPos) ||
+            this.IsPointerOverRect(this.moveButtons, screenPos);
+    }
+
+    /// <summary>
     /// Deletes all currently selected items.
     /// </summary>
     public abstract void DeleteSelected();
@@ -364,6 +392,17 @@ public abstract class SelectionManagerBase : MonoBehaviour
     protected virtual List<SaveableEntity> PickEntitiesIn(Rect rect)
     {
         return new List<SaveableEntity>();
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether something is under the given world position.
+    /// Managers that cannot select anything return false.
+    /// </summary>
+    /// <param name="position">The world position to check.</param>
+    /// <returns>True when something selectable is under the position.</returns>
+    protected virtual bool HasSelectableAt(Vector2 position)
+    {
+        return false;
     }
 
     /// <summary>
@@ -647,5 +686,29 @@ public abstract class SelectionManagerBase : MonoBehaviour
                 this.selectionButtons,
                 this.GetCurrentSelectionBounds());
         }
+    }
+
+    /// <summary>
+    /// Checks whether a screen position lies on a UI rect, including while a canvas group
+    /// on it is blocking raycasts.
+    /// </summary>
+    /// <param name="rect">The rect to test.</param>
+    /// <param name="screenPos">The screen position to test.</param>
+    /// <returns>True when the position is inside the rect.</returns>
+    private bool IsPointerOverRect(RectTransform rect, Vector2 screenPos)
+    {
+        if (!rect.gameObject.activeInHierarchy)
+        {
+            return false;
+        }
+
+        Canvas canvas = rect.GetComponentInParent<Canvas>();
+
+        Camera uiCam =
+            canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay
+                ? canvas.worldCamera
+                : null;
+
+        return RectTransformUtility.RectangleContainsScreenPoint(rect, screenPos, uiCam);
     }
 }

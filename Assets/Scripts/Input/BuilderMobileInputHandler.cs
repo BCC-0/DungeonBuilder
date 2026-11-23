@@ -118,7 +118,8 @@ public class BuilderMobileInputHandler : MonoBehaviour
 
         if (!this.touchesOverUI.ContainsKey(id))
         {
-            this.touchesOverUI[id] = this.IsPointerOverUI(screenPos);
+            this.touchesOverUI[id] = this.IsPointerOverUI(screenPos) ||
+                MapEditorManager.Instance.IsPointerOverSelectionButtons(screenPos);
         }
 
         if (this.touchesOverUI[id])

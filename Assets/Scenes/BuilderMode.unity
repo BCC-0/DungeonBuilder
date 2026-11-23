@@ -13941,10 +13941,6 @@ MonoBehaviour:
     m_ActionId: 8d896a06-9b2c-4323-aa50-4be185689d7e
     m_ActionName: 'Builder/MoveSelection[/Keyboard/f]'
   - m_PersistentCalls:
-      m_Calls: []
-    m_ActionId: 59b349f0-d05a-4747-b3f8-014fa192bbeb
-    m_ActionName: 'Builder/RotateSelection[/Keyboard/r]'
-  - m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 2019441082}
         m_TargetAssemblyTypeName: BuilderDesktopInputHandler, Assembly-CSharp
@@ -14028,6 +14024,86 @@ MonoBehaviour:
         m_CallState: 2
     m_ActionId: ee6804cd-3685-4049-9acd-925d89c4262a
     m_ActionName: 'Builder/Redo[/Keyboard/y]'
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 2019441082}
+        m_TargetAssemblyTypeName: BuilderDesktopInputHandler, Assembly-CSharp
+        m_MethodName: OnSelectDragTool
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: 8c55c4f2-fc3b-4379-b8ee-1dfe9f66c9a0
+    m_ActionName: 'Builder/DragTool[/Keyboard/r]'
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 2019441082}
+        m_TargetAssemblyTypeName: BuilderDesktopInputHandler, Assembly-CSharp
+        m_MethodName: OnSelectBrushTool
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: e24f786e-f296-4d51-ad3d-e18e3641fb37
+    m_ActionName: 'Builder/BrushTool[/Keyboard/t]'
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 2019441082}
+        m_TargetAssemblyTypeName: BuilderDesktopInputHandler, Assembly-CSharp
+        m_MethodName: OnSelectEraserTool
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: 749d2e03-a8d2-4c87-b0e3-6fea38dfefff
+    m_ActionName: 'Builder/EraseTool[/Keyboard/y]'
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 2019441082}
+        m_TargetAssemblyTypeName: BuilderDesktopInputHandler, Assembly-CSharp
+        m_MethodName: OnSelectSelectionTool
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: ddb99eab-1eab-40ae-8d1c-08201fe8ed5d
+    m_ActionName: 'Builder/SelectTool[/Keyboard/u]'
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 2019441082}
+        m_TargetAssemblyTypeName: BuilderDesktopInputHandler, Assembly-CSharp
+        m_MethodName: OnSelectPickTool
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: 23c239c9-e09c-44ee-9188-c6fad6bc9dcc
+    m_ActionName: 'Builder/PickTool[/Keyboard/i]'
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: Keyboard&Mouse
   m_DefaultActionMap: Builder
@@ -14049,6 +14125,7 @@ MonoBehaviour:
   cameraController: {fileID: 35717380}
   inventoryController: {fileID: 1740962443}
   desktopZoomSpeed: 3
+  dragClickThreshold: 5
 --- !u!114 &2019441083
 MonoBehaviour:
   m_ObjectHideFlags: 0

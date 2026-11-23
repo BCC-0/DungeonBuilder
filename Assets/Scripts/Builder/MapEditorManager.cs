@@ -104,6 +104,13 @@ public class MapEditorManager : MonoBehaviour
     public EditorControllerBase ActiveController => this.activeController;
 
     /// <summary>
+    /// Gets a value indicating whether a selection is currently being moved in either layer.
+    /// </summary>
+    public bool IsMovingSelection =>
+        this.tileController.IsMovingSelection ||
+        this.entityController.IsMovingSelection;
+
+    /// <summary>
     /// Gets or sets the map name we are editing.
     /// </summary>
     public string MapName { get => this.mapName; set => this.mapName = value; }
@@ -311,6 +318,51 @@ public class MapEditorManager : MonoBehaviour
     /// Selects the pick tool.
     /// </summary>
     public void SelectPick() => this.SelectTool(EditorTool.Pick, 4);
+
+    /// <summary>
+    /// Selects the entity or tile under the pointer without leaving the current tool.
+    /// Entities are preferred over tiles. When there is nothing to select, the selection is cleared.
+    /// </summary>
+    /// <param name="worldPos">The world position that was clicked.</param>
+    public void SelectAtPointer(Vector2 worldPos)
+    {
+        EditLayer? targetLayer = null;
+
+        if (this.entityController.CanSelectAt(worldPos))
+        {
+            targetLayer = EditLayer.Foreground;
+        }
+        else if (this.tileController.CanSelectAt(worldPos))
+        {
+            targetLayer = EditLayer.Background;
+        }
+
+        if (targetLayer == null)
+        {
+            // Clicking empty space drops the selection but keeps the tool.
+            this.activeController.ResetSelectionTool();
+            return;
+        }
+
+        if (this.currentLayer != targetLayer.Value)
+        {
+            this.SetLayer(targetLayer.Value);
+        }
+
+        this.activeController.SelectAt(worldPos);
+    }
+
+    /// <summary>
+    /// Checks whether a screen position lies on the selection buttons of either layer,
+    /// so a press there is not treated as world input.
+    /// </summary>
+    /// <param name="screenPos">The screen position to test.</param>
+    /// <returns>True when the position is on the selection buttons.</returns>
+    public bool IsPointerOverSelectionButtons(Vector2 screenPos)
+    {
+        return this.entityController.IsPointerOverSelectionButtons(screenPos) ||
+            this.tileController.IsPointerOverSelectionButtons(screenPos);
+    }
 
     /// <summary>
     /// Deletes the currently selected items.

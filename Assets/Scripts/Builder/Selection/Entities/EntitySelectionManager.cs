@@ -403,6 +403,12 @@ public class EntitySelectionManager : SelectionManagerBase
     }
 
     /// <inheritdoc/>
+    protected override bool HasSelectableAt(Vector2 position)
+    {
+        return this.PickEntitiesAt(position).Count > 0;
+    }
+
+    /// <inheritdoc/>
     protected override void ContinueMove(Vector2 worldPos)
     {
         if (!this.IsMovementMode)

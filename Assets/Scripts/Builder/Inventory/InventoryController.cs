@@ -179,11 +179,19 @@ public class InventoryController : MonoBehaviour
             return;
         }
 
+        bool isSlotSwitch =
+            this.selectedSlot >= 0 && this.selectedSlot != index;
+
         this.selectedSlot = index;
 
         this.SetSelectionImage(this.itemSlots[index].gameObject);
 
         this.EquipItem(this.itemSlots[index].Item);
+
+        if (isSlotSwitch && MapEditorManager.Instance != null)
+        {
+            MapEditorManager.Instance.SelectBrush();
+        }
     }
 
     /// <summary>
@@ -447,6 +455,7 @@ public class InventoryController : MonoBehaviour
             if (this.itemSlots[i].Item == item)
             {
                 this.SelectSlot(i);
+                this.SelectBrushAfterPick();
                 return;
             }
 
@@ -470,6 +479,8 @@ public class InventoryController : MonoBehaviour
             this.GetInventorySize(item, slot));
 
         this.SelectSlot(targetIndex);
+
+        this.SelectBrushAfterPick();
     }
 
     /// <summary>
@@ -491,6 +502,17 @@ public class InventoryController : MonoBehaviour
         return RectTransformUtility.WorldToScreenPoint(
             cam,
             rect.position);
+    }
+
+    /// <summary>
+    /// Switches to the brush tool after an item was picked, so drawing can start right away.
+    /// </summary>
+    private void SelectBrushAfterPick()
+    {
+        if (MapEditorManager.Instance != null)
+        {
+            MapEditorManager.Instance.SelectBrush();
+        }
     }
 
     /// <summary>
