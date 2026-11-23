@@ -9,6 +9,7 @@ public class EntityEditorController : EditorControllerBase
     private GameObject selectedPrefab;
 
     private Transform entityParent;
+    private InventoryController inventory;
 
     /// <summary>
     /// Gets or sets the currently selected prefab for placement.
@@ -62,12 +63,54 @@ public class EntityEditorController : EditorControllerBase
     }
 
     /// <summary>
-    /// Initializes the entity parent container and sets the correct selection manager.
+    /// Picks the entity whose sprite bounds contain the pointer into the toolbar.
     /// </summary>
+    protected override void OnPick()
+    {
+        if (this.inventory == null)
+        {
+            return;
+        }
+
+        foreach (BuilderEntity buildEntity in BuilderRegistry.GetAll())
+        {
+            if (!buildEntity.ExistsInWorld)
+            {
+                continue;
+            }
+
+            SpriteRenderer spriteRenderer = buildEntity.GetComponent<SpriteRenderer>();
+
+            if (spriteRenderer == null)
+            {
+                continue;
+            }
+
+            Bounds bounds = spriteRenderer.bounds;
+
+            bool containsPointer =
+                this.CurrentPos.x >= bounds.min.x &&
+                this.CurrentPos.x <= bounds.max.x &&
+                this.CurrentPos.y >= bounds.min.y &&
+                this.CurrentPos.y <= bounds.max.y;
+
+            if (containsPointer)
+            {
+                Vector3 screenPos =
+                    Camera.main.WorldToScreenPoint(this.CurrentPos);
+
+                this.inventory.PickPrefab(buildEntity.PrefabID, screenPos);
+
+                return;
+            }
+        }
+    }
+
     private void Start()
     {
         this.entityParent = GameObject.FindWithTag("Entity parent").transform;
         this.SelectionManager = FindAnyObjectByType<EntitySelectionManager>();
+        this.inventory = FindAnyObjectByType<InventoryController>();
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿
+using System.Collections;
 using System.Collections.Generic;
 using DG.Tweening;
 using UnityEngine;
@@ -29,6 +30,11 @@ public enum EditorTool
     /// If the entities are of the same type, we can edit the attributes at the same time.
     /// </summary>
     Selection,
+
+    /// <summary>
+    /// The pick tool selects an existing entity or tile for the item bar.
+    /// </summary>
+    Pick,
 }
 
 /// <summary>
@@ -302,6 +308,11 @@ public class MapEditorManager : MonoBehaviour
     public void SelectSelection() => this.SelectTool(EditorTool.Selection, 3);
 
     /// <summary>
+    /// Selects the pick tool.
+    /// </summary>
+    public void SelectPick() => this.SelectTool(EditorTool.Pick, 4);
+
+    /// <summary>
     /// Deletes the currently selected items.
     /// </summary>
     public void OnDeleteSelection() => this.ActiveController.OnDeleteSelection();
@@ -404,12 +415,10 @@ public class MapEditorManager : MonoBehaviour
 
         this.backgroundLayerImage.DOFade(
             isForeground ? 0f : 1f,
-            this.layerTransitionDuration
-        );
+            this.layerTransitionDuration);
 
         this.foregroundLayerImage.DOFade(
             isForeground ? 1f : 0f,
-            this.layerTransitionDuration
-        );
+            this.layerTransitionDuration);
     }
 }

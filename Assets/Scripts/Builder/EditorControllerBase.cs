@@ -107,6 +107,12 @@ public abstract class EditorControllerBase : MonoBehaviour
             return;
         }
 
+        if (this.CurrentTool == EditorTool.Pick)
+        {
+            this.OnPick();
+            return;
+        }
+
         this.primaryHolding = true;
         this.ApplyTool();
     }
@@ -211,6 +217,13 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// Called when the stroke ends (input released, or the tool changed).
     /// </summary>
     protected virtual void OnStrokeEnd()
+    {
+    }
+
+    /// <summary>
+    /// Called when the pick tool is used. Picks what is under the pointer into the toolbar.
+    /// </summary>
+    protected virtual void OnPick()
     {
     }
 

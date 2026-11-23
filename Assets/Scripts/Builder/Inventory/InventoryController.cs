@@ -381,6 +381,98 @@ public class InventoryController : MonoBehaviour
     }
 
     /// <summary>
+    /// Picks the inventory item that places the given tile into the toolbar.
+    /// </summary>
+    /// <param name="tileID">The global tile ID to look for.</param>
+    /// <param name="screenPos">The screen position the item is grabbed from.</param>
+    public void PickTile(string tileID, Vector3 screenPos)
+    {
+        foreach (InventoryFolder folder in this.folders)
+        {
+            foreach (InventoryItem item in folder.Items)
+            {
+                if (item.IsTile &&
+                    item.Tile != null &&
+                    TileLibrary.GetIDForTileGlobal(item.Tile) == tileID)
+                {
+                    this.PickItem(item, screenPos);
+                    return;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Picks the inventory item that places the given prefab into the toolbar.
+    /// </summary>
+    /// <param name="prefabID">The prefab ID to look for.</param>
+    /// <param name="screenPos">The screen position the item is grabbed from.</param>
+    public void PickPrefab(string prefabID, Vector3 screenPos)
+    {
+        foreach (InventoryFolder folder in this.folders)
+        {
+            foreach (InventoryItem item in folder.Items)
+            {
+                if (!item.IsTile &&
+                    item.Prefab != null &&
+                    item.Prefab.TryGetComponent(out PrefabIdentity identity) &&
+                    identity.PrefabID == prefabID)
+                {
+                    this.PickItem(item, screenPos);
+                    return;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Puts the item in the first free toolbar slot and selects it.
+    /// If the item is already in the toolbar, that slot is selected instead.
+    /// If the toolbar is full, the currently selected slot is replaced.
+    /// </summary>
+    /// <param name="item">The item to add to the toolbar. Null is ignored.</param>
+    /// <param name="screenPos">The screen position the item is grabbed from.</param>
+    public void PickItem(InventoryItem item, Vector3 screenPos)
+    {
+        if (item == null || this.isOpen || this.itemSlots.Length == 0)
+        {
+            return;
+        }
+
+        int targetIndex = this.GetSelectedSlot();
+        bool foundFree = false;
+
+        for (int i = 0; i < this.itemSlots.Length; i++)
+        {
+            if (this.itemSlots[i].Item == item)
+            {
+                this.SelectSlot(i);
+                return;
+            }
+
+            if (!foundFree && this.itemSlots[i].Item == null)
+            {
+                targetIndex = i;
+                foundFree = true;
+            }
+        }
+
+        if (targetIndex < 0)
+        {
+            targetIndex = 0;
+        }
+
+        ItemBarSlot slot = this.itemSlots[targetIndex];
+
+        slot.SetItem(
+            item,
+            screenPos,
+            this.GetInventorySize(item, slot));
+
+        this.SelectSlot(targetIndex);
+    }
+
+    /// <summary>
     /// Converts the world position of a UI element to a screen point,
     /// using the camera of the canvas it belongs to.
     /// </summary>
@@ -447,6 +539,33 @@ public class InventoryController : MonoBehaviour
             firstItem,
             firstScreenPos,
             firstInventorySize);
+    }
+
+    /// <summary>
+    /// Gets the size the item is displayed at in the inventory, so it can be
+    /// animated into the toolbar with the same shape. The sprite is what the
+    /// toolbar draws, so its shape decides the size.
+    /// </summary>
+    /// <param name="item">The item to get the inventory size of.</param>
+    /// <param name="slot">The toolbar slot the item is going into.</param>
+    /// <returns>The size the item is displayed at in the inventory.</returns>
+    private Vector2 GetInventorySize(InventoryItem item, ItemBarSlot slot)
+    {
+        Vector2 spriteSize = PixelScaledImage.GetScaledSize(
+            item.Sprite,
+            PixelScaledImage.DefaultPixelsPer100Units);
+
+        if (spriteSize.x > 0f && spriteSize.y > 0f)
+        {
+            return spriteSize;
+        }
+
+        if (slot.InventorySize.x > 0f && slot.InventorySize.y > 0f)
+        {
+            return slot.InventorySize;
+        }
+
+        return this.itemPrefab.GetComponent<RectTransform>().rect.size;
     }
 
     /// <summary>
