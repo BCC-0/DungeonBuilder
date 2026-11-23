@@ -106,7 +106,9 @@ public class TileEditorController : EditorControllerBase
             return;
         }
 
-        this.inventory.PickTile(state.TileID);
+        Vector3 screenPos = Camera.main.WorldToScreenPoint(this.CurrentPos);
+
+        this.inventory.PickTile(state.TileID, screenPos);
     }
 
     private void Start()

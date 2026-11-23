@@ -96,7 +96,11 @@ public class EntityEditorController : EditorControllerBase
 
             if (containsPointer)
             {
-                this.inventory.PickPrefab(buildEntity.PrefabID);
+                Vector3 screenPos =
+                    Camera.main.WorldToScreenPoint(this.CurrentPos);
+
+                this.inventory.PickPrefab(buildEntity.PrefabID, screenPos);
+
                 return;
             }
         }
