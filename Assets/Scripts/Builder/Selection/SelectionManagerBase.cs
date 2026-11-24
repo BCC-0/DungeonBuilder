@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// Shared drag mechanics for selection managers.
@@ -14,17 +15,33 @@ public abstract class SelectionManagerBase : MonoBehaviour
     protected const float DragThreshold = 0.1f;
 
     /// <summary>
-    /// Time in seconds after the selection buttons appear during which presses are ignored.
-    /// </summary>
-    private const float ButtonPressDelay = 0.1f;
-
-    /// <summary>
     /// Gap between the selection and the button panel, in canvas units (the local space of
     /// the selection box parent). Higher values push the panel further away from the selection.
     /// Independent of screen size and of the panel's own height.
     /// </summary>
     [SerializeField]
     private float buttonGap = 40f;
+
+    /// <summary>
+    /// Gap between the pointer and the selection menu when it is opened, in canvas units.
+    /// </summary>
+    [SerializeField]
+    private float menuPointerOffset = 24f;
+
+    /// <summary>
+    /// Alpha of the menu buttons when the action they perform cannot be used, for
+    /// example when nothing is selected.
+    /// </summary>
+    [SerializeField]
+    private float disabledButtonAlpha = 0.4f;
+
+    /// <summary>
+    /// The menu button that pastes. It follows the clipboard instead of the selection.
+    /// When left empty, the button that calls <see cref="MapEditorManager.OnPasteSelection"/>
+    /// is found automatically.
+    /// </summary>
+    [SerializeField]
+    private Button pasteButton;
 
     /// <summary>
     /// The selection box UI object.
@@ -65,8 +82,6 @@ public abstract class SelectionManagerBase : MonoBehaviour
     private bool isReferenceSelectionMode;
     private Grid grid;
 
-    private float buttonsBlockedUntil;
-
     private Vector2 dragStart;
     private Vector2 dragEnd;
     private Vector2 currentPos;
@@ -85,6 +100,11 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// Gets a value indicating whether the selection is currently being moved.
     /// </summary>
     public bool IsInMovementMode => this.isMovementMode;
+
+    /// <summary>
+    /// Gets a value indicating whether the selection menu is currently open.
+    /// </summary>
+    public bool IsSelectionMenuOpen => this.selectionButtons.gameObject.activeSelf;
 
     /// <summary>
     /// Gets or sets the current position of the used pointer.
@@ -126,6 +146,12 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// Gets a value indicating whether this manager currently has something selected.
     /// </summary>
     protected abstract bool HasSelection { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether the selection can be acted on by the menu.
+    /// Managers can refuse here for selections that only exist as references.
+    /// </summary>
+    protected virtual bool CanUseSelectionActions => this.HasSelection;
 
     /// <summary>
     /// Begins picking entities for a reference field. The current selection is
@@ -322,6 +348,23 @@ public abstract class SelectionManagerBase : MonoBehaviour
     public abstract void DeleteSelected();
 
     /// <summary>
+    /// Copies the current selection to the editor clipboard.
+    /// </summary>
+    public abstract void CopySelected();
+
+    /// <summary>
+    /// Copies the current selection to the editor clipboard and deletes it,
+    /// as one undo step.
+    /// </summary>
+    public abstract void CutSelected();
+
+    /// <summary>
+    /// Pastes the editor clipboard at the pointer and starts moving the pasted
+    /// items, so the position can be chosen before the paste is confirmed.
+    /// </summary>
+    public abstract void PasteAtPointer();
+
+    /// <summary>
     /// Moves all selected items by following mouse/touch.
     /// </summary>
     public abstract void MoveSelected();
@@ -432,21 +475,39 @@ public abstract class SelectionManagerBase : MonoBehaviour
     }
 
     /// <summary>
-    /// Enables the selection buttons. When they were hidden before, presses on them
-    /// are ignored for a short time.
+    /// Shows the selection menu at the given world position. The menu is opened by a
+    /// right click or a double tap instead of appearing whenever something is selected,
+    /// so it never sits in the way of the selection itself.
     /// </summary>
-    /// <param name="selectionRect">The rect of all selected objects.</param>
-    protected void EnableSelectionButtons(Rect selectionRect)
+    /// <param name="worldPos">The world position the menu is opened at.</param>
+    public void ShowSelectionMenu(Vector2 worldPos)
     {
-        if (!this.selectionButtons.gameObject.activeSelf)
+        if (this.IsMovementMode || this.IsReferenceSelectionMode)
         {
-            this.buttonsBlockedUntil = Time.unscaledTime + ButtonPressDelay;
-            this.selectionButtonsCanvasGroup.interactable = false;
-            this.selectionButtonsCanvasGroup.blocksRaycasts = false;
+            return;
         }
 
-        this.PositionButtonsAboveRect(this.selectionButtons, selectionRect);
+        this.selectionButtonsCanvasGroup.interactable = true;
+        this.selectionButtonsCanvasGroup.blocksRaycasts = true;
+
+        this.PositionButtonsAtPoint(
+            this.selectionButtons,
+            this.WorldToLocalUiPoint(worldPos));
+
+        BuilderClipboard.Changed -= this.OnClipboardChanged;
+        BuilderClipboard.Changed += this.OnClipboardChanged;
+
+        this.UpdateMenuButtons();
+
         this.selectionButtons.gameObject.SetActive(true);
+    }
+
+    /// <summary>
+    /// Hides the selection menu.
+    /// </summary>
+    public void HideSelectionMenu()
+    {
+        this.DisableSelectionButtons();
     }
 
     /// <summary>
@@ -454,6 +515,8 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// </summary>
     protected void DisableSelectionButtons()
     {
+        BuilderClipboard.Changed -= this.OnClipboardChanged;
+
         this.selectionButtons.gameObject.SetActive(false);
     }
 
@@ -651,41 +714,141 @@ public abstract class SelectionManagerBase : MonoBehaviour
     }
 
     /// <summary>
-    /// Updates the position of the UI buttons when something is selected.
+    /// Keeps the move buttons above the selection while it is being moved. The
+    /// selection menu itself stays where it was opened.
     /// </summary>
     private void LateUpdate()
     {
-        if (!this.selectionButtonsCanvasGroup.blocksRaycasts &&
-            this.selectionButtons.gameObject.activeSelf &&
-            Time.unscaledTime >= this.buttonsBlockedUntil)
-        {
-            this.selectionButtonsCanvasGroup.interactable = true;
-            this.selectionButtonsCanvasGroup.blocksRaycasts = true;
-        }
-
-        if (!this.HasSelection)
+        if (!this.HasSelection || !this.IsMovementMode)
         {
             return;
         }
 
-        if (this.IsMovementMode)
-        {
-            if (this.moveButtons.gameObject.activeSelf)
-            {
-                this.PositionButtonsAboveRect(
-                    this.moveButtons,
-                    this.GetCurrentSelectionBounds());
-            }
-
-            return;
-        }
-
-        if (this.selectionButtons.gameObject.activeSelf)
+        if (this.moveButtons.gameObject.activeSelf)
         {
             this.PositionButtonsAboveRect(
-                this.selectionButtons,
+                this.moveButtons,
                 this.GetCurrentSelectionBounds());
         }
+    }
+
+    /// <summary>
+    /// Enables the menu buttons that can be used right now. Actions on the selection
+    /// need a selection, while paste only needs something on the clipboard.
+    /// </summary>
+    private void UpdateMenuButtons()
+    {
+        bool hasSelection = this.CanUseSelectionActions;
+        bool hasClipboard = BuilderClipboard.HasContent;
+
+        if (this.pasteButton == null)
+        {
+            this.pasteButton = this.FindPasteButton();
+        }
+
+        foreach (Button button in
+                 this.selectionButtons.GetComponentsInChildren<Button>(true))
+        {
+            this.SetButtonEnabled(
+                button,
+                button == this.pasteButton ? hasClipboard : hasSelection);
+        }
+    }
+
+    /// <summary>
+    /// Fades a single menu button and stops it from being clicked when it is disabled.
+    /// </summary>
+    /// <param name="button">The button to update.</param>
+    /// <param name="enabled">Whether the button can be used.</param>
+    private void SetButtonEnabled(Button button, bool enabled)
+    {
+        button.interactable = enabled;
+
+        CanvasGroup group = button.GetComponent<CanvasGroup>();
+
+        if (group == null)
+        {
+            group = button.gameObject.AddComponent<CanvasGroup>();
+        }
+
+        group.alpha = enabled ? 1f : this.disabledButtonAlpha;
+    }
+
+    /// <summary>
+    /// Finds the menu button that pastes, so it can follow the clipboard instead of
+    /// the selection.
+    /// </summary>
+    /// <returns>The paste button, or null when the menu does not have one.</returns>
+    private Button FindPasteButton()
+    {
+        if (this.pasteButton != null)
+        {
+            return this.pasteButton;
+        }
+
+        foreach (Button button in
+                 this.selectionButtons.GetComponentsInChildren<Button>(true))
+        {
+            for (int i = 0; i < button.onClick.GetPersistentEventCount(); i++)
+            {
+                if (button.onClick.GetPersistentMethodName(i) ==
+                    nameof(MapEditorManager.OnPasteSelection))
+                {
+                    return button;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Refreshes the menu buttons when the clipboard changes while the menu is open.
+    /// </summary>
+    private void OnClipboardChanged()
+    {
+        if (this.selectionButtons.gameObject.activeSelf)
+        {
+            this.UpdateMenuButtons();
+        }
+    }
+
+    /// <summary>
+    /// Positions a button panel at a UI point, keeping it fully on screen. Used for the
+    /// selection menu, which opens where the player right clicked or double tapped.
+    /// </summary>
+    /// <param name="buttons">The button panel's RectTransform to position.</param>
+    /// <param name="uiPoint">The UI-space point to place the panel at.</param>
+    private void PositionButtonsAtPoint(
+        RectTransform buttons,
+        Vector2 uiPoint)
+    {
+        Rect bounds = this.GetVisibleUiRect();
+
+        Vector3 relativeScale = new Vector3(
+            buttons.lossyScale.x / this.selectionBoxParent.lossyScale.x,
+            buttons.lossyScale.y / this.selectionBoxParent.lossyScale.y,
+            1f);
+        Vector2 size = Vector2.Scale(buttons.rect.size, relativeScale);
+
+        float minLeft = bounds.xMin;
+        float maxLeft = Mathf.Max(minLeft, bounds.xMax - size.x);
+        float left = Mathf.Clamp(uiPoint.x, minLeft, maxLeft);
+
+        float minBottom = bounds.yMin;
+        float maxBottom = Mathf.Max(minBottom, bounds.yMax - size.y);
+        float bottom = Mathf.Clamp(
+            uiPoint.y + this.menuPointerOffset,
+            minBottom,
+            maxBottom);
+
+        Vector3 pivotWorld = this.selectionBoxParent.TransformPoint(new Vector3(
+            left + (buttons.pivot.x * size.x),
+            bottom + (buttons.pivot.y * size.y),
+            0f));
+
+        pivotWorld.z = buttons.position.z;
+        buttons.position = pivotWorld;
     }
 
     /// <summary>

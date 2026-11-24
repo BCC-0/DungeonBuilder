@@ -164,6 +164,30 @@ public abstract class EditorControllerBase : MonoBehaviour
     }
 
     /// <summary>
+    /// Copies the currently selected items to the clipboard.
+    /// </summary>
+    public void OnCopySelection()
+    {
+        this.selectionManager.CopySelected();
+    }
+
+    /// <summary>
+    /// Cuts the currently selected items to the clipboard.
+    /// </summary>
+    public void OnCutSelection()
+    {
+        this.selectionManager.CutSelected();
+    }
+
+    /// <summary>
+    /// Pastes the clipboard at the pointer and starts moving the pasted items.
+    /// </summary>
+    public void OnPaste()
+    {
+        this.selectionManager.PasteAtPointer();
+    }
+
+    /// <summary>
     /// Starts moving the selection.
     /// </summary>
     public void OnMoveSelection()
@@ -225,6 +249,28 @@ public abstract class EditorControllerBase : MonoBehaviour
     public bool IsPointerOverSelectionButtons(Vector2 screenPos)
     {
         return this.selectionManager.IsPointerOverSelectionButtons(screenPos);
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the selection menu is open.
+    /// </summary>
+    public bool IsSelectionMenuOpen => this.selectionManager.IsSelectionMenuOpen;
+
+    /// <summary>
+    /// Opens the selection menu at the given world position.
+    /// </summary>
+    /// <param name="worldPos">The world position the menu is opened at.</param>
+    public void OnSelectionMenuRequested(Vector2 worldPos)
+    {
+        this.selectionManager.ShowSelectionMenu(worldPos);
+    }
+
+    /// <summary>
+    /// Closes the selection menu.
+    /// </summary>
+    public void OnSelectionMenuDismissed()
+    {
+        this.selectionManager.HideSelectionMenu();
     }
 
     /// <summary>

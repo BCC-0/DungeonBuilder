@@ -58,6 +58,11 @@ public enum EditLayer
 /// </summary>
 public class MapEditorManager : MonoBehaviour
 {
+    /// <summary>
+    /// Time in seconds the clipboard toast takes to fade in and out.
+    /// </summary>
+    private const float ClipboardToastFadeDuration = 0.15f;
+
     private static MapEditorManager instance;
 
     private EditorControllerBase tileController;
@@ -88,6 +93,18 @@ public class MapEditorManager : MonoBehaviour
 
     [SerializeField]
     private float layerTransitionDuration = 0.25f;
+
+    [Header("Clipboard Feedback")]
+    [SerializeField]
+    private CanvasGroup clipboardToastCanvasGroup;
+
+    [SerializeField]
+    private SpriteFontText clipboardToastText;
+
+    [SerializeField]
+    private float clipboardToastDuration = 1.4f;
+
+    private Sequence clipboardToastSequence;
 
     /// <summary>
     /// Gets the instance of the MapEditorManager.
@@ -252,10 +269,22 @@ public class MapEditorManager : MonoBehaviour
     public void EndTransaction() => this.undoRedoManager.EndTransaction();
 
     /// <summary>
+    /// Cancels the open transaction and reverts everything registered in it.
+    /// </summary>
+    public void CancelTransaction() => this.undoRedoManager.CancelTransaction();
+
+    /// <summary>
     /// Undoes last action.
     /// </summary>
     public void Undo()
     {
+        // A move or paste is uncommitted until it is confirmed, so history must
+        // not step over it.
+        if (this.IsMovingSelection)
+        {
+            return;
+        }
+
         this.undoRedoManager.Undo();
         this.RefreshAfterHistory();
     }
@@ -265,8 +294,52 @@ public class MapEditorManager : MonoBehaviour
     /// </summary>
     public void Redo()
     {
+        if (this.IsMovingSelection)
+        {
+            return;
+        }
+
         this.undoRedoManager.Redo();
         this.RefreshAfterHistory();
+    }
+
+    /// <summary>
+    /// Shows a short message about a clipboard action, such as how many items
+    /// were copied. Falls back to the console when no toast is assigned.
+    /// </summary>
+    /// <param name="message">The message to show.</param>
+    public void ShowClipboardMessage(string message)
+    {
+        if (this.clipboardToastText != null)
+        {
+            this.clipboardToastText.SetText(message);
+        }
+
+        if (this.clipboardToastCanvasGroup == null)
+        {
+            Debug.Log(message);
+            return;
+        }
+
+        this.clipboardToastSequence?.Kill();
+
+        this.clipboardToastCanvasGroup.gameObject.SetActive(true);
+        this.clipboardToastCanvasGroup.alpha = 0f;
+
+        this.clipboardToastSequence = DOTween.Sequence();
+
+        this.clipboardToastSequence
+            .Append(
+                this.clipboardToastCanvasGroup.DOFade(
+                    1f,
+                    ClipboardToastFadeDuration))
+            .AppendInterval(this.clipboardToastDuration)
+            .Append(
+                this.clipboardToastCanvasGroup.DOFade(
+                    0f,
+                    ClipboardToastFadeDuration))
+            .OnComplete(() =>
+                this.clipboardToastCanvasGroup.gameObject.SetActive(false));
     }
 
     /// <summary>
@@ -368,6 +441,56 @@ public class MapEditorManager : MonoBehaviour
     /// Deletes the currently selected items.
     /// </summary>
     public void OnDeleteSelection() => this.ActiveController.OnDeleteSelection();
+
+    /// <summary>
+    /// Copies the currently selected items to the clipboard.
+    /// </summary>
+    public void OnCopySelection() => this.ActiveController.OnCopySelection();
+
+    /// <summary>
+    /// Cuts the currently selected items to the clipboard.
+    /// </summary>
+    public void OnCutSelection() => this.ActiveController.OnCutSelection();
+
+    /// <summary>
+    /// Pastes the clipboard at the pointer and starts moving the pasted items,
+    /// so the player can choose the position before confirming.
+    /// </summary>
+    public void OnPasteSelection() => this.ActiveController.OnPaste();
+
+    /// <summary>
+    /// Opens the selection menu at the press, or closes it when it is already open.
+    /// The menu opens even without a selection; actions that need one are faded and
+    /// cannot be used instead of hiding the whole menu.
+    /// </summary>
+    /// <param name="worldPos">The world position that was right clicked or double tapped.</param>
+    /// <returns>True when the press was used by the menu and must not reach the tool.</returns>
+    public bool ToggleSelectionMenu(Vector2 worldPos)
+    {
+        if (this.IsMovingSelection)
+        {
+            return false;
+        }
+
+        if (this.ActiveController.IsSelectionMenuOpen)
+        {
+            this.ActiveController.OnSelectionMenuDismissed();
+
+            return true;
+        }
+
+        this.ActiveController.OnSelectionMenuRequested(worldPos);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Closes the selection menu when it is open.
+    /// </summary>
+    public void HideSelectionMenu()
+    {
+        this.ActiveController.OnSelectionMenuDismissed();
+    }
 
     /// <summary>
     /// Moves the currently selected items.

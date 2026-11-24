@@ -45,10 +45,134 @@ public class TileSelectionManager : SelectionManagerBase
     /// </summary>
     private bool startedMovingThisFrame;
 
+    /// <summary>
+    /// Whether the current movement was started by a paste. Cancelling that
+    /// movement must also remove the pasted tiles again.
+    /// </summary>
+    private bool pasteTransactionOpen;
+
     /// <inheritdoc/>
     protected override bool HasSelection =>
         MapEditorManager.Instance.SelectedTiles != null &&
         MapEditorManager.Instance.SelectedTiles.Count > 0;
+
+    /// <summary>
+    /// Copies the selected tiles to the clipboard, using the lowest selected
+    /// cell as the clipboard origin.
+    /// </summary>
+    public override void CopySelected()
+    {
+        List<Vector2Int> selected = MapEditorManager.Instance.SelectedTiles;
+
+        if (selected == null || selected.Count == 0)
+        {
+            return;
+        }
+
+        Dictionary<Vector2Int, TileState> cells = new ();
+        Vector2Int origin = selected[0];
+
+        foreach (Vector2Int cell in selected)
+        {
+            TileState state =
+                TileState.FromData(this.saveableTilemap.GetTileData(cell));
+
+            if (state.TileID == null)
+            {
+                continue;
+            }
+
+            cells[cell] = state;
+            origin = Vector2Int.Min(origin, cell);
+        }
+
+        if (cells.Count == 0)
+        {
+            return;
+        }
+
+        Dictionary<Vector2Int, TileState> normalized = new ();
+
+        foreach (KeyValuePair<Vector2Int, TileState> entry in cells)
+        {
+            normalized[entry.Key - origin] = entry.Value;
+        }
+
+        BuilderClipboard.StoreTiles(new ClipboardTiles(normalized));
+
+        MapEditorManager.Instance.ShowClipboardMessage(
+            $"Copied {cells.Count} {(cells.Count == 1 ? "tile" : "tiles")}");
+
+        this.DisableSelectionButtons();
+    }
+
+    /// <summary>
+    /// Copies the selected tiles and deletes them as one undo step.
+    /// </summary>
+    public override void CutSelected()
+    {
+        MapEditorManager manager = MapEditorManager.Instance;
+
+        manager.BeginTransaction();
+        this.CopySelected();
+        this.DeleteSelected();
+        manager.EndTransaction();
+    }
+
+    /// <summary>
+    /// Writes the clipboard tiles at the pointer and starts moving them, so the
+    /// position can be chosen before the paste is confirmed. Confirming places them,
+    /// cancelling removes them again.
+    /// </summary>
+    public override void PasteAtPointer()
+    {
+        if (this.IsMovementMode)
+        {
+            return;
+        }
+
+        ClipboardTiles clipboard = BuilderClipboard.Tiles;
+
+        if (clipboard == null || clipboard.Cells.Count == 0)
+        {
+            return;
+        }
+
+        Vector2Int targetCell =
+            (Vector2Int)this.saveableTilemap.Tilemap.WorldToCell(this.CurrentPos);
+
+        TileStrokeAction action = new TileStrokeAction(this.ApplyTileState);
+        List<Vector2Int> pasted = new ();
+
+        MapEditorManager manager = MapEditorManager.Instance;
+
+        manager.BeginTransaction();
+
+        foreach (KeyValuePair<Vector2Int, TileState> entry in clipboard.Cells)
+        {
+            Vector2Int cell = targetCell + entry.Key;
+            TileState before =
+                TileState.FromData(this.saveableTilemap.GetTileData(cell));
+
+            this.ApplyTileState(cell, entry.Value);
+            action.Record(cell, before, entry.Value);
+
+            pasted.Add(cell);
+        }
+
+        if (action.HasChanges)
+        {
+            manager.RegisterAction(action);
+        }
+
+        this.pasteTransactionOpen = true;
+
+        this.SetSelection(pasted);
+        this.MoveSelected();
+
+        manager.ShowClipboardMessage(
+            $"Pasting {pasted.Count} {(pasted.Count == 1 ? "tile" : "tiles")}");
+    }
 
     /// <inheritdoc/>
     public override void DeleteSelected()
@@ -181,6 +305,7 @@ public class TileSelectionManager : SelectionManagerBase
 
         this.DisableMoveButtons();
         this.SetSelection(movedTiles);
+        this.CommitPasteTransaction();
     }
 
     /// <inheritdoc/>
@@ -210,6 +335,7 @@ public class TileSelectionManager : SelectionManagerBase
 
         this.DisableMoveButtons();
         this.ClearSelection();
+        this.CancelPasteTransaction();
     }
 
     /// <summary>
@@ -344,14 +470,7 @@ public class TileSelectionManager : SelectionManagerBase
             return;
         }
 
-        if (tiles == null || tiles.Count == 0)
-        {
-            this.DisableSelectionButtons();
-        }
-        else
-        {
-            this.EnableSelectionButtons(this.GetTileBoundingRect(tiles));
-        }
+        this.DisableSelectionButtons();
     }
 
     /// <summary>
@@ -448,6 +567,37 @@ public class TileSelectionManager : SelectionManagerBase
         }
 
         this.SetSelection(previewSelection);
+    }
+
+    /// <summary>
+    /// Commits the transaction a paste opened, so the pasted tiles and their
+    /// placement become one undo step.
+    /// </summary>
+    private void CommitPasteTransaction()
+    {
+        if (!this.pasteTransactionOpen)
+        {
+            return;
+        }
+
+        this.pasteTransactionOpen = false;
+        MapEditorManager.Instance.EndTransaction();
+    }
+
+    /// <summary>
+    /// Cancels the transaction a paste opened, removing the pasted tiles again.
+    /// </summary>
+    private void CancelPasteTransaction()
+    {
+        if (!this.pasteTransactionOpen)
+        {
+            return;
+        }
+
+        this.pasteTransactionOpen = false;
+        MapEditorManager.Instance.CancelTransaction();
+
+        this.ClearSelection();
     }
 
     private void ApplyTileState(Vector2Int cell, TileState state)

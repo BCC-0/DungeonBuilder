@@ -76,6 +76,9 @@ public class BuilderDesktopInputHandler : MonoBehaviour
             this.isDragClickPending =
                 MapEditorManager.Instance.CurrentTool == EditorTool.Drag;
             this.dragClickStartPos = pointerPos;
+
+            MapEditorManager.Instance.HideSelectionMenu();
+
             this.ActiveController.OnPrimaryDown();
         }
         else if (ctx.canceled)
@@ -111,6 +114,13 @@ public class BuilderDesktopInputHandler : MonoBehaviour
             return;
         }
 
+        if (ctx.started &&
+            !this.ToolErasesOnSecondary() &&
+            this.TryOpenSelectionMenu(pointerPos))
+        {
+            return;
+        }
+
         if (ctx.started)
         {
             this.ActiveController.OnSecondaryDown();
@@ -119,6 +129,32 @@ public class BuilderDesktopInputHandler : MonoBehaviour
         {
             this.ActiveController.OnSecondaryUp();
         }
+    }
+
+    /// <summary>
+    /// Opens or closes the selection menu for a right click. The menu is available in
+    /// every tool, so it is not tied to the selection tool.
+    /// </summary>
+    /// <param name="pointerPos">The screen position that was right clicked.</param>
+    /// <returns>True when the press was used by the menu and must not reach the tool.</returns>
+    private bool TryOpenSelectionMenu(Vector2 pointerPos)
+    {
+        Vector3 worldPos = this.cam.ScreenToWorldPoint(pointerPos);
+        worldPos.z = 0;
+
+        return MapEditorManager.Instance.ToggleSelectionMenu(worldPos);
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the active tool erases with the secondary button.
+    /// Those tools keep the right click for erasing instead of opening the selection menu.
+    /// </summary>
+    /// <returns>True when the right click belongs to the tool.</returns>
+    private bool ToolErasesOnSecondary()
+    {
+        EditorTool tool = MapEditorManager.Instance.CurrentTool;
+
+        return tool == EditorTool.Brush || tool == EditorTool.Eraser;
     }
 
     /// <summary>
@@ -484,8 +520,36 @@ public class BuilderDesktopInputHandler : MonoBehaviour
             return;
         }
 
+        this.HandleClipboardShortcuts();
         this.HandleMouseMovement();
         this.HandleCameraPan();
+    }
+
+    /// <summary>
+    /// Polls the clipboard shortcuts (Ctrl + C, Ctrl + X, Ctrl + V). They are read
+    /// straight from the keyboard so no input action or asset change is needed.
+    /// </summary>
+    private void HandleClipboardShortcuts()
+    {
+        if (Keyboard.current == null ||
+            !this.IsCommandHeld() ||
+            MapEditorManager.Instance.IsMovingSelection)
+        {
+            return;
+        }
+
+        if (Keyboard.current[Key.C].wasPressedThisFrame)
+        {
+            MapEditorManager.Instance.OnCopySelection();
+        }
+        else if (Keyboard.current[Key.X].wasPressedThisFrame)
+        {
+            MapEditorManager.Instance.OnCutSelection();
+        }
+        else if (Keyboard.current[Key.V].wasPressedThisFrame)
+        {
+            MapEditorManager.Instance.OnPasteSelection();
+        }
     }
 
     private void HandleMouseMovement()

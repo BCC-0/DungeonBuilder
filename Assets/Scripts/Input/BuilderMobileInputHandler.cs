@@ -21,6 +21,8 @@ public class BuilderMobileInputHandler : MonoBehaviour
     [SerializeField]
     private float mobileZoomSpeed = 0.2f;
     [SerializeField]
+    private float doubleTapWindow = 0.3f;
+    [SerializeField]
     private RectTransform ripplePrefab;
     [SerializeField]
     private Canvas uiCanvas;
@@ -35,6 +37,8 @@ public class BuilderMobileInputHandler : MonoBehaviour
     private Dictionary<int, bool> touchesOverUI = new ();
     private bool isSelectionStarted;
     private Vector2 lastTouchScreenPos;
+    private float lastTapTime = -999f;
+    private Vector2 lastTapPosition;
 
     private EditorControllerBase ActiveController => MapEditorManager.Instance.ActiveController;
 
@@ -78,12 +82,25 @@ public class BuilderMobileInputHandler : MonoBehaviour
     {
         if (this.isTouching && this.IsTap())
         {
-            this.ActiveController.OnPrimaryDown();
-            this.ActiveController.OnPrimaryUp();
-
-            if (MapEditorManager.Instance.CurrentTool == EditorTool.Drag)
+            if (this.IsDoubleTap(this.lastTouchScreenPos))
             {
-                this.SelectAtPointer(this.lastTouchScreenPos);
+                this.lastTapTime = -999f;
+                this.ToggleSelectionMenu(this.lastTouchScreenPos);
+            }
+            else
+            {
+                this.lastTapTime = Time.unscaledTime;
+                this.lastTapPosition = this.lastTouchScreenPos;
+
+                MapEditorManager.Instance.HideSelectionMenu();
+
+                this.ActiveController.OnPrimaryDown();
+                this.ActiveController.OnPrimaryUp();
+
+                if (MapEditorManager.Instance.CurrentTool == EditorTool.Drag)
+                {
+                    this.SelectAtPointer(this.lastTouchScreenPos);
+                }
             }
         }
         else if (this.isTouching)
@@ -125,6 +142,31 @@ public class BuilderMobileInputHandler : MonoBehaviour
             this.touchHoldTimer < this.holdThreshold &&
             Vector2.Distance(this.lastTouchScreenPos, this.touchStartPosition) <=
                 Mathf.Max(5f, Screen.dpi * 0.05f);
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the released tap completes a double tap.
+    /// </summary>
+    /// <param name="screenPos">The screen position that was tapped.</param>
+    /// <returns>True when the tap is the second one of a double tap.</returns>
+    private bool IsDoubleTap(Vector2 screenPos)
+    {
+        return Time.unscaledTime - this.lastTapTime <= this.doubleTapWindow &&
+            Vector2.Distance(screenPos, this.lastTapPosition) <=
+                Mathf.Max(20f, Screen.dpi * 0.1f);
+    }
+
+    /// <summary>
+    /// Opens or closes the selection menu at a screen position. This is the touch
+    /// equivalent of a right click.
+    /// </summary>
+    /// <param name="screenPos">The screen position that was double tapped.</param>
+    private void ToggleSelectionMenu(Vector2 screenPos)
+    {
+        Vector3 worldPos = this.cam.ScreenToWorldPoint(screenPos);
+        worldPos.z = 0;
+
+        MapEditorManager.Instance.ToggleSelectionMenu(worldPos);
     }
 
     /// <summary>

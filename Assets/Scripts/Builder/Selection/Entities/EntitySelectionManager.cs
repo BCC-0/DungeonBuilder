@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using DG.Tweening;
 using TMPro;
 using UnityEngine;
@@ -65,10 +67,175 @@ public class EntitySelectionManager : SelectionManagerBase
     /// </summary>
     private bool startedMovingThisFrame;
 
+    /// <summary>
+    /// Whether the current movement was started by a paste. Cancelling that
+    /// movement must also remove the pasted entities again.
+    /// </summary>
+    private bool pasteTransactionOpen;
+
     /// <inheritdoc/>
     protected override bool HasSelection =>
         MapEditorManager.Instance.SelectedEntities != null &&
         MapEditorManager.Instance.SelectedEntities.Count > 0;
+
+    /// <inheritdoc/>
+    protected override bool CanUseSelectionActions =>
+        this.HasSelection &&
+        MapEditorManager.Instance.SelectedEntities
+            .All(e => e != null && e.ConsumedBy == null);
+
+    /// <summary>
+    /// Copies the selected entities to the clipboard, including their editable values.
+    /// </summary>
+    public override void CopySelected()
+    {
+        if (this.IsReferenceSelectionMode)
+        {
+            return;
+        }
+
+        List<BuilderEntity> entities =
+            MapEditorManager.Instance.SelectedEntities
+                .OfType<BuilderEntity>()
+                .Where(e =>
+                    e != null &&
+                    e.ExistsInWorld &&
+                    !string.IsNullOrEmpty(e.PrefabID))
+                .ToList();
+
+        if (entities.Count == 0)
+        {
+            return;
+        }
+
+        AddConsumedEntities(entities);
+
+        BuilderClipboard.StoreEntities(this.CreateClipboardEntities(entities));
+
+        MapEditorManager.Instance.ShowClipboardMessage(
+            $"Copied {entities.Count} {(entities.Count == 1 ? "entity" : "entities")}");
+
+        this.DisableSelectionButtons();
+    }
+
+    /// <summary>
+    /// Copies the selected entities and deletes them as one undo step.
+    /// </summary>
+    public override void CutSelected()
+    {
+        if (this.IsReferenceSelectionMode)
+        {
+            return;
+        }
+
+        MapEditorManager manager = MapEditorManager.Instance;
+
+        manager.BeginTransaction();
+        this.CopySelected();
+        this.DeleteSelected();
+        manager.EndTransaction();
+    }
+
+    /// <summary>
+    /// Creates the clipboard entities at the pointer and starts moving them, so the
+    /// position can be chosen before the paste is confirmed. Confirming places them,
+    /// cancelling removes them again.
+    /// </summary>
+    public override void PasteAtPointer()
+    {
+        if (this.IsMovementMode || this.IsReferenceSelectionMode)
+        {
+            return;
+        }
+
+        ClipboardEntities clipboard = BuilderClipboard.Entities;
+
+        if (clipboard == null || clipboard.Entries.Count == 0)
+        {
+            return;
+        }
+
+        Transform parent = this.GetEntityParent();
+
+        if (parent == null)
+        {
+            Debug.LogWarning("Cannot paste entities: no 'Entity parent' object found.");
+            return;
+        }
+
+        Vector2Int targetCell =
+            (Vector2Int)this.Grid.WorldToCell(this.CurrentPos);
+
+        List<SaveableEntity> pasted = new ();
+        Dictionary<SaveableEntity, SaveableEntity> copies = new ();
+
+        MapEditorManager manager = MapEditorManager.Instance;
+
+        manager.BeginTransaction();
+
+        foreach (ClipboardEntityEntry entry in clipboard.Entries)
+        {
+            if (entry.Source == null)
+            {
+                continue;
+            }
+
+            GameObject created = new GameObject(entry.PrefabID);
+
+            created.transform.position =
+                this.GetEntityWorldPosition(
+                    (Vector3Int)(targetCell + entry.Offset));
+
+            created.transform.SetParent(parent);
+
+            BuilderEntity builder = created.AddComponent<BuilderEntity>();
+
+            builder.Initialize(entry.PrefabID);
+
+            copies[entry.Source] = builder;
+            pasted.Add(builder);
+        }
+
+        foreach (ClipboardEntityEntry entry in clipboard.Entries)
+        {
+            if (entry.Source == null ||
+                !copies.TryGetValue(entry.Source, out SaveableEntity copied) ||
+                copied is not BuilderEntity copy)
+            {
+                continue;
+            }
+
+            foreach (KeyValuePair<string, object> field in entry.FieldValues)
+            {
+                copy.SetRuntimeEditableValue(
+                    field.Key,
+                    RemapFieldValue(field.Value, copies));
+            }
+        }
+
+        ApplyCopiedConsumption(copies);
+
+        if (pasted.Count == 0)
+        {
+            manager.CancelTransaction();
+            return;
+        }
+
+        foreach (SaveableEntity entity in pasted)
+        {
+            manager.RegisterAction(EntityPresenceAction.Placed(entity));
+        }
+
+        this.pasteTransactionOpen = true;
+
+        // Consumed copies are hidden behind their consumer, so only the visible copies
+        // become the new selection.
+        this.SetSelection(pasted.Where(e => e.ConsumedBy == null).ToList());
+        this.MoveSelected();
+
+        manager.ShowClipboardMessage(
+            $"Pasting {pasted.Count} {(pasted.Count == 1 ? "entity" : "entities")}");
+    }
 
     /// <inheritdoc/>
     public override void DeleteSelected()
@@ -281,6 +448,7 @@ public class EntitySelectionManager : SelectionManagerBase
         this.extraMoveStartCells.Clear();
 
         this.DisableMoveButtons();
+        this.CommitPasteTransaction();
         this.SetSelection(
             MapEditorManager.Instance.SelectedEntities);
 
@@ -334,6 +502,8 @@ public class EntitySelectionManager : SelectionManagerBase
         {
             RuntimePropertyEditor.Instance.Rebuild();
         }
+
+        this.CancelPasteTransaction();
     }
 
     /// <summary>
@@ -924,17 +1094,290 @@ public class EntitySelectionManager : SelectionManagerBase
             return;
         }
 
-        if (entities.Count == 0 ||
-            entities.Any(e => e.ConsumedBy != null))
+        this.DisableSelectionButtons();
+    }
+
+    /// <summary>
+    /// Gets the transform that pasted entities are parented to.
+    /// </summary>
+    /// <returns>The entity parent transform, or null when it is missing.</returns>
+    private Transform GetEntityParent()
+    {
+        GameObject parent = GameObject.FindWithTag("Entity parent");
+
+        return parent != null ? parent.transform : null;
+    }
+
+    /// <summary>
+    /// Builds the clipboard content for the given entities, using the lowest cell of
+    /// the visible entities as the clipboard origin. Consumed entities keep the cell of
+    /// their consumer, because their own position says nothing about where they belong.
+    /// </summary>
+    /// <param name="entities">The entities to copy.</param>
+    /// <returns>The clipboard content.</returns>
+    private ClipboardEntities CreateClipboardEntities(List<BuilderEntity> entities)
+    {
+        Dictionary<BuilderEntity, Vector2Int> cells = new ();
+        Vector2Int origin = Vector2Int.zero;
+        bool hasOrigin = false;
+
+        foreach (BuilderEntity entity in entities)
         {
-            this.DisableSelectionButtons();
+            if (entity.ConsumedBy != null)
+            {
+                continue;
+            }
+
+            Vector2Int cell =
+                (Vector2Int)this.Grid.WorldToCell(entity.transform.position);
+
+            cells[entity] = cell;
+
+            origin = hasOrigin ? Vector2Int.Min(origin, cell) : cell;
+            hasOrigin = true;
         }
-        else
+
+        List<ClipboardEntityEntry> entries = new ();
+
+        foreach (BuilderEntity entity in entities)
         {
-            this.EnableSelectionButtons(
-                this.GetBoundingRect(
-                    entities.Select(
-                        e => (Vector2)e.transform.position)));
+            Vector2Int cell;
+
+            if (!cells.TryGetValue(entity, out cell))
+            {
+                BuilderEntity consumer = entity.ConsumedBy as BuilderEntity;
+
+                cell = consumer != null &&
+                    cells.TryGetValue(consumer, out Vector2Int consumerCell)
+                        ? consumerCell
+                        : origin;
+            }
+
+            entries.Add(
+                new ClipboardEntityEntry(
+                    entity,
+                    entity.PrefabID,
+                    cell - origin,
+                    SnapshotFieldValues(entity)));
+        }
+
+        return new ClipboardEntities(entries);
+    }
+
+    /// <summary>
+    /// Adds the entities that are consumed by the copied ones, so a copied enemy body
+    /// brings its own head instead of pointing at the original. A consumed entity can
+    /// be consumed again, so this keeps walking until nothing new is found.
+    /// </summary>
+    /// <param name="entities">The entities being copied. Grows while walking.</param>
+    private static void AddConsumedEntities(List<BuilderEntity> entities)
+    {
+        for (int i = 0; i < entities.Count; i++)
+        {
+            BuilderEntity consumer = entities[i];
+
+            foreach (BuilderEntity candidate in BuilderRegistry.GetAll())
+            {
+                if (candidate == null ||
+                    candidate.ConsumedBy != consumer ||
+                    entities.Contains(candidate) ||
+                    string.IsNullOrEmpty(candidate.PrefabID))
+                {
+                    continue;
+                }
+
+                entities.Add(candidate);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Recreates the consuming relationships between the pasted entities. The copies
+    /// hold references to other copies, so a consumed copy also has to learn which
+    /// entity consumes it, otherwise it would show up as a separate object on the map.
+    /// </summary>
+    /// <param name="copies">Map from the copied entities to their new copies.</param>
+    private static void ApplyCopiedConsumption(
+        Dictionary<SaveableEntity, SaveableEntity> copies)
+    {
+        foreach (SaveableEntity entity in copies.Values)
+        {
+            BuilderEntity consumer = entity as BuilderEntity;
+
+            if (consumer == null)
+            {
+                continue;
+            }
+
+            foreach (KeyValuePair<string, RuntimeEditableValue> entry in
+                     consumer.RuntimeEditableFields)
+            {
+                if (entry.Value == null || entry.Value.Field == null)
+                {
+                    continue;
+                }
+
+                SaveFieldAttribute attribute =
+                    entry.Value.Field.GetCustomAttribute<SaveFieldAttribute>();
+
+                if (attribute == null ||
+                    attribute.ReferenceMode != ReferenceMode.Consuming)
+                {
+                    continue;
+                }
+
+                ConsumeFieldValue(entry.Value.Value, consumer, entry.Key);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Marks every entity inside a single or list consuming field as consumed by the
+    /// given consumer.
+    /// </summary>
+    /// <param name="value">The value of the consuming field.</param>
+    /// <param name="consumer">The entity that consumes it.</param>
+    /// <param name="fieldName">The name of the consuming field.</param>
+    private static void ConsumeFieldValue(
+        object value,
+        SaveableEntity consumer,
+        string fieldName)
+    {
+        SaveableEntity single = value as SaveableEntity;
+
+        if (single != null)
+        {
+            single.SetConsumedBy(consumer, fieldName);
+            return;
+        }
+
+        if (value is IList list)
+        {
+            foreach (object item in list)
+            {
+                SaveableEntity referenced = item as SaveableEntity;
+
+                if (referenced != null)
+                {
+                    referenced.SetConsumedBy(consumer, fieldName);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Takes a copy of an entity's runtime editable values, so editing the
+    /// original afterwards does not change what is on the clipboard.
+    /// </summary>
+    /// <param name="entity">The entity to snapshot.</param>
+    /// <returns>The field values by field name.</returns>
+    private static Dictionary<string, object> SnapshotFieldValues(
+        BuilderEntity entity)
+    {
+        Dictionary<string, object> values = new ();
+
+        foreach (KeyValuePair<string, RuntimeEditableValue> entry in
+                 entity.RuntimeEditableFields)
+        {
+            if (entry.Value == null)
+            {
+                continue;
+            }
+
+            object value = entry.Value.Value;
+
+            values[entry.Key] =
+                value is IList list && IsReferenceList(list)
+                    ? new List<SaveableEntity>(list.Cast<SaveableEntity>())
+                    : value;
+        }
+
+        return values;
+    }
+
+    /// <summary>
+    /// Points references that were inside the copied set at the new copies.
+    /// References to entities outside the set are left alone.
+    /// </summary>
+    /// <param name="value">The copied field value.</param>
+    /// <param name="copies">Map from the copied entities to their new copies.</param>
+    /// <returns>The value to write on the copy.</returns>
+    private static object RemapFieldValue(
+        object value,
+        Dictionary<SaveableEntity, SaveableEntity> copies)
+    {
+        if (value is SaveableEntity entity)
+        {
+            return copies.TryGetValue(entity, out SaveableEntity copy)
+                ? copy
+                : value;
+        }
+
+        if (value is IList list && IsReferenceList(list))
+        {
+            List<SaveableEntity> remapped = new (list.Count);
+
+            foreach (object item in list)
+            {
+                SaveableEntity reference = item as SaveableEntity;
+
+                remapped.Add(
+                    reference != null &&
+                    copies.TryGetValue(reference, out SaveableEntity copy)
+                        ? copy
+                        : reference);
+            }
+
+            return remapped;
+        }
+
+        return value;
+    }
+
+    /// <summary>
+    /// Checks whether a list holds entity references. Those are the only lists
+    /// that have to be copied and remapped.
+    /// </summary>
+    /// <param name="list">The list to check.</param>
+    /// <returns>True when the list is empty or holds entity references.</returns>
+    private static bool IsReferenceList(IList list)
+    {
+        return list.Count == 0 || list[0] is SaveableEntity;
+    }
+
+    /// <summary>
+    /// Commits the transaction a paste opened, so the creation of the copies and
+    /// their placement become one undo step.
+    /// </summary>
+    private void CommitPasteTransaction()
+    {
+        if (!this.pasteTransactionOpen)
+        {
+            return;
+        }
+
+        this.pasteTransactionOpen = false;
+        MapEditorManager.Instance.EndTransaction();
+    }
+
+    /// <summary>
+    /// Cancels the transaction a paste opened, removing the pasted entities again.
+    /// </summary>
+    private void CancelPasteTransaction()
+    {
+        if (!this.pasteTransactionOpen)
+        {
+            return;
+        }
+
+        this.pasteTransactionOpen = false;
+        MapEditorManager.Instance.CancelTransaction();
+
+        this.ClearSelection();
+
+        if (RuntimePropertyEditor.Instance != null)
+        {
+            RuntimePropertyEditor.Instance.Rebuild();
         }
     }
 
