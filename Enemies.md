@@ -13,8 +13,8 @@
 
 | Name | Behavior | Difficulty | Adjustable properties |
 | --- | --- | --- | --- |
-| Cow | Simple movement with speed. Player can’t simply walk through (is like a wall). | Simple | Speed. |
-| Chicken | Simple movement with speed. Leaves behind eggs that deal damage when walking through or after a set time. | Simple | Speed, egg damage, crack time. |
+| Cow | Simple movement with speed. Player can’t simply walk through (is like a wall). | Simple | Speed |
+| Chicken | Simple movement with speed. Tries to stay a certain distance from the player. | Simple | Speed, distance |
 | Pig | Simple movement with speed. When hit, the player takes no damage, but gives knockback if it was melee!| Simple | Speed, knockback. |
 | Dog | Walks towards other enemies with speed. | Simple | Speed. |
 | Goat | When player tries to walk through, the player takes damage and knockback. | Simple | Speed, damage, knockback. |
