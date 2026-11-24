@@ -366,40 +366,127 @@ public class EntitySelectionManager : SelectionManagerBase
             MapEditorManager.Instance.SelectedEntities);
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Selects the entity whose visible sprite is under the click. When no sprite
+    /// contains the click, the closest entity within <see cref="entitySelectRadius"/>
+    /// is still selected. Overlapping sprites are resolved by draw order.
+    /// </summary>
+    /// <param name="position">The position that was clicked.</param>
+    /// <returns>The picked entity, or an empty list when nothing is under the click.</returns>
     protected override List<SaveableEntity> PickEntitiesAt(Vector2 position)
     {
-        SaveableEntity closestEntity =
-            FindObjectsByType<SaveableEntity>()
-                .Where(e =>
-                    e.ExistsInWorld &&
-                    !IsTilemapEntity(e))
-                .OrderBy(e =>
-                    Vector2.Distance(
-                        GetEntityVisualCenter(e),
-                        position))
-                .FirstOrDefault();
-        if (closestEntity != null &&
-            Vector2.Distance(
-                GetEntityVisualCenter(closestEntity),
-                position) <= this.entitySelectRadius)
+        SaveableEntity closestEntity = null;
+        bool closestIsInsideSprite = false;
+        int closestSortingLayer = default(int);
+        int closestSortingOrder = default(int);
+        float closestDistance = float.MaxValue;
+
+        foreach (SaveableEntity entity in FindObjectsByType<SaveableEntity>())
         {
-            return new List<SaveableEntity> { closestEntity, };
+            if (!entity.ExistsInWorld ||
+                IsTilemapEntity(entity))
+            {
+                continue;
+            }
+
+            bool isInsideSprite =
+                TryGetTopmostSpriteAt(
+                    entity,
+                    position,
+                    out SpriteRenderer hitRenderer);
+
+            float distance =
+                Vector2.Distance(
+                    GetEntityVisualCenter(entity),
+                    position);
+
+            if (!isInsideSprite &&
+                distance > this.entitySelectRadius)
+            {
+                continue;
+            }
+
+            int sortingLayer =
+                hitRenderer != null
+                    ? hitRenderer.sortingLayerID
+                    : default(int);
+
+            int sortingOrder =
+                hitRenderer != null
+                    ? hitRenderer.sortingOrder
+                    : default(int);
+
+            if (closestEntity != null)
+            {
+                if (isInsideSprite != closestIsInsideSprite)
+                {
+                    if (!isInsideSprite)
+                    {
+                        continue;
+                    }
+                }
+                else if (sortingLayer != closestSortingLayer)
+                {
+                    if (sortingLayer < closestSortingLayer)
+                    {
+                        continue;
+                    }
+                }
+                else if (sortingOrder != closestSortingOrder)
+                {
+                    if (sortingOrder < closestSortingOrder)
+                    {
+                        continue;
+                    }
+                }
+                else if (distance >= closestDistance)
+                {
+                    continue;
+                }
+            }
+
+            closestEntity = entity;
+            closestIsInsideSprite = isInsideSprite;
+            closestSortingLayer = sortingLayer;
+            closestSortingOrder = sortingOrder;
+            closestDistance = distance;
         }
 
-        return new List<SaveableEntity>();
+        if (closestEntity == null)
+        {
+            return new List<SaveableEntity>();
+        }
+
+        return new List<SaveableEntity> { closestEntity, };
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Selects every entity whose visible sprite overlaps the dragged rectangle.
+    /// Entities without a visible sprite are still picked by their position.
+    /// </summary>
+    /// <param name="rect">The world-space rectangle of the drag.</param>
+    /// <returns>The entities inside the rectangle.</returns>
     protected override List<SaveableEntity> PickEntitiesIn(
         Rect rect)
     {
-        return FindObjectsByType<SaveableEntity>()
-            .Where(e =>
-                e.ExistsInWorld &&
-                !IsTilemapEntity(e) &&
-                rect.Contains(e.transform.position))
-            .ToList();
+        List<SaveableEntity> picked = new List<SaveableEntity>();
+
+        foreach (SaveableEntity entity in FindObjectsByType<SaveableEntity>())
+        {
+            if (!entity.ExistsInWorld ||
+                IsTilemapEntity(entity))
+            {
+                continue;
+            }
+
+            if (rect.Contains(entity.transform.position) ||
+                HasSpriteOverlappingRect(entity, rect))
+            {
+                picked.Add(entity);
+            }
+        }
+
+        return picked;
     }
 
     /// <inheritdoc/>
@@ -454,20 +541,31 @@ public class EntitySelectionManager : SelectionManagerBase
 
     /// <summary>
     /// Selects the closest entity within range of the click, if any.
+    /// When that entity is already the only selected entity, the selection is cleared instead.
     /// </summary>
     /// <param name="position">The position that was clicked.</param>
     protected override void OnClickSelect(Vector2 position)
     {
         List<SaveableEntity> picked = this.PickEntitiesAt(position);
 
-        if (picked.Count > 0)
-        {
-            this.SetSelection(picked);
-        }
-        else
+        if (picked.Count == 0)
         {
             this.ClearSelection();
+            return;
         }
+
+        List<SaveableEntity> current =
+            MapEditorManager.Instance.SelectedEntities;
+
+        if (current != null &&
+            current.Count == 1 &&
+            current[0] == picked[0])
+        {
+            this.ClearSelection();
+            return;
+        }
+
+        this.SetSelection(picked);
     }
 
     /// <summary>
@@ -518,14 +616,117 @@ public class EntitySelectionManager : SelectionManagerBase
     /// <returns>The center of its rendered sprite, or its transform position if no renderer exists.</returns>
     private static Vector2 GetEntityVisualCenter(SaveableEntity entity)
     {
-        SpriteRenderer spriteRenderer =
-            entity.GetComponentInChildren<SpriteRenderer>();
-        if (spriteRenderer != null)
+        foreach (SpriteRenderer spriteRenderer in
+                 entity.GetComponentsInChildren<SpriteRenderer>())
         {
-            return spriteRenderer.bounds.center;
+            if (IsSelectableSprite(spriteRenderer))
+            {
+                return spriteRenderer.bounds.center;
+            }
         }
 
         return entity.transform.position;
+    }
+
+    /// <summary>
+    /// Finds the topmost visible sprite of an entity that contains a world position.
+    /// Selection outlines and renderers without a sprite are ignored, so they do
+    /// not widen the clickable area.
+    /// </summary>
+    /// <param name="entity">The entity to test.</param>
+    /// <param name="position">The world position to test.</param>
+    /// <param name="hitRenderer">The topmost sprite under the position, or null when there is none.</param>
+    /// <returns>True when one of the entity's visible sprites contains the position.</returns>
+    private static bool TryGetTopmostSpriteAt(
+        SaveableEntity entity,
+        Vector2 position,
+        out SpriteRenderer hitRenderer)
+    {
+        hitRenderer = null;
+
+        foreach (SpriteRenderer renderer in
+                 entity.GetComponentsInChildren<SpriteRenderer>())
+        {
+            if (!IsSelectableSprite(renderer) ||
+                !ContainsWorldPoint(renderer.bounds, position))
+            {
+                continue;
+            }
+
+            if (hitRenderer != null &&
+                (hitRenderer.sortingLayerID > renderer.sortingLayerID ||
+                 (hitRenderer.sortingLayerID == renderer.sortingLayerID &&
+                  hitRenderer.sortingOrder > renderer.sortingOrder)))
+            {
+                continue;
+            }
+
+            hitRenderer = renderer;
+        }
+
+        return hitRenderer != null;
+    }
+
+    /// <summary>
+    /// Checks whether any visible sprite of an entity overlaps a world-space rectangle.
+    /// </summary>
+    /// <param name="entity">The entity to test.</param>
+    /// <param name="rect">The world-space rectangle to test.</param>
+    /// <returns>True when one of the entity's visible sprites overlaps the rectangle.</returns>
+    private static bool HasSpriteOverlappingRect(
+        SaveableEntity entity,
+        Rect rect)
+    {
+        foreach (SpriteRenderer renderer in
+                 entity.GetComponentsInChildren<SpriteRenderer>())
+        {
+            if (!IsSelectableSprite(renderer))
+            {
+                continue;
+            }
+
+            Bounds bounds = renderer.bounds;
+
+            if (rect.Overlaps(
+                    new Rect(
+                        bounds.min.x,
+                        bounds.min.y,
+                        bounds.size.x,
+                        bounds.size.y)))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Checks whether a sprite renderer can be used for selecting its entity.
+    /// Selection outlines and renderers without a sprite are ignored.
+    /// </summary>
+    /// <param name="renderer">The renderer to check.</param>
+    /// <returns>True when the renderer is enabled and shows a sprite that is not a selection outline.</returns>
+    private static bool IsSelectableSprite(SpriteRenderer renderer)
+    {
+        return renderer.enabled &&
+            renderer.sprite != null &&
+            renderer.GetComponent<EntitySelectionOutline>() == null;
+    }
+
+    /// <summary>
+    /// Checks whether a world position lies inside sprite bounds, ignoring the
+    /// bounds' depth because 2D sprites have no thickness.
+    /// </summary>
+    /// <param name="bounds">The sprite bounds.</param>
+    /// <param name="position">The world position to test.</param>
+    /// <returns>True when the position is inside the bounds on both axes.</returns>
+    private static bool ContainsWorldPoint(Bounds bounds, Vector2 position)
+    {
+        return position.x >= bounds.min.x &&
+            position.x <= bounds.max.x &&
+            position.y >= bounds.min.y &&
+            position.y <= bounds.max.y;
     }
 
     /// <summary>

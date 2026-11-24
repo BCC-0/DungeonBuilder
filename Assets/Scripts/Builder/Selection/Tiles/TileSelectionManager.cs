@@ -265,20 +265,30 @@ public class TileSelectionManager : SelectionManagerBase
 
     /// <summary>
     /// Selects the tile at the clicked cell, if one exists.
+    /// When that cell is already the only selected tile, the selection is cleared instead.
     /// </summary>
     /// <param name="position">The position that was clicked.</param>
     protected override void OnClickSelect(Vector2 position)
     {
         Vector2Int cellPos = (Vector2Int)this.saveableTilemap.Tilemap.WorldToCell(position);
 
-        if (this.saveableTilemap.Tilemap.HasTile(new Vector3Int(cellPos.x, cellPos.y, 0)))
-        {
-            this.SetSelection(new List<Vector2Int> { cellPos });
-        }
-        else
+        if (!this.saveableTilemap.Tilemap.HasTile(new Vector3Int(cellPos.x, cellPos.y, 0)))
         {
             this.ClearSelection();
+            return;
         }
+
+        List<Vector2Int> current = MapEditorManager.Instance.SelectedTiles;
+
+        if (current != null &&
+            current.Count == 1 &&
+            current[0] == cellPos)
+        {
+            this.ClearSelection();
+            return;
+        }
+
+        this.SetSelection(new List<Vector2Int> { cellPos });
     }
 
     /// <summary>
