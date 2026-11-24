@@ -85,13 +85,13 @@ public class PlaytestManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Starts crawler mode.
+    /// Starts crawler mode and shows the loading screen while it is built.
     /// </summary>
     public void StartCrawler()
     {
-        this.StartCoroutine(this.LoadCrawlerAsync());
+        BuilderLoadingOverlay.Show();
 
-        // TODO: Add a loading scene screen here.
+        this.StartCoroutine(this.LoadCrawlerAsync());
     }
 
     private static IEnumerable<BuilderEntity> EnumerateReferences(object value)
@@ -254,34 +254,54 @@ public class PlaytestManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Loads the crawler scene and then loads the map into it.
+    /// Loads the crawler scene and then loads the map into it, keeping the loading
+    /// screen up until the map is ready.
     /// </summary>
     /// <returns>The coroutine enumerator.</returns>
     private IEnumerator LoadCrawlerAsync()
     {
+        BuilderLoadingOverlay.Show();
+
+        // Let the loading screen draw before the scene load takes over the frame.
+        yield return null;
+
         AsyncOperation op =
             SceneManager.LoadSceneAsync("CrawlerMode");
 
         while (!op.isDone)
         {
+            BuilderLoadingOverlay.SetProgress(op.progress);
             yield return null;
         }
 
+        BuilderLoadingOverlay.SetProgress(1f);
+
+        // The map is read in one go, so give the loading screen one more frame first.
+        yield return null;
+
         SaveManager.LoadMap(this.mapName);
+
+        BuilderLoadingOverlay.Hide();
     }
 
     /// <summary>
-    /// Loads the builder scene, waits for its UI layout to settle,
-    /// and then restores the stored builder state.
+    /// Loads the builder scene, waits for its UI layout to settle, and then restores
+    /// the stored builder state, keeping the loading screen up until it is ready.
     /// </summary>
     /// <returns>The coroutine enumerator.</returns>
     private IEnumerator LoadBuilderAsync()
     {
+        BuilderLoadingOverlay.Show();
+
+        // Let the loading screen draw before the scene load takes over the frame.
+        yield return null;
+
         AsyncOperation op =
             SceneManager.LoadSceneAsync("BuilderMode");
 
         while (!op.isDone)
         {
+            BuilderLoadingOverlay.SetProgress(op.progress);
             yield return null;
         }
 
@@ -294,6 +314,11 @@ public class PlaytestManager : MonoBehaviour
         yield return new WaitForEndOfFrame();
         Canvas.ForceUpdateCanvases();
 
+        BuilderLoadingOverlay.SetProgress(1f);
+
+        // The map is read in one go, so give the loading screen one more frame first.
+        yield return null;
+
         this.RestoreBuilder();
 
         // Allow restored UI changes to be laid out.
@@ -302,6 +327,8 @@ public class PlaytestManager : MonoBehaviour
 
         MapEditorManager.Instance.SetLayer(
             this.storedBuilderState.ActiveLayer);
+
+        BuilderLoadingOverlay.Hide();
     }
 
     /// <summary>

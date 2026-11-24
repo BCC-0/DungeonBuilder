@@ -102,6 +102,12 @@ public abstract class SelectionManagerBase : MonoBehaviour
     public bool IsInMovementMode => this.isMovementMode;
 
     /// <summary>
+    /// Gets a value indicating whether this manager is busy with work that is spread
+    /// over several frames, such as pasting many entities.
+    /// </summary>
+    public virtual bool IsBusy => false;
+
+    /// <summary>
     /// Gets a value indicating whether the selection menu is currently open.
     /// </summary>
     public bool IsSelectionMenuOpen => this.selectionButtons.gameObject.activeSelf;

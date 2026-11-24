@@ -533,7 +533,8 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     {
         if (Keyboard.current == null ||
             !this.IsCommandHeld() ||
-            MapEditorManager.Instance.IsMovingSelection)
+            MapEditorManager.Instance.IsMovingSelection ||
+            MapEditorManager.Instance.IsBusy)
         {
             return;
         }

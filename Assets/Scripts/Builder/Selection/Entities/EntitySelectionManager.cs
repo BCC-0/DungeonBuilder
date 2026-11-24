@@ -13,6 +13,12 @@ using UnityEngine.Tilemaps;
 public class EntitySelectionManager : SelectionManagerBase
 {
     /// <summary>
+    /// Seconds of loading work one frame may do before it yields, so the loading
+    /// overlay keeps drawing while a large selection is built.
+    /// </summary>
+    private const float LoadingFrameBudgetSeconds = 0.012f;
+
+    /// <summary>
     /// Max distance from a click position for an entity to be considered "under" it.
     /// </summary>
     [SerializeField]
@@ -72,6 +78,21 @@ public class EntitySelectionManager : SelectionManagerBase
     /// movement must also remove the pasted entities again.
     /// </summary>
     private bool pasteTransactionOpen;
+
+    /// <summary>
+    /// Whether the clipboard is currently being turned into entities over several
+    /// frames. Pasting again is refused while this is true.
+    /// </summary>
+    private bool pasteInProgress;
+
+    /// <summary>
+    /// Whether a previewed move is currently being committed over several frames.
+    /// Confirming or cancelling again is refused while this is true.
+    /// </summary>
+    private bool placementInProgress;
+
+    /// <inheritdoc/>
+    public override bool IsBusy => this.pasteInProgress || this.placementInProgress;
 
     /// <inheritdoc/>
     protected override bool HasSelection =>
@@ -139,11 +160,14 @@ public class EntitySelectionManager : SelectionManagerBase
     /// <summary>
     /// Creates the clipboard entities at the pointer and starts moving them, so the
     /// position can be chosen before the paste is confirmed. Confirming places them,
-    /// cancelling removes them again.
+    /// cancelling removes them again. The copies are built over several frames, so a
+    /// large paste does not freeze the game.
     /// </summary>
     public override void PasteAtPointer()
     {
-        if (this.IsMovementMode || this.IsReferenceSelectionMode)
+        if (this.IsMovementMode ||
+            this.IsReferenceSelectionMode ||
+            this.pasteInProgress)
         {
             return;
         }
@@ -166,75 +190,8 @@ public class EntitySelectionManager : SelectionManagerBase
         Vector2Int targetCell =
             (Vector2Int)this.Grid.WorldToCell(this.CurrentPos);
 
-        List<SaveableEntity> pasted = new ();
-        Dictionary<SaveableEntity, SaveableEntity> copies = new ();
-
-        MapEditorManager manager = MapEditorManager.Instance;
-
-        manager.BeginTransaction();
-
-        foreach (ClipboardEntityEntry entry in clipboard.Entries)
-        {
-            if (entry.Source == null)
-            {
-                continue;
-            }
-
-            GameObject created = new GameObject(entry.PrefabID);
-
-            created.transform.position =
-                this.GetEntityWorldPosition(
-                    (Vector3Int)(targetCell + entry.Offset));
-
-            created.transform.SetParent(parent);
-
-            BuilderEntity builder = created.AddComponent<BuilderEntity>();
-
-            builder.Initialize(entry.PrefabID);
-
-            copies[entry.Source] = builder;
-            pasted.Add(builder);
-        }
-
-        foreach (ClipboardEntityEntry entry in clipboard.Entries)
-        {
-            if (entry.Source == null ||
-                !copies.TryGetValue(entry.Source, out SaveableEntity copied) ||
-                copied is not BuilderEntity copy)
-            {
-                continue;
-            }
-
-            foreach (KeyValuePair<string, object> field in entry.FieldValues)
-            {
-                copy.SetRuntimeEditableValue(
-                    field.Key,
-                    RemapFieldValue(field.Value, copies));
-            }
-        }
-
-        ApplyCopiedConsumption(copies);
-
-        if (pasted.Count == 0)
-        {
-            manager.CancelTransaction();
-            return;
-        }
-
-        foreach (SaveableEntity entity in pasted)
-        {
-            manager.RegisterAction(EntityPresenceAction.Placed(entity));
-        }
-
-        this.pasteTransactionOpen = true;
-
-        // Consumed copies are hidden behind their consumer, so only the visible copies
-        // become the new selection.
-        this.SetSelection(pasted.Where(e => e.ConsumedBy == null).ToList());
-        this.MoveSelected();
-
-        manager.ShowClipboardMessage(
-            $"Pasting {pasted.Count} {(pasted.Count == 1 ? "entity" : "entities")}");
+        this.StartCoroutine(
+            this.PasteEntitiesRoutine(clipboard, targetCell, parent));
     }
 
     /// <inheritdoc/>
@@ -372,96 +329,18 @@ public class EntitySelectionManager : SelectionManagerBase
             return;
         }
 
-        if (!this.IsMovementMode)
+        if (!this.IsMovementMode || this.placementInProgress)
         {
             return;
         }
 
-        List<SaveableEntity> selectedEntities =
-            MapEditorManager.Instance.SelectedEntities;
-
-        HashSet<SaveableEntity> movingEntities =
-            new HashSet<SaveableEntity>(selectedEntities);
-
-        List<SaveableEntity> replaced = new List<SaveableEntity>();
-        MoveEntitiesAction move = new MoveEntitiesAction();
-
-        foreach (KeyValuePair<SaveableEntity, Vector2Int> entry
-            in this.extraMoveStartCells)
-        {
-            SaveableEntity entity = entry.Key;
-
-            if (entity == null)
-            {
-                continue;
-            }
-
-            Vector2Int finalCell =
-                (Vector2Int)this.Grid.WorldToCell(
-                    entity.transform.position);
-
-            SaveableEntity entityAtDestination =
-                FindObjectsByType<SaveableEntity>()
-                    .FirstOrDefault(other =>
-                        other != entity &&
-                        !movingEntities.Contains(other) &&
-                        !IsTilemapEntity(other) &&
-                        other.ExistsInWorld &&
-                        (Vector2Int)this.Grid.WorldToCell(
-                            other.transform.position) == finalCell);
-
-            if (entityAtDestination != null &&
-                !replaced.Contains(entityAtDestination))
-            {
-                replaced.Add(entityAtDestination);
-            }
-
-            if (this.moveStartPositions.TryGetValue(
-                    entity,
-                    out Vector3 startPosition))
-            {
-                move.Add(entity, startPosition, entity.transform.position);
-            }
-        }
-
-        // Registered in this order, so undo moves the entities back first
-        // and then brings the replaced entities back.
-        MapEditorManager manager = MapEditorManager.Instance;
-        manager.BeginTransaction();
-
-        if (replaced.Count > 0)
-        {
-            manager.RegisterAction(EntityPresenceAction.DeleteNow(replaced));
-        }
-
-        if (move.HasChanges)
-        {
-            manager.RegisterAction(move);
-        }
-
-        manager.EndTransaction();
-
-        this.IsMovementMode = false;
-        this.IsMoving = false;
-        this.moveStartCells.Clear();
-        this.moveStartPositions.Clear();
-        this.extraMoveStartCells.Clear();
-
-        this.DisableMoveButtons();
-        this.CommitPasteTransaction();
-        this.SetSelection(
-            MapEditorManager.Instance.SelectedEntities);
-
-        if (RuntimePropertyEditor.Instance != null)
-        {
-            RuntimePropertyEditor.Instance.Rebuild();
-        }
+        this.StartCoroutine(this.ConfirmMoveRoutine());
     }
 
     /// <inheritdoc/>
     public override void CancelMovingSelected()
     {
-        if (!this.IsMovementMode)
+        if (!this.IsMovementMode || this.placementInProgress)
         {
             return;
         }
@@ -1343,6 +1222,302 @@ public class EntitySelectionManager : SelectionManagerBase
     private static bool IsReferenceList(IList list)
     {
         return list.Count == 0 || list[0] is SaveableEntity;
+    }
+
+    /// <summary>
+    /// Places the selection where it is being previewed, spreading the work over
+    /// several frames so placing a large selection does not freeze the game.
+    /// </summary>
+    /// <returns>The steps that commit the move.</returns>
+    private IEnumerator ConfirmMoveRoutine()
+    {
+        this.placementInProgress = true;
+
+        // The preview must stay where it is while it is committed, so the pointer
+        // may not drag it any more.
+        this.IsMoving = false;
+
+        List<SaveableEntity> selectedEntities =
+            MapEditorManager.Instance.SelectedEntities;
+
+        HashSet<SaveableEntity> movingEntities =
+            new HashSet<SaveableEntity>(selectedEntities);
+
+        List<SaveableEntity> replaced = new List<SaveableEntity>();
+        MoveEntitiesAction move = new MoveEntitiesAction();
+
+        // Built once, instead of scanning the whole scene for every moved entity.
+        Dictionary<Vector2Int, List<SaveableEntity>> entitiesByCell =
+            this.BuildEntityCellMap();
+
+        int totalSteps = this.extraMoveStartCells.Count;
+        int completedSteps = default(int);
+
+        float frameStart = Time.realtimeSinceStartup;
+
+        foreach (KeyValuePair<SaveableEntity, Vector2Int> entry
+            in this.extraMoveStartCells)
+        {
+            SaveableEntity entity = entry.Key;
+
+            if (entity == null)
+            {
+                continue;
+            }
+
+            Vector2Int finalCell =
+                (Vector2Int)this.Grid.WorldToCell(
+                    entity.transform.position);
+
+            SaveableEntity entityAtDestination = null;
+
+            if (entitiesByCell.TryGetValue(
+                    finalCell,
+                    out List<SaveableEntity> entitiesInCell))
+            {
+                foreach (SaveableEntity candidate in entitiesInCell)
+                {
+                    if (candidate != entity &&
+                        !movingEntities.Contains(candidate))
+                    {
+                        entityAtDestination = candidate;
+                        break;
+                    }
+                }
+            }
+
+            if (entityAtDestination != null &&
+                !replaced.Contains(entityAtDestination))
+            {
+                replaced.Add(entityAtDestination);
+            }
+
+            if (this.moveStartPositions.TryGetValue(
+                    entity,
+                    out Vector3 startPosition))
+            {
+                move.Add(entity, startPosition, entity.transform.position);
+            }
+
+            completedSteps++;
+
+            if (this.ShouldYieldLoadingFrame(frameStart, completedSteps, totalSteps))
+            {
+                yield return null;
+                frameStart = Time.realtimeSinceStartup;
+            }
+        }
+
+        // Registered in this order, so undo moves the entities back first
+        // and then brings the replaced entities back.
+        MapEditorManager manager = MapEditorManager.Instance;
+        manager.BeginTransaction();
+
+        if (replaced.Count > 0)
+        {
+            manager.RegisterAction(EntityPresenceAction.DeleteNow(replaced));
+        }
+
+        if (move.HasChanges)
+        {
+            manager.RegisterAction(move);
+        }
+
+        manager.EndTransaction();
+
+        this.IsMovementMode = false;
+        this.IsMoving = false;
+        this.moveStartCells.Clear();
+        this.moveStartPositions.Clear();
+        this.extraMoveStartCells.Clear();
+
+        this.DisableMoveButtons();
+        this.CommitPasteTransaction();
+        this.SetSelection(
+            MapEditorManager.Instance.SelectedEntities);
+
+        if (RuntimePropertyEditor.Instance != null)
+        {
+            RuntimePropertyEditor.Instance.Rebuild();
+        }
+
+        BuilderLoadingOverlay.Hide();
+        this.placementInProgress = false;
+    }
+
+    /// <summary>
+    /// Groups the entities that exist in the world by the cell they stand in, so a
+    /// move can find what it lands on without scanning the scene once per entity.
+    /// Entities that are being moved are left in, because the caller knows which
+    /// of them are moving.
+    /// </summary>
+    /// <returns>The entities by grid cell.</returns>
+    private Dictionary<Vector2Int, List<SaveableEntity>> BuildEntityCellMap()
+    {
+        Dictionary<Vector2Int, List<SaveableEntity>> cells = new ();
+
+        foreach (SaveableEntity entity in FindObjectsByType<SaveableEntity>())
+        {
+            if (!entity.ExistsInWorld ||
+                IsTilemapEntity(entity))
+            {
+                continue;
+            }
+
+            Vector2Int cell =
+                (Vector2Int)this.Grid.WorldToCell(entity.transform.position);
+
+            if (!cells.TryGetValue(cell, out List<SaveableEntity> entities))
+            {
+                entities = new List<SaveableEntity>();
+                cells[cell] = entities;
+            }
+
+            entities.Add(entity);
+        }
+
+        return cells;
+    }
+
+    /// <summary>
+    /// Rebuilds the clipboard entities, spreading the work over as many frames as
+    /// needed so the editor keeps rendering. The loading overlay is shown as soon as
+    /// one frame's budget is used up.
+    /// </summary>
+    /// <param name="clipboard">The clipboard content to paste.</param>
+    /// <param name="targetCell">The cell the clipboard's origin cell is pasted at.</param>
+    /// <param name="parent">The transform the copies are parented to.</param>
+    /// <returns>The steps that create the copies and start moving them.</returns>
+    private IEnumerator PasteEntitiesRoutine(
+        ClipboardEntities clipboard,
+        Vector2Int targetCell,
+        Transform parent)
+    {
+        this.pasteInProgress = true;
+
+        List<SaveableEntity> pasted = new ();
+        Dictionary<SaveableEntity, SaveableEntity> copies = new ();
+
+        MapEditorManager manager = MapEditorManager.Instance;
+
+        manager.BeginTransaction();
+
+        int totalSteps = clipboard.Entries.Count * 2;
+        int completedSteps = default(int);
+
+        float frameStart = Time.realtimeSinceStartup;
+
+        foreach (ClipboardEntityEntry entry in clipboard.Entries)
+        {
+            if (entry.Source == null)
+            {
+                continue;
+            }
+
+            GameObject created = new GameObject(entry.PrefabID);
+
+            created.transform.position =
+                this.GetEntityWorldPosition(
+                    (Vector3Int)(targetCell + entry.Offset));
+
+            created.transform.SetParent(parent);
+
+            BuilderEntity builder = created.AddComponent<BuilderEntity>();
+
+            builder.Initialize(entry.PrefabID);
+
+            copies[entry.Source] = builder;
+            pasted.Add(builder);
+
+            completedSteps++;
+
+            if (this.ShouldYieldLoadingFrame(frameStart, completedSteps, totalSteps))
+            {
+                yield return null;
+                frameStart = Time.realtimeSinceStartup;
+            }
+        }
+
+        foreach (ClipboardEntityEntry entry in clipboard.Entries)
+        {
+            if (entry.Source == null ||
+                !copies.TryGetValue(entry.Source, out SaveableEntity copied) ||
+                copied is not BuilderEntity copy)
+            {
+                continue;
+            }
+
+            foreach (KeyValuePair<string, object> field in entry.FieldValues)
+            {
+                copy.SetRuntimeEditableValue(
+                    field.Key,
+                    RemapFieldValue(field.Value, copies));
+            }
+
+            completedSteps++;
+
+            if (this.ShouldYieldLoadingFrame(frameStart, completedSteps, totalSteps))
+            {
+                yield return null;
+                frameStart = Time.realtimeSinceStartup;
+            }
+        }
+
+        ApplyCopiedConsumption(copies);
+
+        if (pasted.Count == 0)
+        {
+            manager.CancelTransaction();
+
+            BuilderLoadingOverlay.Hide();
+            this.pasteInProgress = false;
+
+            yield break;
+        }
+
+        foreach (SaveableEntity entity in pasted)
+        {
+            manager.RegisterAction(EntityPresenceAction.Placed(entity));
+        }
+
+        this.pasteTransactionOpen = true;
+
+        // Consumed copies are hidden behind their consumer, so only the visible copies
+        // become the new selection.
+        this.SetSelection(pasted.Where(e => e.ConsumedBy == null).ToList());
+        this.MoveSelected();
+
+        manager.ShowClipboardMessage(
+            $"Pasting {pasted.Count} {(pasted.Count == 1 ? "entity" : "entities")}");
+
+        BuilderLoadingOverlay.SetProgress(1f);
+        BuilderLoadingOverlay.Hide();
+
+        this.pasteInProgress = false;
+    }
+
+    /// <summary>
+    /// Reports the progress of a long builder task and tells the caller to wait for
+    /// the next frame once the current frame's budget is used up.
+    /// </summary>
+    /// <param name="frameStart">When the current frame's slice of work started.</param>
+    /// <param name="completedSteps">The number of finished steps.</param>
+    /// <param name="totalSteps">The number of steps in total.</param>
+    /// <returns>True when the task must continue on the next frame.</returns>
+    private bool ShouldYieldLoadingFrame(
+        float frameStart,
+        int completedSteps,
+        int totalSteps)
+    {
+        if (Time.realtimeSinceStartup - frameStart < LoadingFrameBudgetSeconds)
+        {
+            return false;
+        }
+
+        BuilderLoadingOverlay.Show();
+        BuilderLoadingOverlay.SetProgress(completedSteps / (float)totalSteps);
+
+        return true;
     }
 
     /// <summary>

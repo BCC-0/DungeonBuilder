@@ -120,9 +120,10 @@ public class TileSelectionManager : SelectionManagerBase
     }
 
     /// <summary>
-    /// Writes the clipboard tiles at the pointer and starts moving them, so the
-    /// position can be chosen before the paste is confirmed. Confirming places them,
-    /// cancelling removes them again.
+    /// Previews the clipboard tiles at the pointer and starts moving them, so the
+    /// position can be chosen before the paste is confirmed. The map is not changed
+    /// until then, so the tiles already there stay where they are. Confirming places
+    /// the tiles, cancelling leaves the map untouched.
     /// </summary>
     public override void PasteAtPointer()
     {
@@ -141,36 +142,29 @@ public class TileSelectionManager : SelectionManagerBase
         Vector2Int targetCell =
             (Vector2Int)this.saveableTilemap.Tilemap.WorldToCell(this.CurrentPos);
 
-        TileStrokeAction action = new TileStrokeAction(this.ApplyTileState);
+        Dictionary<Vector2Int, TileData> previewTiles = new ();
         List<Vector2Int> pasted = new ();
-
-        MapEditorManager manager = MapEditorManager.Instance;
-
-        manager.BeginTransaction();
 
         foreach (KeyValuePair<Vector2Int, TileState> entry in clipboard.Cells)
         {
             Vector2Int cell = targetCell + entry.Key;
-            TileState before =
-                TileState.FromData(this.saveableTilemap.GetTileData(cell));
 
-            this.ApplyTileState(cell, entry.Value);
-            action.Record(cell, before, entry.Value);
+            previewTiles[cell] = new TileData
+            {
+                TileID = entry.Value.TileID,
+                HasCollision = entry.Value.HasCollision,
+                Tag = entry.Value.Tag,
+            };
 
             pasted.Add(cell);
         }
 
-        if (action.HasChanges)
-        {
-            manager.RegisterAction(action);
-        }
-
         this.pasteTransactionOpen = true;
+        MapEditorManager.Instance.BeginTransaction();
 
-        this.SetSelection(pasted);
-        this.MoveSelected();
+        this.BeginPasteMovement(pasted, previewTiles);
 
-        manager.ShowClipboardMessage(
+        MapEditorManager.Instance.ShowClipboardMessage(
             $"Pasting {pasted.Count} {(pasted.Count == 1 ? "tile" : "tiles")}");
     }
 
@@ -539,6 +533,35 @@ public class TileSelectionManager : SelectionManagerBase
 
         this.extraMoveStartTiles = shifted;
         this.moveStartPointerCell = currentPointerCell;
+
+        this.UpdateMovementPreview();
+    }
+
+    /// <summary>
+    /// Enters movement mode with tiles that come from the clipboard instead of the
+    /// map. Nothing is written to the tilemap here, so the tiles that are already
+    /// there stay visible while the pasted position is chosen.
+    /// </summary>
+    /// <param name="tiles">The cells the pasted tiles cover.</param>
+    /// <param name="previewTiles">The pasted tiles, by cell.</param>
+    private void BeginPasteMovement(
+        List<Vector2Int> tiles,
+        Dictionary<Vector2Int, TileData> previewTiles)
+    {
+        this.startedMovingThisFrame = true;
+        this.IsMovementMode = true;
+        this.IsMoving = true;
+
+        // A paste has no tiles in the map to lift, so the map is left alone.
+        this.moveStartTiles.Clear();
+
+        this.moveStartPointerCell =
+            (Vector2Int)this.saveableTilemap.Tilemap.WorldToCell(this.CurrentPos);
+
+        this.extraMoveStartTiles = previewTiles;
+
+        this.DisableSelectionButtons();
+        this.EnableMoveButtons(this.GetTileBoundingRect(tiles));
 
         this.UpdateMovementPreview();
     }

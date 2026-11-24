@@ -51,6 +51,12 @@ public abstract class EditorControllerBase : MonoBehaviour
     public bool IsMovingSelection => this.selectionManager.IsInMovementMode;
 
     /// <summary>
+    /// Gets a value indicating whether the selection of this controller is busy with
+    /// work spread over several frames, such as pasting many entities.
+    /// </summary>
+    public bool IsBusy => this.selectionManager.IsBusy;
+
+    /// <summary>
     /// Gets the shared tilemap used for tile painting.
     /// </summary>
     protected SaveableTilemap SaveableTilemap => this.saveableTilemap;

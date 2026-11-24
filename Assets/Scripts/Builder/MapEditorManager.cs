@@ -63,6 +63,21 @@ public class MapEditorManager : MonoBehaviour
     /// </summary>
     private const float ClipboardToastFadeDuration = 0.15f;
 
+    /// <summary>
+    /// Seconds the entity fade of a layer change takes.
+    /// </summary>
+    private const float LayerFadeDuration = 0.25f;
+
+    /// <summary>
+    /// Alpha of the entities of the layer that is being edited.
+    /// </summary>
+    private const float ShownLayerAlpha = 1f;
+
+    /// <summary>
+    /// Alpha of the entities of the layer that is not being edited.
+    /// </summary>
+    private const float HiddenLayerAlpha = 0.2f;
+
     private static MapEditorManager instance;
 
     private EditorControllerBase tileController;
@@ -107,6 +122,18 @@ public class MapEditorManager : MonoBehaviour
     private Sequence clipboardToastSequence;
 
     /// <summary>
+    /// Renderers the layer fade writes to, collected once per layer change.
+    /// </summary>
+    private List<SpriteRenderer> layerRenderers = new ();
+
+    private Tween layerFadeTween;
+
+    /// <summary>
+    /// Alpha the entities are currently faded to.
+    /// </summary>
+    private float layerAlpha = 1f;
+
+    /// <summary>
     /// Gets the instance of the MapEditorManager.
     /// </summary>
     public static MapEditorManager Instance
@@ -126,6 +153,15 @@ public class MapEditorManager : MonoBehaviour
     public bool IsMovingSelection =>
         this.tileController.IsMovingSelection ||
         this.entityController.IsMovingSelection;
+
+    /// <summary>
+    /// Gets a value indicating whether either layer is busy with work spread over
+    /// several frames, such as pasting many entities. Nothing may be edited or undone
+    /// while this is true.
+    /// </summary>
+    public bool IsBusy =>
+        this.tileController.IsBusy ||
+        this.entityController.IsBusy;
 
     /// <summary>
     /// Gets or sets the map name we are editing.
@@ -190,24 +226,10 @@ public class MapEditorManager : MonoBehaviour
 
         this.StartCoroutine(this.WaitForSwitch());
 
-        float targetAlpha = layer == EditLayer.Foreground ? 1f : 0.2f;
-
-        HashSet<SpriteRenderer> renderers = new HashSet<SpriteRenderer>();
-
-        foreach (SaveableEntity entity in FindObjectsByType<SaveableEntity>())
-        {
-            foreach (SpriteRenderer sr in
-                     entity.GetComponentsInChildren<SpriteRenderer>(true))
-            {
-                if (sr == null || !renderers.Add(sr))
-                {
-                    continue;
-                }
-
-                sr.DOKill();
-                sr.DOFade(targetAlpha, 0.25f);
-            }
-        }
+        this.FadeEntityLayer(
+            layer == EditLayer.Foreground
+                ? ShownLayerAlpha
+                : HiddenLayerAlpha);
 
         this.UpdateLayerButtonVisuals(layer);
     }
@@ -280,7 +302,7 @@ public class MapEditorManager : MonoBehaviour
     {
         // A move or paste is uncommitted until it is confirmed, so history must
         // not step over it.
-        if (this.IsMovingSelection)
+        if (this.IsMovingSelection || this.IsBusy)
         {
             return;
         }
@@ -294,7 +316,7 @@ public class MapEditorManager : MonoBehaviour
     /// </summary>
     public void Redo()
     {
-        if (this.IsMovingSelection)
+        if (this.IsMovingSelection || this.IsBusy)
         {
             return;
         }
@@ -579,6 +601,91 @@ public class MapEditorManager : MonoBehaviour
         this.canSwitch = false;
         yield return new WaitForSeconds(0.1f);
         this.canSwitch = true;
+    }
+
+    /// <summary>
+    /// Fades the entities to the alpha of the layer that is being edited. One tween
+    /// drives every renderer instead of one tween per renderer, because a large map
+    /// has thousands of them and creating that many tweens freezes the editor.
+    /// </summary>
+    /// <param name="targetAlpha">The alpha the entities end at.</param>
+    private void FadeEntityLayer(float targetAlpha)
+    {
+        this.layerFadeTween?.Kill();
+        this.layerFadeTween = null;
+
+        // Another item of the layer that is already being edited must not fade
+        // anything, and the renderers already have the right alpha.
+        if (Mathf.Approximately(this.layerAlpha, targetAlpha))
+        {
+            return;
+        }
+
+        this.CollectLayerRenderers();
+
+        this.layerFadeTween = DOTween
+            .To(
+                () => this.layerAlpha,
+                alpha => this.SetLayerAlpha(alpha),
+                targetAlpha,
+                LayerFadeDuration)
+            .SetEase(Ease.OutQuad);
+    }
+
+    /// <summary>
+    /// Collects the renderers of the entities that are in the world, so the fade can
+    /// write to them without searching the scene every frame.
+    /// </summary>
+    private void CollectLayerRenderers()
+    {
+        this.layerRenderers.Clear();
+
+        HashSet<SpriteRenderer> seen = new HashSet<SpriteRenderer>();
+
+        foreach (SaveableEntity entity in FindObjectsByType<SaveableEntity>())
+        {
+            foreach (SpriteRenderer renderer in
+                     entity.GetComponentsInChildren<SpriteRenderer>(true))
+            {
+                if (renderer == null || !seen.Add(renderer))
+                {
+                    continue;
+                }
+
+                this.layerRenderers.Add(renderer);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Writes the layer alpha to every collected renderer, skipping the ones that
+    /// already have it and dropping the ones that were destroyed.
+    /// </summary>
+    /// <param name="alpha">The alpha to apply.</param>
+    private void SetLayerAlpha(float alpha)
+    {
+        this.layerAlpha = alpha;
+
+        for (int i = this.layerRenderers.Count - 1; i >= 0; i--)
+        {
+            SpriteRenderer renderer = this.layerRenderers[i];
+
+            if (renderer == null)
+            {
+                this.layerRenderers.RemoveAt(i);
+                continue;
+            }
+
+            Color color = renderer.color;
+
+            if (Mathf.Approximately(color.a, alpha))
+            {
+                continue;
+            }
+
+            color.a = alpha;
+            renderer.color = color;
+        }
     }
 
     private void UpdateLayerButtonVisuals(EditLayer layer)
