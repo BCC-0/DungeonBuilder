@@ -18,9 +18,13 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     private InventoryController inventoryController;
     [SerializeField]
     private float desktopZoomSpeed = 0.2f;
+    [SerializeField]
+    private float dragClickThreshold = 5f;
 
     private bool isPrimaryHeld;
     private bool isMiddleMouseHeld;
+    private bool isDragClickPending;
+    private Vector2 dragClickStartPos;
 
     private bool command;
 
@@ -53,7 +57,15 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     public void OnPrimary(InputAction.CallbackContext ctx)
     {
         Vector2 pointerPos = Mouse.current.position.ReadValue();
-        if (this.IsPointerOverUI(pointerPos))
+
+        // A left click also confirms a move, so it is not passed on to the tools.
+        if (MapEditorManager.Instance.IsMovingSelection)
+        {
+            return;
+        }
+
+        if (this.IsPointerOverUI(pointerPos) ||
+            MapEditorManager.Instance.IsPointerOverSelectionButtons(pointerPos))
         {
             return;
         }
@@ -61,6 +73,9 @@ public class BuilderDesktopInputHandler : MonoBehaviour
         if (ctx.started)
         {
             this.isPrimaryHeld = true;
+            this.isDragClickPending =
+                MapEditorManager.Instance.CurrentTool == EditorTool.Drag;
+            this.dragClickStartPos = pointerPos;
             this.ActiveController.OnPrimaryDown();
         }
         else if (ctx.canceled)
@@ -71,6 +86,14 @@ public class BuilderDesktopInputHandler : MonoBehaviour
             if (MapEditorManager.Instance.CurrentTool == EditorTool.Drag)
             {
                 this.cameraController.EndPan();
+
+                if (this.isDragClickPending &&
+                    Vector2.Distance(pointerPos, this.dragClickStartPos) <= this.dragClickThreshold)
+                {
+                    this.SelectAtPointer(pointerPos);
+                }
+
+                this.isDragClickPending = false;
             }
         }
     }
@@ -293,6 +316,76 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     }
 
     /// <summary>
+    /// Selects the drag tool.
+    /// </summary>
+    /// <param name="ctx">The input context.</param>
+    public void OnSelectDragTool(InputAction.CallbackContext ctx)
+    {
+        if (!this.CanSelectTool(ctx))
+        {
+            return;
+        }
+
+        MapEditorManager.Instance.SelectDrag();
+    }
+
+    /// <summary>
+    /// Selects the brush tool.
+    /// </summary>
+    /// <param name="ctx">The input context.</param>
+    public void OnSelectBrushTool(InputAction.CallbackContext ctx)
+    {
+        if (!this.CanSelectTool(ctx))
+        {
+            return;
+        }
+
+        MapEditorManager.Instance.SelectBrush();
+    }
+
+    /// <summary>
+    /// Selects the eraser tool.
+    /// </summary>
+    /// <param name="ctx">The input context.</param>
+    public void OnSelectEraserTool(InputAction.CallbackContext ctx)
+    {
+        if (!this.CanSelectTool(ctx))
+        {
+            return;
+        }
+
+        MapEditorManager.Instance.SelectEraser();
+    }
+
+    /// <summary>
+    /// Selects the selection tool.
+    /// </summary>
+    /// <param name="ctx">The input context.</param>
+    public void OnSelectSelectionTool(InputAction.CallbackContext ctx)
+    {
+        if (!this.CanSelectTool(ctx))
+        {
+            return;
+        }
+
+        MapEditorManager.Instance.SelectSelection();
+    }
+
+    /// <summary>
+    /// Selects the pick tool.
+    /// </summary>
+    /// <param name="ctx">The input context.</param>
+    public void OnSelectPickTool(InputAction.CallbackContext ctx)
+    {
+        if (!this.CanSelectTool(ctx))
+        {
+            return;
+        }
+
+        MapEditorManager.Instance.SelectPick();
+    }
+
+    /// <summary>
     /// Selects the next tool.
     /// </summary>
     /// <param name="ctx">The input context.</param>
@@ -343,7 +436,7 @@ public class BuilderDesktopInputHandler : MonoBehaviour
             return;
         }
 
-        if (ctx.started && this.command)
+        if (ctx.started && this.IsCommandHeld())
         {
             MapEditorManager.Instance.SaveMap();
         }
@@ -360,7 +453,7 @@ public class BuilderDesktopInputHandler : MonoBehaviour
             return;
         }
 
-        if (ctx.started && this.command)
+        if (ctx.started && this.IsCommandHeld())
         {
             MapEditorManager.Instance.Undo();
         }
@@ -377,7 +470,7 @@ public class BuilderDesktopInputHandler : MonoBehaviour
             return;
         }
 
-        if (ctx.started && this.command)
+        if (ctx.started && this.IsCommandHeld())
         {
             MapEditorManager.Instance.Redo();
         }
@@ -410,6 +503,40 @@ public class BuilderDesktopInputHandler : MonoBehaviour
             Vector2 pointerPos = Mouse.current.position.ReadValue();
             this.cameraController.Pan(pointerPos);
         }
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether a tool shortcut may be applied.
+    /// Typing and command combinations (e.g. Ctrl + Y) are left alone.
+    /// </summary>
+    /// <param name="ctx">The input context.</param>
+    /// <returns>True when the shortcut should select the tool.</returns>
+    private bool CanSelectTool(InputAction.CallbackContext ctx)
+    {
+        return ctx.performed && !this.IsTyping() && !this.command;
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether a command modifier (Ctrl) is currently held.
+    /// Read straight from the keyboard so the shortcut does not depend on the
+    /// separate Command action being evaluated.
+    /// </summary>
+    /// <returns>True while Ctrl is held.</returns>
+    private bool IsCommandHeld()
+    {
+        return (Keyboard.current != null && Keyboard.current.ctrlKey.isPressed) ||
+            this.command;
+    }
+
+    /// <summary>
+    /// Switches to the selection tool and selects whatever was clicked in drag mode.
+    /// </summary>
+    /// <param name="pointerPos">The screen position of the click.</param>
+    private void SelectAtPointer(Vector2 pointerPos)
+    {
+        Vector3 worldPos = this.cam.ScreenToWorldPoint(pointerPos);
+        worldPos.z = 0;
+        MapEditorManager.Instance.SelectAtPointer(worldPos);
     }
 
     /// <summary>

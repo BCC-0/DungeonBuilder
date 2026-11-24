@@ -34,6 +34,7 @@ public class BuilderMobileInputHandler : MonoBehaviour
     private Sequence currentRippleSequence;
     private Dictionary<int, bool> touchesOverUI = new ();
     private bool isSelectionStarted;
+    private Vector2 lastTouchScreenPos;
 
     private EditorControllerBase ActiveController => MapEditorManager.Instance.ActiveController;
 
@@ -75,10 +76,15 @@ public class BuilderMobileInputHandler : MonoBehaviour
 
     private void HandleNoTouch()
     {
-        if (this.isTouching && !this.isTouchPanningOverride && this.touchHoldTimer < this.holdThreshold)
+        if (this.isTouching && this.IsTap())
         {
             this.ActiveController.OnPrimaryDown();
             this.ActiveController.OnPrimaryUp();
+
+            if (MapEditorManager.Instance.CurrentTool == EditorTool.Drag)
+            {
+                this.SelectAtPointer(this.lastTouchScreenPos);
+            }
         }
         else if (this.isTouching)
         {
@@ -109,16 +115,42 @@ public class BuilderMobileInputHandler : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Gets a value indicating whether the released touch was a tap rather than a pan or hold.
+    /// </summary>
+    /// <returns>True when the touch was short and stayed near where it started.</returns>
+    private bool IsTap()
+    {
+        return !this.isTouchPanningOverride &&
+            this.touchHoldTimer < this.holdThreshold &&
+            Vector2.Distance(this.lastTouchScreenPos, this.touchStartPosition) <=
+                Mathf.Max(5f, Screen.dpi * 0.05f);
+    }
+
+    /// <summary>
+    /// Selects whatever is under a screen position without leaving the current tool.
+    /// Matches a click in the desktop drag tool.
+    /// </summary>
+    /// <param name="screenPos">The screen position that was tapped.</param>
+    private void SelectAtPointer(Vector2 screenPos)
+    {
+        Vector3 worldPos = this.cam.ScreenToWorldPoint(screenPos);
+        worldPos.z = 0;
+        MapEditorManager.Instance.SelectAtPointer(worldPos);
+    }
+
     private void HandleOneTouch(UnityEngine.InputSystem.Controls.TouchControl touch)
     {
         int id = touch.touchId.ReadValue();
         Vector2 screenPos = touch.position.ReadValue();
+        this.lastTouchScreenPos = screenPos;
         Vector3 worldPos = this.cam.ScreenToWorldPoint(screenPos);
         worldPos.z = 0;
 
         if (!this.touchesOverUI.ContainsKey(id))
         {
-            this.touchesOverUI[id] = this.IsPointerOverUI(screenPos);
+            this.touchesOverUI[id] = this.IsPointerOverUI(screenPos) ||
+                MapEditorManager.Instance.IsPointerOverSelectionButtons(screenPos);
         }
 
         if (this.touchesOverUI[id])

@@ -46,6 +46,11 @@ public abstract class EditorControllerBase : MonoBehaviour
     public SaveableTilemap Tilemap => this.saveableTilemap;
 
     /// <summary>
+    /// Gets a value indicating whether the selection of this controller is currently being moved.
+    /// </summary>
+    public bool IsMovingSelection => this.selectionManager.IsInMovementMode;
+
+    /// <summary>
     /// Gets the shared tilemap used for tile painting.
     /// </summary>
     protected SaveableTilemap SaveableTilemap => this.saveableTilemap;
@@ -188,6 +193,38 @@ public abstract class EditorControllerBase : MonoBehaviour
     public void ResetSelectionTool()
     {
         this.selectionManager.ResetSelectionTool();
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether an entity or tile can be selected at the given world position.
+    /// </summary>
+    /// <param name="worldPos">The world position to check.</param>
+    /// <returns>True when a click at the position would select something.</returns>
+    public bool CanSelectAt(Vector2 worldPos)
+    {
+        return this.selectionManager.CanSelectAt(worldPos);
+    }
+
+    /// <summary>
+    /// Selects the entity or tile at the given world position, as if it was clicked.
+    /// </summary>
+    /// <param name="worldPos">The world position that was clicked.</param>
+    public void SelectAt(Vector2 worldPos)
+    {
+        this.selectionManager.CurrentPos = worldPos;
+        this.selectionManager.BeginDrag(worldPos);
+        this.selectionManager.EndDrag();
+    }
+
+    /// <summary>
+    /// Checks whether a screen position lies on the selection buttons, so a press
+    /// there is not treated as world input.
+    /// </summary>
+    /// <param name="screenPos">The screen position to test.</param>
+    /// <returns>True when the position is on the selection buttons.</returns>
+    public bool IsPointerOverSelectionButtons(Vector2 screenPos)
+    {
+        return this.selectionManager.IsPointerOverSelectionButtons(screenPos);
     }
 
     /// <summary>

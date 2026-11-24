@@ -612,15 +612,6 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "RotateSelection",
-                    "type": "Button",
-                    "id": "59b349f0-d05a-4747-b3f8-014fa192bbeb",
-                    "expectedControlType": "",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
                     "name": "OpenInventory",
                     "type": "Button",
                     "id": "c01a3670-8dac-4b37-8d89-945ded6fee2e",
@@ -651,6 +642,51 @@
                     "name": "Redo",
                     "type": "Button",
                     "id": "ee6804cd-3685-4049-9acd-925d89c4262a",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "DragTool",
+                    "type": "Button",
+                    "id": "8c55c4f2-fc3b-4379-b8ee-1dfe9f66c9a0",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "BrushTool",
+                    "type": "Button",
+                    "id": "e24f786e-f296-4d51-ad3d-e18e3641fb37",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "EraseTool",
+                    "type": "Button",
+                    "id": "749d2e03-a8d2-4c87-b0e3-6fea38dfefff",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "SelectTool",
+                    "type": "Button",
+                    "id": "ddb99eab-1eab-40ae-8d1c-08201fe8ed5d",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "PickTool",
+                    "type": "Button",
+                    "id": "23c239c9-e09c-44ee-9188-c6fad6bc9dcc",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -979,17 +1015,6 @@
                 },
                 {
                     "name": "",
-                    "id": "63600fe9-e680-4056-9976-1c794ee41da2",
-                    "path": "<Keyboard>/r",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": ";Keyboard&Mouse",
-                    "action": "RotateSelection",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
                     "id": "abae152c-563e-4b89-847e-d9b616578968",
                     "path": "<Keyboard>/e",
                     "interactions": "",
@@ -1095,6 +1120,116 @@
                     "processors": "",
                     "groups": ";Keyboard&Mouse",
                     "action": "Redo",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "f958a257-777b-4b29-99ce-a8a6ea7b06a6",
+                    "path": "",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "DragTool",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "e0b05476-d33c-4db3-9bee-f2f2bc3c3331",
+                    "path": "<Keyboard>/r",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "DragTool",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "5bff6080-30d8-45e7-88f6-ce6dee7778c2",
+                    "path": "",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "BrushTool",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "32788dfb-7ce8-4741-b973-310a749f6403",
+                    "path": "<Keyboard>/t",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "BrushTool",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "a1032a15-0243-461f-b18b-4a8fc82f36e0",
+                    "path": "",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "EraseTool",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "a8dd00cd-b3d6-4398-ad22-e9a649958266",
+                    "path": "<Keyboard>/y",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "EraseTool",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "b0ef5d24-0736-4958-9815-8c1ae9889673",
+                    "path": "",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "SelectTool",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "d95a8c7d-7f63-4d1a-a25e-ed577d843e16",
+                    "path": "<Keyboard>/u",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "SelectTool",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "0072c768-4b5b-4d57-a3a4-fdf42286d9b1",
+                    "path": "",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "PickTool",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "cee44a3d-caa6-4708-98bc-eb301ce83b48",
+                    "path": "<Keyboard>/i",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "PickTool",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
