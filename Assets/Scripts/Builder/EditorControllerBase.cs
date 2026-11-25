@@ -125,11 +125,13 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// <summary>
     /// Called when the primary input is pressed.
     /// </summary>
-    public virtual void OnPrimaryDown()
+    /// <param name="selectionMode">How a selection click combines with the current selection.</param>
+    public virtual void OnPrimaryDown(
+        SelectionMode selectionMode = SelectionMode.Replace)
     {
         if (this.CurrentTool == EditorTool.Selection)
         {
-            this.selectionManager.BeginDrag(this.CurrentPos);
+            this.selectionManager.BeginDrag(this.CurrentPos, selectionMode);
             return;
         }
 
@@ -309,10 +311,13 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// Selects the entity or tile at the given world position, as if it was clicked.
     /// </summary>
     /// <param name="worldPos">The world position that was clicked.</param>
-    public void SelectAt(Vector2 worldPos)
+    /// <param name="selectionMode">How the pick combines with the current selection.</param>
+    public void SelectAt(
+        Vector2 worldPos,
+        SelectionMode selectionMode = SelectionMode.Replace)
     {
         this.selectionManager.CurrentPos = worldPos;
-        this.selectionManager.BeginDrag(worldPos);
+        this.selectionManager.BeginDrag(worldPos, selectionMode);
         this.selectionManager.EndDrag();
     }
 

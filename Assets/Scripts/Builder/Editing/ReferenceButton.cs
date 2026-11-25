@@ -19,6 +19,7 @@ public class ReferenceButton : MonoBehaviour
     private Button removeButton;
 
     private SaveableEntity entity;
+    private IReadOnlyList<SaveableEntity> referenceTargets;
     private AspectRatioFitter aspectRatioFitter;
     private Image wallOverlayImage;
     private Image headImage;
@@ -56,11 +57,34 @@ public class ReferenceButton : MonoBehaviour
     }
 
     /// <summary>
-    /// Navigates to the entity represented by this reference button.
+    /// Sets the entities that are selected when this button is clicked.
+    /// </summary>
+    /// <param name="targets">The referenced entities to navigate to.</param>
+    public void SetReferenceTargets(IReadOnlyList<SaveableEntity> targets)
+    {
+        this.referenceTargets = targets;
+    }
+
+    /// <summary>
+    /// Navigates to the entities represented by this reference button. When the
+    /// button stands for the references of several selected entities, all of them
+    /// are selected so they can be edited together.
     /// Assign this method to the Button's OnClick event in the Inspector.
     /// </summary>
     public void NavigateToEntity()
     {
+        if (this.referenceTargets != null &&
+            this.referenceTargets.Count > 1)
+        {
+            if (RuntimePropertyEditor.Instance != null)
+            {
+                RuntimePropertyEditor.Instance.NavigateToReferences(
+                    this.referenceTargets);
+            }
+
+            return;
+        }
+
         if (this.entity == null)
         {
             Debug.Log("Entity = null");

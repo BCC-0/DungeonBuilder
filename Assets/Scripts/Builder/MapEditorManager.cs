@@ -164,6 +164,13 @@ public class MapEditorManager : MonoBehaviour
         this.entityController.IsBusy;
 
     /// <summary>
+    /// Gets or sets a value indicating whether the inventory is open covering the
+    /// editor. Editor visuals that draw above the inventory, such as the selection
+    /// resize handles, are hidden while this is true.
+    /// </summary>
+    public bool IsInventoryOpen { get; set; }
+
+    /// <summary>
     /// Gets a value indicating whether a selection resize handle is currently dragged.
     /// </summary>
     public bool IsResizingSelection =>
@@ -397,6 +404,39 @@ public class MapEditorManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Selects several entities for reference navigation without changing
+    /// the active tool or editing layer.
+    /// </summary>
+    /// <param name="entities">The entities to select.</param>
+    public void SelectEntitiesForReference(IReadOnlyList<SaveableEntity> entities)
+    {
+        if (entities == null || entities.Count == 0)
+        {
+            return;
+        }
+
+        this.selectedTiles.Clear();
+        this.selectedEntities.Clear();
+
+        foreach (SaveableEntity entity in entities)
+        {
+            if (entity != null &&
+                !this.selectedEntities.Contains(entity))
+            {
+                this.selectedEntities.Add(entity);
+            }
+        }
+
+        EntitySelectionVisualizer visualizer =
+            FindAnyObjectByType<EntitySelectionVisualizer>();
+
+        if (visualizer != null)
+        {
+            visualizer.Refresh();
+        }
+    }
+
+    /// <summary>
     /// Selects the drag tool.
     /// </summary>
     public void SelectDrag() => this.SelectTool(EditorTool.Drag, 0);
@@ -426,7 +466,10 @@ public class MapEditorManager : MonoBehaviour
     /// Entities are preferred over tiles. When there is nothing to select, the selection is cleared.
     /// </summary>
     /// <param name="worldPos">The world position that was clicked.</param>
-    public void SelectAtPointer(Vector2 worldPos)
+    /// <param name="selectionMode">How the pick combines with the current selection.</param>
+    public void SelectAtPointer(
+        Vector2 worldPos,
+        SelectionMode selectionMode = SelectionMode.Replace)
     {
         EditLayer? targetLayer = null;
 
@@ -442,7 +485,12 @@ public class MapEditorManager : MonoBehaviour
         if (targetLayer == null)
         {
             // Clicking empty space drops the selection but keeps the tool.
-            this.activeController.ResetSelectionTool();
+            // An additive click leaves the selection as it is instead.
+            if (selectionMode == SelectionMode.Replace)
+            {
+                this.activeController.ResetSelectionTool();
+            }
+
             return;
         }
 
@@ -451,7 +499,28 @@ public class MapEditorManager : MonoBehaviour
             this.SetLayer(targetLayer.Value);
         }
 
-        this.activeController.SelectAt(worldPos);
+        this.activeController.SelectAt(worldPos, selectionMode);
+    }
+
+    /// <summary>
+    /// Selects the entity under the pointer without leaving the foreground layer.
+    /// The brush leaves an entity it clicks standing instead of overwriting it, so
+    /// that click can select the entity just like a click in the drag tool. Unlike
+    /// <see cref="SelectAtPointer"/>, clicking empty space leaves the selection as it is.
+    /// </summary>
+    /// <param name="worldPos">The world position that was clicked.</param>
+    /// <param name="selectionMode">How the pick combines with the current selection.</param>
+    public void SelectEntityAtPointer(
+        Vector2 worldPos,
+        SelectionMode selectionMode = SelectionMode.Replace)
+    {
+        if (this.currentLayer != EditLayer.Foreground ||
+            !this.entityController.CanSelectAt(worldPos))
+        {
+            return;
+        }
+
+        this.entityController.SelectAt(worldPos, selectionMode);
     }
 
     /// <summary>
@@ -505,9 +574,34 @@ public class MapEditorManager : MonoBehaviour
 
     /// <summary>
     /// Pastes the clipboard at the pointer and starts moving the pasted items,
-    /// so the player can choose the position before confirming.
+    /// so the player can choose the position before confirming. The editing layer
+    /// and tool are switched to what the clipboard holds, so the paste can always
+    /// be placed and moved right away.
     /// </summary>
-    public void OnPasteSelection() => this.ActiveController.OnPaste();
+    public void OnPasteSelection()
+    {
+        if (!BuilderClipboard.HasContent ||
+            this.IsMovingSelection ||
+            this.IsBusy ||
+            this.IsResizingSelection)
+        {
+            return;
+        }
+
+        EditLayer contentLayer =
+            BuilderClipboard.Entities != null
+                ? EditLayer.Foreground
+                : EditLayer.Background;
+
+        if (this.currentLayer != contentLayer)
+        {
+            this.SetLayer(contentLayer);
+        }
+
+        this.SelectSelection();
+
+        this.ActiveController.OnPaste();
+    }
 
     /// <summary>
     /// Opens the selection menu at the press, or closes it when it is already open.
@@ -557,6 +651,15 @@ public class MapEditorManager : MonoBehaviour
     /// Cancels the move action.
     /// </summary>
     public void OnCancelMove() => this.ActiveController.OnCancelMove();
+
+    /// <summary>
+    /// Refreshes the selection visuals and inspector after the selection lists were
+    /// changed without a selection action, such as restoring them after a double tap.
+    /// </summary>
+    public void RefreshSelectionVisuals()
+    {
+        this.RefreshAfterHistory();
+    }
 
     /// <summary>
     /// Refreshes the selection, inspector and visuals after an undo or redo.
@@ -662,8 +765,9 @@ public class MapEditorManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Collects the renderers of the entities that are in the world, so the fade can
-    /// write to them without searching the scene every frame.
+    /// Collects the renderers of the entities that are in the world, including
+    /// deactivated ones, so the fade can write to them without searching the scene
+    /// every frame and an entity restored by undo already has the layer's alpha.
     /// </summary>
     private void CollectLayerRenderers()
     {
@@ -671,7 +775,8 @@ public class MapEditorManager : MonoBehaviour
 
         HashSet<SpriteRenderer> seen = new HashSet<SpriteRenderer>();
 
-        foreach (SaveableEntity entity in FindObjectsByType<SaveableEntity>())
+        foreach (SaveableEntity entity in
+                 FindObjectsByType<SaveableEntity>(FindObjectsInactive.Include))
         {
             foreach (SpriteRenderer renderer in
                      entity.GetComponentsInChildren<SpriteRenderer>(true))

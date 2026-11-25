@@ -40,6 +40,8 @@ public class BuilderMobileInputHandler : MonoBehaviour
     private Vector2 lastTouchScreenPos;
     private float lastTapTime = -999f;
     private Vector2 lastTapPosition;
+    private List<SaveableEntity> entitiesBeforeTap = new ();
+    private List<Vector2Int> tilesBeforeTap = new ();
 
     private EditorControllerBase ActiveController => MapEditorManager.Instance.ActiveController;
 
@@ -96,6 +98,8 @@ public class BuilderMobileInputHandler : MonoBehaviour
             if (this.IsDoubleTap(this.lastTouchScreenPos))
             {
                 this.lastTapTime = -999f;
+
+                this.RestoreSelectionBeforeTap();
                 this.ToggleSelectionMenu(this.lastTouchScreenPos);
             }
             else
@@ -103,14 +107,23 @@ public class BuilderMobileInputHandler : MonoBehaviour
                 this.lastTapTime = Time.unscaledTime;
                 this.lastTapPosition = this.lastTouchScreenPos;
 
+                this.CaptureSelectionBeforeTap();
+
                 MapEditorManager.Instance.HideSelectionMenu();
 
                 this.ActiveController.OnPrimaryDown();
                 this.ActiveController.OnPrimaryUp();
 
-                if (MapEditorManager.Instance.CurrentTool == EditorTool.Drag)
+                EditorTool tool = MapEditorManager.Instance.CurrentTool;
+
+                if (tool == EditorTool.Drag)
                 {
                     this.SelectAtPointer(this.lastTouchScreenPos);
+                }
+                else if (tool == EditorTool.Brush &&
+                         MapEditorManager.Instance.CurrentLayer == EditLayer.Foreground)
+                {
+                    this.SelectEntityAtPointer(this.lastTouchScreenPos);
                 }
             }
         }
@@ -190,6 +203,62 @@ public class BuilderMobileInputHandler : MonoBehaviour
         Vector3 worldPos = this.cam.ScreenToWorldPoint(screenPos);
         worldPos.z = 0;
         MapEditorManager.Instance.SelectAtPointer(worldPos);
+    }
+
+    /// <summary>
+    /// Selects the entity under a tapped screen position without leaving the tool,
+    /// for brush taps in the foreground layer.
+    /// </summary>
+    /// <param name="screenPos">The screen position that was tapped.</param>
+    private void SelectEntityAtPointer(Vector2 screenPos)
+    {
+        Vector3 worldPos = this.cam.ScreenToWorldPoint(screenPos);
+        worldPos.z = 0;
+        MapEditorManager.Instance.SelectEntityAtPointer(worldPos);
+    }
+
+    /// <summary>
+    /// Remembers the selection before a tap changes it, so a double tap can put it
+    /// back before opening the selection menu.
+    /// </summary>
+    private void CaptureSelectionBeforeTap()
+    {
+        this.entitiesBeforeTap =
+            new List<SaveableEntity>(
+                MapEditorManager.Instance.SelectedEntities);
+
+        this.tilesBeforeTap =
+            new List<Vector2Int>(
+                MapEditorManager.Instance.SelectedTiles);
+    }
+
+    /// <summary>
+    /// Puts the selection back after the first tap of a double tap cleared it, so the
+    /// menu the double tap opens still belongs to the items that were selected.
+    /// </summary>
+    private void RestoreSelectionBeforeTap()
+    {
+        MapEditorManager manager = MapEditorManager.Instance;
+
+        bool hadSelection =
+            this.entitiesBeforeTap.Count > 0 ||
+            this.tilesBeforeTap.Count > 0;
+
+        bool selectionCleared =
+            (manager.SelectedEntities == null ||
+             manager.SelectedEntities.Count == 0) &&
+            (manager.SelectedTiles == null ||
+             manager.SelectedTiles.Count == 0);
+
+        if (!hadSelection || !selectionCleared)
+        {
+            return;
+        }
+
+        manager.SelectedEntities = this.entitiesBeforeTap;
+        manager.SelectedTiles = this.tilesBeforeTap;
+
+        manager.RefreshSelectionVisuals();
     }
 
     private void HandleOneTouch(UnityEngine.InputSystem.Controls.TouchControl touch)

@@ -25,8 +25,10 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     private bool isMiddleMouseHeld;
     private bool isDragClickPending;
     private Vector2 dragClickStartPos;
+    private SelectionMode primarySelectionMode;
 
     private bool command;
+    private bool shift;
 
     private EditorControllerBase ActiveController => MapEditorManager.Instance.ActiveController;
 
@@ -88,31 +90,38 @@ public class BuilderDesktopInputHandler : MonoBehaviour
         if (ctx.started)
         {
             this.isPrimaryHeld = true;
-            this.isDragClickPending =
-                MapEditorManager.Instance.CurrentTool == EditorTool.Drag;
+            this.primarySelectionMode = this.GetSelectionMode();
+            this.isDragClickPending = this.ToolSelectsOnClick();
             this.dragClickStartPos = pointerPos;
 
             MapEditorManager.Instance.HideSelectionMenu();
 
-            this.ActiveController.OnPrimaryDown();
+            this.ActiveController.OnPrimaryDown(this.primarySelectionMode);
         }
         else if (ctx.canceled)
         {
             this.isPrimaryHeld = false;
             this.ActiveController.OnPrimaryUp();
 
+            bool wasClick =
+                this.isDragClickPending &&
+                Vector2.Distance(pointerPos, this.dragClickStartPos) <= this.dragClickThreshold;
+
             if (MapEditorManager.Instance.CurrentTool == EditorTool.Drag)
             {
                 this.cameraController.EndPan();
 
-                if (this.isDragClickPending &&
-                    Vector2.Distance(pointerPos, this.dragClickStartPos) <= this.dragClickThreshold)
+                if (wasClick)
                 {
-                    this.SelectAtPointer(pointerPos);
+                    this.SelectAtPointer(pointerPos, this.primarySelectionMode);
                 }
-
-                this.isDragClickPending = false;
             }
+            else if (wasClick)
+            {
+                this.SelectEntityAtPointer(pointerPos, this.primarySelectionMode);
+            }
+
+            this.isDragClickPending = false;
         }
     }
 
@@ -170,6 +179,21 @@ public class BuilderDesktopInputHandler : MonoBehaviour
         EditorTool tool = MapEditorManager.Instance.CurrentTool;
 
         return tool == EditorTool.Brush || tool == EditorTool.Eraser;
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether a primary click without dragging selects what
+    /// was clicked. The drag tool always does; the brush does in the foreground, where
+    /// it leaves an entity standing instead of overwriting it.
+    /// </summary>
+    /// <returns>True when a click should select.</returns>
+    private bool ToolSelectsOnClick()
+    {
+        EditorTool tool = MapEditorManager.Instance.CurrentTool;
+
+        return tool == EditorTool.Drag ||
+            (tool == EditorTool.Brush &&
+             MapEditorManager.Instance.CurrentLayer == EditLayer.Foreground);
     }
 
     /// <summary>
@@ -461,11 +485,8 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     /// <param name="ctx">The input context.</param>
     public void OnCommand(InputAction.CallbackContext ctx)
     {
-        if (this.IsTyping())
-        {
-            return;
-        }
-
+        // The modifier is tracked even while typing, so a release inside a text
+        // field cannot leave the shortcut state stuck.
         if (ctx.started)
         {
             this.command = true;
@@ -473,6 +494,22 @@ public class BuilderDesktopInputHandler : MonoBehaviour
         else if (ctx.canceled)
         {
             this.command = false;
+        }
+    }
+
+    /// <summary>
+    /// Tracks the shift modifier, which adds clicked or boxed items to the selection.
+    /// </summary>
+    /// <param name="ctx">The input context.</param>
+    public void OnShiftModifier(InputAction.CallbackContext ctx)
+    {
+        if (ctx.started)
+        {
+            this.shift = true;
+        }
+        else if (ctx.canceled)
+        {
+            this.shift = false;
         }
     }
 
@@ -599,25 +636,68 @@ public class BuilderDesktopInputHandler : MonoBehaviour
 
     /// <summary>
     /// Gets a value indicating whether a command modifier (Ctrl) is currently held.
-    /// Read straight from the keyboard so the shortcut does not depend on the
-    /// separate Command action being evaluated.
+    /// The state comes from the Command action, so a rebind in the input actions
+    /// asset is picked up here.
     /// </summary>
     /// <returns>True while Ctrl is held.</returns>
     private bool IsCommandHeld()
     {
-        return (Keyboard.current != null && Keyboard.current.ctrlKey.isPressed) ||
-            this.command;
+        return this.command;
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the shift modifier is currently held.
+    /// The state comes from the ShiftModifier action.
+    /// </summary>
+    /// <returns>True while Shift is held.</returns>
+    private bool IsShiftHeld()
+    {
+        return this.shift;
+    }
+
+    /// <summary>
+    /// Gets how this press combines with the selection that already exists.
+    /// Ctrl toggles one item, Shift adds and a plain click replaces.
+    /// </summary>
+    /// <returns>The selection mode for this press.</returns>
+    private SelectionMode GetSelectionMode()
+    {
+        if (this.IsCommandHeld())
+        {
+            return SelectionMode.Toggle;
+        }
+
+        if (this.IsShiftHeld())
+        {
+            return SelectionMode.Add;
+        }
+
+        return SelectionMode.Replace;
     }
 
     /// <summary>
     /// Switches to the selection tool and selects whatever was clicked in drag mode.
     /// </summary>
     /// <param name="pointerPos">The screen position of the click.</param>
-    private void SelectAtPointer(Vector2 pointerPos)
+    /// <param name="selectionMode">How the pick combines with the current selection.</param>
+    private void SelectAtPointer(Vector2 pointerPos, SelectionMode selectionMode)
     {
         Vector3 worldPos = this.cam.ScreenToWorldPoint(pointerPos);
         worldPos.z = 0;
-        MapEditorManager.Instance.SelectAtPointer(worldPos);
+        MapEditorManager.Instance.SelectAtPointer(worldPos, selectionMode);
+    }
+
+    /// <summary>
+    /// Selects the entity under a clicked screen position without leaving the tool,
+    /// for brush clicks in the foreground layer.
+    /// </summary>
+    /// <param name="pointerPos">The screen position of the click.</param>
+    /// <param name="selectionMode">How the pick combines with the current selection.</param>
+    private void SelectEntityAtPointer(Vector2 pointerPos, SelectionMode selectionMode)
+    {
+        Vector3 worldPos = this.cam.ScreenToWorldPoint(pointerPos);
+        worldPos.z = 0;
+        MapEditorManager.Instance.SelectEntityAtPointer(worldPos, selectionMode);
     }
 
     /// <summary>
@@ -666,11 +746,30 @@ public class BuilderDesktopInputHandler : MonoBehaviour
         return legacyField != null && legacyField.isFocused;
     }
 
+    /// <summary>
+    /// Clears the modifier state when the handler is disabled, so a key that was
+    /// held while input switched to the mobile handler cannot stay pressed.
+    /// </summary>
+    private void OnDisable()
+    {
+        this.ResetModifiers();
+    }
+
     private void OnApplicationFocus(bool hasFocus)
     {
         if (!hasFocus)
         {
             this.CancelCameraInput();
+            this.ResetModifiers();
         }
+    }
+
+    /// <summary>
+    /// Clears the modifier keys that are tracked through input actions.
+    /// </summary>
+    private void ResetModifiers()
+    {
+        this.command = false;
+        this.shift = false;
     }
 }

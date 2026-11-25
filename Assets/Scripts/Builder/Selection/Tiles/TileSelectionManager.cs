@@ -582,20 +582,40 @@ public class TileSelectionManager : SelectionManagerBase
 
     /// <summary>
     /// Selects the tile at the clicked cell, if one exists.
-    /// When that cell is already the only selected tile, the selection is cleared instead.
+    /// A plain click replaces the selection, and clicking the only selected tile
+    /// clears it. Ctrl toggles the clicked tile and Shift adds it.
     /// </summary>
     /// <param name="position">The position that was clicked.</param>
-    protected override void OnClickSelect(Vector2 position)
+    /// <param name="selectionMode">How the pick combines with the current selection.</param>
+    protected override void OnClickSelect(Vector2 position, SelectionMode selectionMode)
     {
         Vector2Int cellPos = (Vector2Int)this.saveableTilemap.Tilemap.WorldToCell(position);
 
-        if (!this.saveableTilemap.Tilemap.HasTile(new Vector3Int(cellPos.x, cellPos.y, 0)))
+        bool hasTile =
+            this.saveableTilemap.Tilemap.HasTile(new Vector3Int(cellPos.x, cellPos.y, 0));
+
+        List<Vector2Int> current = MapEditorManager.Instance.SelectedTiles;
+
+        if (selectionMode != SelectionMode.Replace)
+        {
+            if (!hasTile)
+            {
+                return;
+            }
+
+            this.SetSelection(
+                selectionMode == SelectionMode.Toggle
+                    ? this.ToggleInSelection(current, cellPos)
+                    : this.AddToSelection(current, new List<Vector2Int> { cellPos }));
+
+            return;
+        }
+
+        if (!hasTile)
         {
             this.ClearSelection();
             return;
         }
-
-        List<Vector2Int> current = MapEditorManager.Instance.SelectedTiles;
 
         if (current != null &&
             current.Count == 1 &&
@@ -610,9 +630,11 @@ public class TileSelectionManager : SelectionManagerBase
 
     /// <summary>
     /// Selects every tile whose cell falls within the dragged rectangle.
+    /// With Shift or Ctrl the box contents are added to the selection instead.
     /// </summary>
     /// <param name="rect">The world-space rectangle of the drag.</param>
-    protected override void OnBoxSelect(Rect rect)
+    /// <param name="selectionMode">How the box contents combine with the current selection.</param>
+    protected override void OnBoxSelect(Rect rect, SelectionMode selectionMode)
     {
         List<Vector2Int> selected = new();
 
@@ -641,6 +663,13 @@ public class TileSelectionManager : SelectionManagerBase
             {
                 break;
             }
+        }
+
+        if (selectionMode != SelectionMode.Replace)
+        {
+            selected = this.AddToSelection(
+                MapEditorManager.Instance.SelectedTiles,
+                selected);
         }
 
         this.SetSelection(selected);

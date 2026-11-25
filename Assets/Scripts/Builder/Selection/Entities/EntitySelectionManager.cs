@@ -138,7 +138,8 @@ public class EntitySelectionManager : SelectionManagerBase
     /// <inheritdoc/>
     protected override bool HasSelection =>
         MapEditorManager.Instance.SelectedEntities != null &&
-        MapEditorManager.Instance.SelectedEntities.Count > 0;
+        MapEditorManager.Instance.SelectedEntities.Any(
+            entity => entity != null && entity.gameObject.activeSelf);
 
     /// <inheritdoc/>
     protected override bool CanUseSelectionActions =>
@@ -654,7 +655,9 @@ public class EntitySelectionManager : SelectionManagerBase
 
         foreach (SaveableEntity entity in selected)
         {
-            if (entity == null || entity.ConsumedBy != null)
+            if (entity == null ||
+                entity.ConsumedBy != null ||
+                !entity.gameObject.activeSelf)
             {
                 continue;
             }
@@ -1021,21 +1024,37 @@ public class EntitySelectionManager : SelectionManagerBase
 
     /// <summary>
     /// Selects the closest entity within range of the click, if any.
-    /// When that entity is already the only selected entity, the selection is cleared instead.
+    /// A plain click replaces the selection, and clicking the only selected entity
+    /// clears it. Ctrl toggles the clicked entity and Shift adds it.
     /// </summary>
     /// <param name="position">The position that was clicked.</param>
-    protected override void OnClickSelect(Vector2 position)
+    /// <param name="selectionMode">How the pick combines with the current selection.</param>
+    protected override void OnClickSelect(Vector2 position, SelectionMode selectionMode)
     {
         List<SaveableEntity> picked = this.PickEntitiesAt(position);
+        List<SaveableEntity> current =
+            MapEditorManager.Instance.SelectedEntities;
+
+        if (selectionMode != SelectionMode.Replace)
+        {
+            if (picked.Count == 0)
+            {
+                return;
+            }
+
+            this.SetSelection(
+                selectionMode == SelectionMode.Toggle
+                    ? this.ToggleInSelection(current, picked[0])
+                    : this.AddToSelection(current, picked));
+
+            return;
+        }
 
         if (picked.Count == 0)
         {
             this.ClearSelection();
             return;
         }
-
-        List<SaveableEntity> current =
-            MapEditorManager.Instance.SelectedEntities;
 
         if (current != null &&
             current.Count == 1 &&
@@ -1050,11 +1069,24 @@ public class EntitySelectionManager : SelectionManagerBase
 
     /// <summary>
     /// Selects every entity whose position falls within the dragged rectangle.
+    /// With Shift or Ctrl the box contents are added to the selection instead.
     /// </summary>
     /// <param name="rect">The world-space rectangle of the drag.</param>
-    protected override void OnBoxSelect(Rect rect)
+    /// <param name="selectionMode">How the box contents combine with the current selection.</param>
+    protected override void OnBoxSelect(Rect rect, SelectionMode selectionMode)
     {
-        this.SetSelection(this.PickEntitiesIn(rect));
+        List<SaveableEntity> picked = this.PickEntitiesIn(rect);
+
+        if (selectionMode == SelectionMode.Replace)
+        {
+            this.SetSelection(picked);
+            return;
+        }
+
+        this.SetSelection(
+            this.AddToSelection(
+                MapEditorManager.Instance.SelectedEntities,
+                picked));
     }
 
     /// <inheritdoc/>

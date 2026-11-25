@@ -79,6 +79,12 @@ public class InventoryController : MonoBehaviour
         }
 
         this.isOpen = true;
+
+        if (MapEditorManager.Instance != null)
+        {
+            MapEditorManager.Instance.IsInventoryOpen = true;
+        }
+
         this.inventory.SetActive(true);
         this.AnimateInventoryButton(true);
         Time.timeScale = 0;
@@ -94,6 +100,12 @@ public class InventoryController : MonoBehaviour
     public void CloseInventory()
     {
         this.isOpen = false;
+
+        if (MapEditorManager.Instance != null)
+        {
+            MapEditorManager.Instance.IsInventoryOpen = false;
+        }
+
         this.inventory.SetActive(false);
         this.AnimateInventoryButton(false);
         Time.timeScale = 1;
@@ -505,7 +517,7 @@ public class InventoryController : MonoBehaviour
     }
 
     /// <summary>
-    /// Switches to the brush tool after an item was picked, so drawing can start right away.
+    /// Switches to the brush tool after an item was added to the toolbar, so drawing can start right away.
     /// </summary>
     private void SelectBrushAfterPick()
     {
@@ -630,6 +642,7 @@ public class InventoryController : MonoBehaviour
         this.ClearItemSelection();
 
         this.EquipItem(item);
+        this.SelectBrushAfterPick();
     }
 
     /// <summary>

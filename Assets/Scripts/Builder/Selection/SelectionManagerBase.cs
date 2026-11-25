@@ -92,6 +92,7 @@ public abstract class SelectionManagerBase : MonoBehaviour
     private SelectionResizeHandles resizeHandles;
 
     private bool isDragging;
+    private SelectionMode dragSelectionMode;
     private bool isDraggingResize;
     private bool hasResizePreview;
     private ResizeHandle activeResizeHandle = ResizeHandle.None;
@@ -281,7 +282,10 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// Begins a selection drag at the given world position.
     /// </summary>
     /// <param name="worldPos">The pointer's world position at drag start.</param>
-    public void BeginDrag(Vector2 worldPos)
+    /// <param name="selectionMode">How the picked items combine with the current selection.</param>
+    public void BeginDrag(
+        Vector2 worldPos,
+        SelectionMode selectionMode = SelectionMode.Replace)
     {
         if (this.IsMovementMode)
         {
@@ -292,6 +296,8 @@ public abstract class SelectionManagerBase : MonoBehaviour
 
             return;
         }
+
+        this.dragSelectionMode = selectionMode;
 
         this.isDragging = true;
         this.hasDragged = false;
@@ -365,11 +371,13 @@ public abstract class SelectionManagerBase : MonoBehaviour
         }
         else if (this.hasDragged)
         {
-            this.OnBoxSelect(this.GetWorldRect(this.dragStart, this.dragEnd));
+            this.OnBoxSelect(
+                this.GetWorldRect(this.dragStart, this.dragEnd),
+                this.dragSelectionMode);
         }
         else
         {
-            this.OnClickSelect(this.dragEnd);
+            this.OnClickSelect(this.dragEnd, this.dragSelectionMode);
         }
 
         this.selectionBox.StopSelection();
@@ -632,14 +640,16 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// depending on the concrete manager).
     /// </summary>
     /// <param name="position">The position that was clicked.</param>
-    protected abstract void OnClickSelect(Vector2 position);
+    /// <param name="selectionMode">How the pick combines with the current selection.</param>
+    protected abstract void OnClickSelect(Vector2 position, SelectionMode selectionMode);
 
     /// <summary>
     /// Selects everything within the dragged rectangle (entities or tiles,
     /// depending on the concrete manager).
     /// </summary>
     /// <param name="rect">The world-space rectangle of the drag.</param>
-    protected abstract void OnBoxSelect(Rect rect);
+    /// <param name="selectionMode">How the box contents combine with the current selection.</param>
+    protected abstract void OnBoxSelect(Rect rect, SelectionMode selectionMode);
 
     /// <summary>
     /// Finds the entities that would be picked by a click at a position.
@@ -796,6 +806,56 @@ public abstract class SelectionManagerBase : MonoBehaviour
         }
 
         return new Rect(min, max - min);
+    }
+
+    /// <summary>
+    /// Combines the current selection with newly picked items for an additive
+    /// selection. Every item is kept once, and the result never grows past
+    /// <see cref="MaxSelectedCells"/>.
+    /// </summary>
+    /// <typeparam name="T">The type of the selected items.</typeparam>
+    /// <param name="current">The items selected before.</param>
+    /// <param name="picked">The items picked by this action.</param>
+    /// <returns>The selection to apply.</returns>
+    protected List<T> AddToSelection<T>(List<T> current, IEnumerable<T> picked)
+    {
+        List<T> result = current != null ? new List<T>(current) : new List<T>();
+
+        foreach (T item in picked)
+        {
+            if (result.Count >= this.MaxSelectedCells)
+            {
+                break;
+            }
+
+            if (!result.Contains(item))
+            {
+                result.Add(item);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Toggles one item in an additive selection: it is added when it was not
+    /// selected and removed when it was. Adding never grows past
+    /// <see cref="MaxSelectedCells"/>.
+    /// </summary>
+    /// <typeparam name="T">The type of the selected items.</typeparam>
+    /// <param name="current">The items selected before.</param>
+    /// <param name="item">The item to toggle.</param>
+    /// <returns>The selection to apply.</returns>
+    protected List<T> ToggleInSelection<T>(List<T> current, T item)
+    {
+        List<T> result = current != null ? new List<T>(current) : new List<T>();
+
+        if (!result.Remove(item) && result.Count < this.MaxSelectedCells)
+        {
+            result.Add(item);
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -1016,7 +1076,18 @@ public abstract class SelectionManagerBase : MonoBehaviour
             this.CanUseSelectionActions &&
             !this.IsMovementMode &&
             !this.isReferenceSelectionMode &&
-            !this.IsBusy;
+            !this.IsBusy &&
+            !this.IsInventoryOpen();
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the inventory is open and covers the editor.
+    /// </summary>
+    /// <returns>True when the inventory is open.</returns>
+    private bool IsInventoryOpen()
+    {
+        return MapEditorManager.Instance != null &&
+            MapEditorManager.Instance.IsInventoryOpen;
     }
 
     /// <summary>

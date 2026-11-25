@@ -112,28 +112,7 @@ public class RuntimePropertyEditor : MonoBehaviour
         MapEditorManager manager =
             MapEditorManager.Instance;
 
-        // Remember the current selection.
-        NavigationState state = new NavigationState
-        {
-            SelectedEntities = manager.SelectedEntities != null
-                ? new List<SaveableEntity>(manager.SelectedEntities)
-                : new List<SaveableEntity>(),
-
-            SelectedTiles = manager.SelectedTiles != null
-                ? new List<Vector2Int>(manager.SelectedTiles)
-                : new List<Vector2Int>(),
-        };
-
-        // Remember the current camera position.
-        if (this.cameraController != null)
-        {
-            state.CameraPosition =
-                this.cameraController.transform.position;
-
-            state.HasCameraPosition = true;
-        }
-
-        this.navigationHistory.Push(state);
+        this.navigationHistory.Push(this.CaptureNavigationState());
 
         // Determine this before changing the selection.
         bool isConsumed = entity.ConsumedBy != null;
@@ -148,6 +127,63 @@ public class RuntimePropertyEditor : MonoBehaviour
             isConsumed
                 ? this.GetConsumerInWorld(entity)
                 : entity.GetWorldRepresentative();
+
+        if (this.cameraController != null &&
+            cameraTarget != null)
+        {
+            this.cameraController.MoveTo(
+                cameraTarget.transform.position,
+                this.referenceCameraMoveDuration);
+        }
+    }
+
+    /// <summary>
+    /// Navigates to several referenced entities at once, so their shared fields can
+    /// be edited together. The previous selection and camera position are stored so
+    /// the Back button can restore them.
+    /// </summary>
+    /// <param name="entities">The referenced entities to select.</param>
+    public void NavigateToReferences(IReadOnlyList<SaveableEntity> entities)
+    {
+        if (entities == null ||
+            MapEditorManager.Instance == null)
+        {
+            return;
+        }
+
+        List<SaveableEntity> targets = new List<SaveableEntity>();
+
+        foreach (SaveableEntity entity in entities)
+        {
+            if (entity != null &&
+                !targets.Contains(entity))
+            {
+                targets.Add(entity);
+            }
+        }
+
+        if (targets.Count == 0)
+        {
+            return;
+        }
+
+        if (targets.Count == 1)
+        {
+            this.NavigateToReference(targets[0]);
+
+            return;
+        }
+
+        this.navigationHistory.Push(this.CaptureNavigationState());
+
+        MapEditorManager manager = MapEditorManager.Instance;
+        manager.SelectEntitiesForReference(targets);
+        this.selectionManager?.RefreshSelection();
+
+        this.Rebuild();
+        this.UpdateBackButton();
+
+        SaveableEntity cameraTarget = this.GetCameraTarget(targets[0]);
 
         if (this.cameraController != null &&
             cameraTarget != null)
@@ -927,6 +963,36 @@ public class RuntimePropertyEditor : MonoBehaviour
         }
 
         return string.Empty;
+    }
+
+    /// <summary>
+    /// Captures the current selection and camera position for the navigation history.
+    /// </summary>
+    /// <returns>The state to push before navigating.</returns>
+    private NavigationState CaptureNavigationState()
+    {
+        MapEditorManager manager = MapEditorManager.Instance;
+
+        NavigationState state = new NavigationState
+        {
+            SelectedEntities = manager.SelectedEntities != null
+                ? new List<SaveableEntity>(manager.SelectedEntities)
+                : new List<SaveableEntity>(),
+
+            SelectedTiles = manager.SelectedTiles != null
+                ? new List<Vector2Int>(manager.SelectedTiles)
+                : new List<Vector2Int>(),
+        };
+
+        if (this.cameraController != null)
+        {
+            state.CameraPosition =
+                this.cameraController.transform.position;
+
+            state.HasCameraPosition = true;
+        }
+
+        return state;
     }
 
     private SaveableEntity GetConsumerInWorld(SaveableEntity entity)
