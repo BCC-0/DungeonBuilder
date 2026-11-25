@@ -1781,6 +1781,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TileSelectionManager
   buttonGap: 40
   menuPointerOffset: 24
+  disabledButtonAlpha: 0.4
+  maxSelectionSize: 30
+  pasteButton: {fileID: 0}
   selectionBox: {fileID: 1727406745}
   selectionBoxParent: {fileID: 1617474114}
   selectionButtons: {fileID: 828048498}
@@ -7833,6 +7836,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EntitySelectionManager
   buttonGap: 100
   menuPointerOffset: 24
+  disabledButtonAlpha: 0.4
+  maxSelectionSize: 30
+  pasteButton: {fileID: 0}
   selectionBox: {fileID: 1727406745}
   selectionBoxParent: {fileID: 1617474114}
   selectionButtons: {fileID: 828048498}

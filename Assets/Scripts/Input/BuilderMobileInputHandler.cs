@@ -36,6 +36,7 @@ public class BuilderMobileInputHandler : MonoBehaviour
     private Sequence currentRippleSequence;
     private Dictionary<int, bool> touchesOverUI = new ();
     private bool isSelectionStarted;
+    private bool isResizingSelection;
     private Vector2 lastTouchScreenPos;
     private float lastTapTime = -999f;
     private Vector2 lastTapPosition;
@@ -80,6 +81,16 @@ public class BuilderMobileInputHandler : MonoBehaviour
 
     private void HandleNoTouch()
     {
+        if (this.isResizingSelection)
+        {
+            this.isResizingSelection = false;
+            this.isTouching = false;
+            this.touchHoldTimer = 0;
+            this.isTouchPanningOverride = false;
+
+            MapEditorManager.Instance.EndSelectionResize();
+        }
+
         if (this.isTouching && this.IsTap())
         {
             if (this.IsDoubleTap(this.lastTouchScreenPos))
@@ -189,6 +200,12 @@ public class BuilderMobileInputHandler : MonoBehaviour
         Vector3 worldPos = this.cam.ScreenToWorldPoint(screenPos);
         worldPos.z = 0;
 
+        if (this.isResizingSelection)
+        {
+            this.ActiveController.OnPointerMoved(worldPos);
+            return;
+        }
+
         if (!this.touchesOverUI.ContainsKey(id))
         {
             this.touchesOverUI[id] = this.IsPointerOverUI(screenPos) ||
@@ -197,6 +214,17 @@ public class BuilderMobileInputHandler : MonoBehaviour
 
         if (this.touchesOverUI[id])
         {
+            return;
+        }
+
+        if (!this.isTouching &&
+            MapEditorManager.Instance.BeginSelectionResize(screenPos))
+        {
+            this.isResizingSelection = true;
+            this.isTouching = true;
+            this.touchStartPosition = screenPos;
+
+            this.ActiveController.OnPointerMoved(worldPos);
             return;
         }
 
@@ -244,6 +272,11 @@ public class BuilderMobileInputHandler : MonoBehaviour
 
     private void HandleMultiTouch(UnityEngine.InputSystem.Controls.TouchControl t1, UnityEngine.InputSystem.Controls.TouchControl t2)
     {
+        if (this.isResizingSelection)
+        {
+            return;
+        }
+
         Vector2 p1 = t1.position.ReadValue();
         Vector2 p2 = t2.position.ReadValue();
         float currentDistance = Vector2.Distance(p1, p2);

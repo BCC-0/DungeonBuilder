@@ -64,8 +64,23 @@ public class BuilderDesktopInputHandler : MonoBehaviour
             return;
         }
 
+        if (MapEditorManager.Instance.IsResizingSelection)
+        {
+            if (ctx.canceled)
+            {
+                MapEditorManager.Instance.EndSelectionResize();
+            }
+
+            return;
+        }
+
         if (this.IsPointerOverUI(pointerPos) ||
             MapEditorManager.Instance.IsPointerOverSelectionButtons(pointerPos))
+        {
+            return;
+        }
+
+        if (ctx.started && MapEditorManager.Instance.BeginSelectionResize(pointerPos))
         {
             return;
         }
@@ -534,6 +549,7 @@ public class BuilderDesktopInputHandler : MonoBehaviour
         if (Keyboard.current == null ||
             !this.IsCommandHeld() ||
             MapEditorManager.Instance.IsMovingSelection ||
+            MapEditorManager.Instance.IsResizingSelection ||
             MapEditorManager.Instance.IsBusy)
         {
             return;

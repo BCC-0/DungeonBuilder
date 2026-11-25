@@ -51,6 +51,22 @@ public class TileSelectionManager : SelectionManagerBase
     /// </summary>
     private bool pasteTransactionOpen;
 
+    /// <summary>
+    /// Tiles shown while a resize is previewed, by cell.
+    /// </summary>
+    private Dictionary<Vector2Int, TileState> resizePreviewTiles = new ();
+
+    /// <summary>
+    /// Cells that are emptied when the previewed resize is confirmed.
+    /// </summary>
+    private List<Vector2Int> resizeClearCells = new ();
+
+    /// <summary>
+    /// Cells of the selection before the resize, so the selection can be restored
+    /// when the preview is cancelled.
+    /// </summary>
+    private List<Vector2Int> resizeSourceSelection = new ();
+
     /// <inheritdoc/>
     protected override bool HasSelection =>
         MapEditorManager.Instance.SelectedTiles != null &&
@@ -375,6 +391,187 @@ public class TileSelectionManager : SelectionManagerBase
         return this.GetTileBoundingRect(tiles);
     }
 
+    /// <summary>
+    /// Gets the grid cells the selected tiles cover.
+    /// </summary>
+    /// <returns>The selected cells.</returns>
+    protected override RectInt GetSelectedCellRect()
+    {
+        List<Vector2Int> tiles = MapEditorManager.Instance.SelectedTiles;
+
+        if (tiles == null || tiles.Count == 0)
+        {
+            return default(RectInt);
+        }
+
+        Vector2Int min = tiles[0];
+        Vector2Int max = tiles[0];
+
+        foreach (Vector2Int tile in tiles)
+        {
+            min = Vector2Int.Min(min, tile);
+            max = Vector2Int.Max(max, tile);
+        }
+
+        return new RectInt(min.x, min.y, max.x - min.x + 1, max.y - min.y + 1);
+    }
+
+    /// <summary>
+    /// Gets the world rectangle covered by a block of cells.
+    /// </summary>
+    /// <param name="cells">The cells to cover.</param>
+    /// <returns>The world rectangle of the cells.</returns>
+    protected override Rect GetCellsWorldRect(RectInt cells)
+    {
+        if (cells.width <= 0 || cells.height <= 0 || this.saveableTilemap == null)
+        {
+            return default(Rect);
+        }
+
+        Tilemap tilemap = this.saveableTilemap.Tilemap;
+
+        if (tilemap == null)
+        {
+            return default(Rect);
+        }
+
+        // One selected cell is one cell of the grid, so the box is the footprint
+        // of the selected cells. The tile art is not measured: a tile sprite can
+        // report twice the size it is drawn at, which made the box twice as big.
+        Vector3 min = tilemap.CellToWorld(
+            new Vector3Int(cells.xMin, cells.yMin, 0));
+
+        Vector3 max = tilemap.CellToWorld(
+            new Vector3Int(cells.xMax, cells.yMax, 0));
+
+        return new Rect(min.x, min.y, max.x - min.x, max.y - min.y);
+    }
+
+    /// <summary>
+    /// Draws the resized tiles on the movement preview tilemap. The real tilemap
+    /// is not touched, so the tiles that are already there stay visible until the
+    /// resize is confirmed.
+    /// </summary>
+    /// <param name="source">The cells of the current selection.</param>
+    /// <param name="target">The cells the selection is resized to.</param>
+    protected override void BeginResizePreview(RectInt source, RectInt target)
+    {
+        this.StopResizePreview();
+
+        this.resizeSourceSelection = new List<Vector2Int>(
+            MapEditorManager.Instance.SelectedTiles);
+
+        Dictionary<Vector2Int, TileState> block = this.SnapshotCells(source);
+
+        List<Vector2Int> previewSelection = new ();
+
+        for (int x = target.xMin; x < target.xMax; x++)
+        {
+            for (int y = target.yMin; y < target.yMax; y++)
+            {
+                int sourceX = SelectionResize.SourceIndexForTarget(
+                    x, target.xMin, target.width, source.xMin, source.width);
+
+                int sourceY = SelectionResize.SourceIndexForTarget(
+                    y, target.yMin, target.height, source.yMin, source.height);
+
+                TileState state = block[new Vector2Int(sourceX, sourceY)];
+                Vector2Int cell = new (x, y);
+
+                this.resizePreviewTiles[cell] = state;
+
+                if (state.TileID == null)
+                {
+                    continue;
+                }
+
+                previewSelection.Add(cell);
+
+                this.movementPreviewTilemap.SetTile(
+                    new Vector3Int(x, y, 0),
+                    TileLibrary.GetTileByIDGlobal(state.TileID));
+            }
+        }
+
+        foreach (Vector2Int cell in this.resizeSourceSelection)
+        {
+            if (!target.Contains(cell))
+            {
+                this.resizeClearCells.Add(cell);
+            }
+        }
+
+        this.SetSelection(previewSelection);
+    }
+
+    /// <summary>
+    /// Writes the previewed block to the real tilemap as one undo step.
+    /// </summary>
+    protected override void ApplyResizePreview()
+    {
+        TileStrokeAction action = new (this.ApplyTileState);
+
+        List<Vector2Int> selected = new ();
+
+        foreach (KeyValuePair<Vector2Int, TileState> entry in this.resizePreviewTiles)
+        {
+            TileState before = TileState.FromData(
+                this.saveableTilemap.GetTileData(entry.Key));
+
+            if (!before.Equals(entry.Value))
+            {
+                action.Record(entry.Key, before, entry.Value);
+                this.ApplyTileState(entry.Key, entry.Value);
+            }
+
+            if (entry.Value.TileID != null)
+            {
+                selected.Add(entry.Key);
+            }
+        }
+
+        foreach (Vector2Int cell in this.resizeClearCells)
+        {
+            TileState before = TileState.FromData(
+                this.saveableTilemap.GetTileData(cell));
+
+            if (before.Equals(TileState.Empty))
+            {
+                continue;
+            }
+
+            action.Record(cell, before, TileState.Empty);
+            this.ApplyTileState(cell, TileState.Empty);
+        }
+
+        action.SetSelection(this.resizeSourceSelection, selected);
+
+        this.StopResizePreview();
+
+        if (action.HasChanges)
+        {
+            MapEditorManager.Instance.RegisterAction(action);
+        }
+
+        this.SetSelection(selected);
+    }
+
+    /// <summary>
+    /// Removes the preview. The real tilemap was never changed, so nothing has
+    /// to be restored.
+    /// </summary>
+    protected override void CancelResizePreview()
+    {
+        List<Vector2Int> restore = new (this.resizeSourceSelection);
+
+        this.StopResizePreview();
+
+        if (restore.Count > 0)
+        {
+            this.SetSelection(restore);
+        }
+    }
+
     /// <inheritdoc/>
     protected override bool HasSelectableAt(Vector2 position)
     {
@@ -427,12 +624,22 @@ public class TileSelectionManager : SelectionManagerBase
         {
             for (int y = min.y; y <= max.y; y++)
             {
+                if (selected.Count >= this.MaxSelectedCells)
+                {
+                    break;
+                }
+
                 Vector2Int cell = new(x, y);
 
                 if (this.saveableTilemap.Tilemap.HasTile(new Vector3Int(cell.x, cell.y, 0)))
                 {
                     selected.Add(cell);
                 }
+            }
+
+            if (selected.Count >= this.MaxSelectedCells)
+            {
+                break;
             }
         }
 
@@ -621,6 +828,47 @@ public class TileSelectionManager : SelectionManagerBase
         MapEditorManager.Instance.CancelTransaction();
 
         this.ClearSelection();
+    }
+
+    /// <summary>
+    /// Gets the size of one cell of the tilemap in world units.
+    /// </summary>
+    /// <param name="tilemap">The tilemap.</param>
+    /// <returns>The size of a cell.</returns>
+    /// <summary>
+    /// Removes the preview tiles and the state that belongs to them.
+    /// </summary>
+    private void StopResizePreview()
+    {
+        this.movementPreviewTilemap.ClearAllTiles();
+
+        this.resizePreviewTiles.Clear();
+        this.resizeClearCells.Clear();
+        this.resizeSourceSelection.Clear();
+    }
+
+    /// <summary>
+    /// Copies the tile state of every cell of a block, so the preview is built
+    /// from the tiles as they were before it started.
+    /// </summary>
+    /// <param name="cells">The cells to copy.</param>
+    /// <returns>The state of each cell.</returns>
+    private Dictionary<Vector2Int, TileState> SnapshotCells(RectInt cells)
+    {
+        Dictionary<Vector2Int, TileState> states = new ();
+
+        for (int x = cells.xMin; x < cells.xMax; x++)
+        {
+            for (int y = cells.yMin; y < cells.yMax; y++)
+            {
+                Vector2Int cell = new (x, y);
+
+                states[cell] = TileState.FromData(
+                    this.saveableTilemap.GetTileData(cell));
+            }
+        }
+
+        return states;
     }
 
     private void ApplyTileState(Vector2Int cell, TileState state)

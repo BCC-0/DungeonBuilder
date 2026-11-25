@@ -15,6 +15,12 @@ public abstract class SelectionManagerBase : MonoBehaviour
     protected const float DragThreshold = 0.1f;
 
     /// <summary>
+    /// Fallback for <see cref="maxSelectionSize"/>, used when the serialized
+    /// value was never set.
+    /// </summary>
+    private const int DefaultMaxSelectionSize = 30;
+
+    /// <summary>
     /// Gap between the selection and the button panel, in canvas units (the local space of
     /// the selection box parent). Higher values push the panel further away from the selection.
     /// Independent of screen size and of the panel's own height.
@@ -34,6 +40,14 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// </summary>
     [SerializeField]
     private float disabledButtonAlpha = 0.4f;
+
+    /// <summary>
+    /// Largest number of cells a selection may span on one axis. Resizing and
+    /// selecting are both held to this size, so the preview and the clipboard
+    /// work stay small enough to remain responsive.
+    /// </summary>
+    [SerializeField]
+    private int maxSelectionSize = DefaultMaxSelectionSize;
 
     /// <summary>
     /// The menu button that pastes. It follows the clipboard instead of the selection.
@@ -75,7 +89,15 @@ public abstract class SelectionManagerBase : MonoBehaviour
 
     private Camera cam;
 
+    private SelectionResizeHandles resizeHandles;
+
     private bool isDragging;
+    private bool isDraggingResize;
+    private bool hasResizePreview;
+    private ResizeHandle activeResizeHandle = ResizeHandle.None;
+    private RectInt resizeSourceCells;
+    private RectInt resizeTargetCells;
+    private Vector2 resizeStartWorld;
     private bool hasDragged;
     private bool isMovementMode;
     private bool isMoving;
@@ -102,6 +124,17 @@ public abstract class SelectionManagerBase : MonoBehaviour
     public bool IsInMovementMode => this.isMovementMode;
 
     /// <summary>
+    /// Gets a value indicating whether a resize handle is currently being dragged.
+    /// </summary>
+    public bool IsResizing => this.isDraggingResize;
+
+    /// <summary>
+    /// Gets a value indicating whether a resize is previewed and waits to be
+    /// confirmed or cancelled, like a move does.
+    /// </summary>
+    public bool IsResizePreviewOpen => this.hasResizePreview;
+
+    /// <summary>
     /// Gets a value indicating whether this manager is busy with work that is spread
     /// over several frames, such as pasting many entities.
     /// </summary>
@@ -120,6 +153,18 @@ public abstract class SelectionManagerBase : MonoBehaviour
         get => this.currentPos;
         set => this.currentPos = value;
     }
+
+    /// <summary>
+    /// Gets the largest number of cells a selection may span on one axis.
+    /// </summary>
+    protected int MaxSelectionSize =>
+        this.maxSelectionSize > 0 ? this.maxSelectionSize : DefaultMaxSelectionSize;
+
+    /// <summary>
+    /// Gets the largest number of cells a selection may hold.
+    /// </summary>
+    protected int MaxSelectedCells =>
+        this.MaxSelectionSize * this.MaxSelectionSize;
 
     /// <summary>
     /// Gets or sets a value indicating whether we are currently in movement mode.
@@ -205,6 +250,9 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// </summary>
     public void ResetSelectionTool()
     {
+        this.CancelResizeDrag();
+        this.CancelResize();
+
         if (this.isReferenceSelectionMode)
         {
             this.CancelReferenceSelection();
@@ -265,7 +313,9 @@ public abstract class SelectionManagerBase : MonoBehaviour
             return;
         }
 
-        this.dragEnd = worldPos;
+        // The box is drawn from the drag start to this point and the same rect is
+        // used for the selection, so limiting it here keeps both inside the cap.
+        this.dragEnd = this.LimitDragEnd(worldPos);
 
         if (!this.hasDragged &&
             Vector3.Distance(this.dragStart, this.dragEnd) >= DragThreshold)
@@ -349,6 +399,146 @@ public abstract class SelectionManagerBase : MonoBehaviour
     }
 
     /// <summary>
+    /// Starts resizing the selection when the press landed on one of its handles.
+    /// Dragging only changes the previewed size; the world is not written until
+    /// the resize is confirmed, so existing entities and tiles stay in place.
+    /// </summary>
+    /// <param name="screenPos">The screen position of the press.</param>
+    /// <returns>True when a handle was grabbed and the press belongs to the resize.</returns>
+    public bool BeginResize(Vector2 screenPos)
+    {
+        if (!this.CanResize() || this.isDraggingResize || this.hasResizePreview)
+        {
+            return false;
+        }
+
+        this.RefreshResizeHandleLayout();
+
+        if (!this.resizeHandles.TryHit(screenPos, out ResizeHandle handle))
+        {
+            return false;
+        }
+
+        this.isDraggingResize = true;
+        this.activeResizeHandle = handle;
+        this.resizeSourceCells = this.GetSelectedCellRect();
+        this.resizeTargetCells = this.resizeSourceCells;
+        this.resizeStartWorld = this.cam.ScreenToWorldPoint(screenPos);
+
+        this.resizeHandles.SetGrabbed(handle);
+        this.DisableSelectionButtons();
+
+        return true;
+    }
+
+    /// <summary>
+    /// Updates the size that is being dragged. Only the preview follows the
+    /// pointer; nothing in the map changes yet.
+    /// </summary>
+    /// <param name="worldPos">The current world position of the pointer.</param>
+    public void UpdateResize(Vector2 worldPos)
+    {
+        if (!this.isDraggingResize)
+        {
+            return;
+        }
+
+        Vector2Int delta = this.GetCellDelta(this.resizeStartWorld, worldPos);
+
+        // Every cell of the target costs a preview cell and, for entities, one
+        // copy per entity in it, so a huge drag has to be cut down here.
+        delta = SelectionResize.LimitGrowth(
+            this.resizeSourceCells,
+            this.activeResizeHandle,
+            delta,
+            this.MaxSelectionSize);
+
+        RectInt target = SelectionResize.Resize(
+            this.resizeSourceCells,
+            this.activeResizeHandle,
+            delta);
+
+        if (target == this.resizeTargetCells)
+        {
+            return;
+        }
+
+        this.resizeTargetCells = target;
+
+        // Show what the resize would create while the handle is dragged, so the
+        // result can be judged before it is confirmed instead of seeing a box.
+        this.CancelResizePreview();
+        this.BeginResizePreview(this.resizeSourceCells, this.resizeTargetCells);
+
+        this.RefreshResizeHandleLayout();
+    }
+
+    /// <summary>
+    /// Ends the handle drag and writes the resized block to the world as one
+    /// undo step. While the handle is dragged nothing is written, so the resize
+    /// can still be judged as a preview; releasing the handle applies it, after
+    /// which the selection can be resized again or undone.
+    /// </summary>
+    public void EndResize()
+    {
+        if (!this.isDraggingResize)
+        {
+            return;
+        }
+
+        this.isDraggingResize = false;
+        this.activeResizeHandle = ResizeHandle.None;
+
+        this.resizeHandles.SetGrabbed(ResizeHandle.None);
+
+        if (this.resizeTargetCells == this.resizeSourceCells)
+        {
+            this.CancelResizePreview();
+            this.RefreshResizeHandleLayout();
+            return;
+        }
+
+        this.DisableMoveButtons();
+        this.ApplyResizePreview();
+        this.RefreshResizeHandleLayout();
+    }
+
+    /// <summary>
+    /// Applies the previewed resize to the world as one undo step.
+    /// </summary>
+    public void ConfirmResize()
+    {
+        if (!this.hasResizePreview)
+        {
+            return;
+        }
+
+        this.hasResizePreview = false;
+
+        this.DisableMoveButtons();
+        this.ApplyResizePreview();
+        this.RefreshResizeHandleLayout();
+    }
+
+    /// <summary>
+    /// Drops the previewed resize. The world was not written yet, so only the
+    /// preview has to be removed.
+    /// </summary>
+    public void CancelResize()
+    {
+        if (!this.hasResizePreview)
+        {
+            return;
+        }
+
+        this.hasResizePreview = false;
+
+        this.DisableMoveButtons();
+        this.CancelResizePreview();
+        this.RefreshResizeHandleLayout();
+    }
+
+    /// <summary>
     /// Deletes all currently selected items.
     /// </summary>
     public abstract void DeleteSelected();
@@ -404,6 +594,38 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// </summary>
     /// <returns>The rectangle with the selection.</returns>
     protected abstract Rect GetCurrentSelectionBounds();
+
+    /// <summary>
+    /// Gets the grid cells the current selection covers.
+    /// </summary>
+    /// <returns>The selected cells.</returns>
+    protected abstract RectInt GetSelectedCellRect();
+
+    /// <summary>
+    /// Gets the world rectangle covered by a block of cells, including the full
+    /// area of the outer cells.
+    /// </summary>
+    /// <param name="cells">The cells to cover.</param>
+    /// <returns>The world rectangle of the cells.</returns>
+    protected abstract Rect GetCellsWorldRect(RectInt cells);
+
+    /// <summary>
+    /// Shows the resized block without writing to the world, so the player can
+    /// confirm or cancel it like a move.
+    /// </summary>
+    /// <param name="source">The cells of the current selection.</param>
+    /// <param name="target">The cells the selection is resized to.</param>
+    protected abstract void BeginResizePreview(RectInt source, RectInt target);
+
+    /// <summary>
+    /// Writes the previewed resize to the world as one undo step.
+    /// </summary>
+    protected abstract void ApplyResizePreview();
+
+    /// <summary>
+    /// Removes the previewed resize and leaves the world as it was.
+    /// </summary>
+    protected abstract void CancelResizePreview();
 
     /// <summary>
     /// Selects whatever is at the clicked world position (entity or tile,
@@ -476,6 +698,9 @@ public abstract class SelectionManagerBase : MonoBehaviour
     {
         this.cam = Camera.main;
         this.grid = FindAnyObjectByType<Grid>();
+
+        this.CreateResizeHandles();
+
         this.DisableSelectionButtons();
         this.DisableMoveButtons();
     }
@@ -488,7 +713,10 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// <param name="worldPos">The world position the menu is opened at.</param>
     public void ShowSelectionMenu(Vector2 worldPos)
     {
-        if (this.IsMovementMode || this.IsReferenceSelectionMode)
+        if (this.IsMovementMode ||
+            this.IsReferenceSelectionMode ||
+            this.isDraggingResize ||
+            this.hasResizePreview)
         {
             return;
         }
@@ -635,11 +863,20 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// <returns>The UI point.</returns>
     private Vector2 WorldToLocalUiPoint(Vector2 worldPos)
     {
-        Vector2 screenPoint = this.cam.WorldToScreenPoint(worldPos);
+        return this.ScreenToLocalUiPoint(this.cam.WorldToScreenPoint(worldPos));
+    }
 
+    /// <summary>
+    /// Transforms a screen point to the local space of the selection box parent,
+    /// which is also the space the resize handles live in.
+    /// </summary>
+    /// <param name="screenPos">The screen position to transform.</param>
+    /// <returns>The local point.</returns>
+    private Vector2 ScreenToLocalUiPoint(Vector2 screenPos)
+    {
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
             this.selectionBoxParent,
-            screenPoint,
+            screenPos,
             this.cam,
             out Vector2 localPoint);
 
@@ -725,6 +962,15 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// </summary>
     private void LateUpdate()
     {
+        this.RefreshResizeHandleLayout();
+
+        if (this.hasResizePreview && this.moveButtons.gameObject.activeSelf)
+        {
+            this.PositionButtonsAboveRect(
+                this.moveButtons,
+                this.GetCellsWorldRect(this.resizeTargetCells));
+        }
+
         if (!this.HasSelection || !this.IsMovementMode)
         {
             return;
@@ -759,6 +1005,171 @@ public abstract class SelectionManagerBase : MonoBehaviour
                 button,
                 button == this.pasteButton ? hasClipboard : hasSelection);
         }
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the selection may be resized right now.
+    /// </summary>
+    private bool CanResize()
+    {
+        return this.HasSelection &&
+            this.CanUseSelectionActions &&
+            !this.IsMovementMode &&
+            !this.isReferenceSelectionMode &&
+            !this.IsBusy;
+    }
+
+    /// <summary>
+    /// Creates the resize handles in code, so no sprite or prefab is needed.
+    /// </summary>
+    private void CreateResizeHandles()
+    {
+        if (this.selectionBoxParent == null)
+        {
+            return;
+        }
+
+        GameObject handleObject = new ("Selection Resize Handles");
+
+        handleObject.transform.SetParent(this.selectionBoxParent, false);
+
+        this.resizeHandles = handleObject.AddComponent<SelectionResizeHandles>();
+
+        Color outlineColor = this.selectionBox != null
+            ? this.selectionBox.OutlineColor
+            : Color.white;
+
+        this.resizeHandles.Initialize(
+            this.selectionBoxParent,
+            this.cam,
+            outlineColor);
+    }
+
+    /// <summary>
+    /// Moves the handles onto the selection, or hides them when there is nothing
+    /// to resize. While a handle is dragged the handles follow the previewed size.
+    /// </summary>
+    private void RefreshResizeHandleLayout()
+    {
+        if (this.resizeHandles == null)
+        {
+            return;
+        }
+
+        RectInt cells = this.isDraggingResize
+            ? this.resizeTargetCells
+            : this.GetSelectedCellRect();
+
+        bool visible =
+            this.CanResize() &&
+            !this.hasResizePreview &&
+            cells.width > 0 &&
+            cells.height > 0;
+
+        this.resizeHandles.SetVisible(visible);
+
+        if (!visible)
+        {
+            return;
+        }
+
+        Rect bounds = this.GetCellsWorldRect(cells);
+
+        Vector2 uiMin = this.WorldToLocalUiPoint(bounds.min);
+        Vector2 uiMax = this.WorldToLocalUiPoint(bounds.max);
+
+        this.resizeHandles.Layout(uiMin, uiMax, this.GetScreenPixelsToLocal());
+    }
+
+    /// <summary>
+    /// Drops the handle drag without previewing anything.
+    /// </summary>
+    private void CancelResizeDrag()
+    {
+        if (!this.isDraggingResize)
+        {
+            return;
+        }
+
+        this.isDraggingResize = false;
+        this.activeResizeHandle = ResizeHandle.None;
+
+        if (this.resizeHandles != null)
+        {
+            this.resizeHandles.SetGrabbed(ResizeHandle.None);
+        }
+
+        this.CancelResizePreview();
+    }
+
+    /// <summary>
+    /// Gets how many local UI units one screen pixel is, so the handles keep the
+    /// same size on screen whatever the resolution.
+    /// </summary>
+    /// <returns>The conversion factor.</returns>
+    private float GetScreenPixelsToLocal()
+    {
+        Canvas canvas = this.selectionBoxParent.GetComponentInParent<Canvas>();
+
+        float scaleFactor = canvas != null && canvas.rootCanvas != null
+            ? canvas.rootCanvas.scaleFactor
+            : 1f;
+
+        return 1f / Mathf.Max(0.01f, scaleFactor);
+    }
+
+    /// <summary>
+    /// Gets the whole-cell distance between two world positions.
+    /// </summary>
+    /// <param name="from">Where the drag started.</param>
+    /// <param name="to">Where the pointer is now.</param>
+    /// <returns>The distance in grid cells.</returns>
+    private Vector2Int GetCellDelta(Vector2 from, Vector2 to)
+    {
+        if (this.grid == null)
+        {
+            return Vector2Int.zero;
+        }
+
+        Vector3Int fromCell = this.grid.WorldToCell((Vector3)from);
+        Vector3Int toCell = this.grid.WorldToCell((Vector3)to);
+
+        return (Vector2Int)(toCell - fromCell);
+    }
+
+    /// <summary>
+    /// Limits the end of a drag so its selection box cannot span more cells than a
+    /// selection may hold, no matter how far the pointer travels.
+    /// </summary>
+    /// <param name="worldPos">The pointer's current world position.</param>
+    /// <returns>The drag end, kept inside the allowed cells.</returns>
+    private Vector2 LimitDragEnd(Vector2 worldPos)
+    {
+        if (this.grid == null)
+        {
+            return worldPos;
+        }
+
+        Vector3Int startCell = this.grid.WorldToCell((Vector3)this.dragStart);
+        Vector3Int endCell = this.grid.WorldToCell((Vector3)worldPos);
+
+        int reach = this.MaxSelectionSize - 1;
+
+        Vector3Int limitedCell = new Vector3Int(
+            Mathf.Clamp(endCell.x, startCell.x - reach, startCell.x + reach),
+            Mathf.Clamp(endCell.y, startCell.y - reach, startCell.y + reach),
+            endCell.z);
+
+        if (limitedCell == endCell)
+        {
+            return worldPos;
+        }
+
+        Vector3 center = this.grid.GetCellCenterWorld(limitedCell);
+
+        return new Vector2(
+            limitedCell.x == endCell.x ? worldPos.x : center.x,
+            limitedCell.y == endCell.y ? worldPos.y : center.y);
     }
 
     /// <summary>

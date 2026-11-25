@@ -91,6 +91,47 @@ public class EntitySelectionManager : SelectionManagerBase
     /// </summary>
     private bool placementInProgress;
 
+    /// <summary>
+    /// Entities created by the previewed resize. They are removed again when the
+    /// preview is cancelled and become undoable when it is confirmed.
+    /// </summary>
+    private List<SaveableEntity> resizePreviewCreatedEntities = new ();
+
+    /// <summary>
+    /// Cells that the previewed resize fills with block content: either a copy
+    /// of a source cell or a source cell that moved there.
+    /// </summary>
+    private List<Vector2Int> resizePreviewFilledCells = new ();
+
+    /// <summary>
+    /// Deactivates the entities that the previewed resize removes, and brings
+    /// them back when it is cancelled.
+    /// </summary>
+    private EntityPresenceAction resizePreviewDeleteAction;
+
+    /// <summary>
+    /// Moves the entities that survive a shrinking resize, applied on confirm.
+    /// </summary>
+    private MoveEntitiesAction resizePreviewMoveAction;
+
+    /// <summary>
+    /// Where the entities that survive a shrinking resize were before it started.
+    /// </summary>
+    private Dictionary<SaveableEntity, Vector3> resizePreviewStartPositions = new ();
+
+    /// <summary>
+    /// Entities that the previewed resize drops. They are only deactivated and
+    /// keep their old position, so they must not stay in the selection once the
+    /// resize is applied.
+    /// </summary>
+    private HashSet<SaveableEntity> resizePreviewRemovedEntities = new ();
+
+    /// <summary>
+    /// The selection before the resize, so it can be restored when the preview
+    /// is cancelled.
+    /// </summary>
+    private List<SaveableEntity> resizeSourceSelection = new ();
+
     /// <inheritdoc/>
     public override bool IsBusy => this.pasteInProgress || this.placementInProgress;
 
@@ -522,6 +563,11 @@ public class EntitySelectionManager : SelectionManagerBase
 
         foreach (SaveableEntity entity in FindObjectsByType<SaveableEntity>())
         {
+            if (picked.Count >= this.MaxSelectedCells)
+            {
+                break;
+            }
+
             if (!entity.ExistsInWorld ||
                 IsTilemapEntity(entity))
             {
@@ -586,6 +632,391 @@ public class EntitySelectionManager : SelectionManagerBase
         return positions.Count > 0
             ? this.GetBoundingRect(positions)
             : default(Rect);
+    }
+
+    /// <summary>
+    /// Gets the grid cells the selected entities cover.
+    /// </summary>
+    /// <returns>The selected cells.</returns>
+    protected override RectInt GetSelectedCellRect()
+    {
+        List<SaveableEntity> selected =
+            MapEditorManager.Instance.SelectedEntities;
+
+        if (selected == null || selected.Count == 0 || this.Grid == null)
+        {
+            return default(RectInt);
+        }
+
+        bool hasCell = false;
+        Vector2Int min = Vector2Int.zero;
+        Vector2Int max = Vector2Int.zero;
+
+        foreach (SaveableEntity entity in selected)
+        {
+            if (entity == null || entity.ConsumedBy != null)
+            {
+                continue;
+            }
+
+            Vector2Int cell =
+                (Vector2Int)this.Grid.WorldToCell(entity.transform.position);
+
+            if (!hasCell)
+            {
+                min = cell;
+                max = cell;
+                hasCell = true;
+                continue;
+            }
+
+            min = Vector2Int.Min(min, cell);
+            max = Vector2Int.Max(max, cell);
+        }
+
+        return hasCell
+            ? new RectInt(min.x, min.y, max.x - min.x + 1, max.y - min.y + 1)
+            : default(RectInt);
+    }
+
+    /// <summary>
+    /// Gets the world rectangle covered by a block of cells.
+    /// </summary>
+    /// <param name="cells">The cells to cover.</param>
+    /// <returns>The world rectangle of the cells.</returns>
+    protected override Rect GetCellsWorldRect(RectInt cells)
+    {
+        if (cells.width <= 0 || cells.height <= 0 || this.Grid == null)
+        {
+            return default(Rect);
+        }
+
+        // One selected cell is one cell of the grid, so the box is the footprint
+        // of the selected cells. Sprites are not measured here: a renderer can be
+        // larger than the entity's footprint, which made the box twice its size.
+        Vector3 min = this.Grid.CellToWorld(
+            new Vector3Int(cells.xMin, cells.yMin, 0));
+
+        Vector3 max = this.Grid.CellToWorld(
+            new Vector3Int(cells.xMax, cells.yMax, 0));
+
+        return new Rect(min.x, min.y, max.x - min.x, max.y - min.y);
+    }
+
+    /// <summary>
+    /// Builds the resized block without touching the undo history: entities that
+    /// disappear are only deactivated, survivors are only moved and the extra
+    /// entities are created unregistered. Confirming turns all of it into one
+    /// undo step, cancelling puts everything back.
+    /// </summary>
+    /// <param name="source">The cells of the current selection.</param>
+    /// <param name="target">The cells the selection is resized to.</param>
+    protected override void BeginResizePreview(RectInt source, RectInt target)
+    {
+        this.CancelResizePreview();
+
+        if (this.Grid == null || source.width <= 0 || source.height <= 0)
+        {
+            return;
+        }
+
+        this.resizeSourceSelection = new List<SaveableEntity>(
+            MapEditorManager.Instance.SelectedEntities);
+
+        List<BuilderEntity> blockEntities =
+            MapEditorManager.Instance.SelectedEntities
+                .OfType<BuilderEntity>()
+                .Where(e =>
+                    e != null &&
+                    e.ExistsInWorld &&
+                    !string.IsNullOrEmpty(e.PrefabID))
+                .ToList();
+
+        AddConsumedEntities(blockEntities);
+
+        Dictionary<SaveableEntity, ClipboardEntityEntry> entries =
+            new Dictionary<SaveableEntity, ClipboardEntityEntry>();
+
+        foreach (ClipboardEntityEntry entry in
+                 this.CreateClipboardEntities(blockEntities).Entries)
+        {
+            if (entry.Source != null)
+            {
+                entries[entry.Source] = entry;
+            }
+        }
+
+        Dictionary<Vector2Int, List<BuilderEntity>> cells = new ();
+
+        foreach (BuilderEntity entity in blockEntities)
+        {
+            if (entity.ConsumedBy != null)
+            {
+                continue;
+            }
+
+            Vector2Int cell =
+                (Vector2Int)this.Grid.WorldToCell(entity.transform.position);
+
+            if (!cells.TryGetValue(cell, out List<BuilderEntity> entities))
+            {
+                entities = new List<BuilderEntity>();
+                cells[cell] = entities;
+            }
+
+            entities.Add(entity);
+        }
+
+        List<SaveableEntity> removed = new ();
+        HashSet<Vector2Int> keptCells = new ();
+
+        this.resizePreviewMoveAction = new MoveEntitiesAction();
+
+        foreach (KeyValuePair<Vector2Int, List<BuilderEntity>> entry in cells)
+        {
+            bool survivesX = SelectionResize.TryTargetIndexForSource(
+                entry.Key.x,
+                target.xMin,
+                target.width,
+                source.xMin,
+                source.width,
+                out int targetX);
+
+            bool survivesY = SelectionResize.TryTargetIndexForSource(
+                entry.Key.y,
+                target.yMin,
+                target.height,
+                source.yMin,
+                source.height,
+                out int targetY);
+
+            if (!survivesX || !survivesY)
+            {
+                removed.AddRange(entry.Value);
+                this.resizePreviewRemovedEntities.UnionWith(entry.Value);
+                continue;
+            }
+
+            Vector2Int targetCell = new (targetX, targetY);
+
+            keptCells.Add(targetCell);
+
+            if (targetCell == entry.Key)
+            {
+                continue;
+            }
+
+            // The block lands on this cell now, so anything already standing
+            // there has to make way, just like it does on a cell that gets a copy.
+            this.resizePreviewFilledCells.Add(targetCell);
+
+            foreach (BuilderEntity entity in entry.Value)
+            {
+                Vector3 before = entity.transform.position;
+
+                this.resizePreviewStartPositions[entity] = before;
+
+                entity.transform.position =
+                    this.GetEntityWorldPosition((Vector3Int)targetCell);
+
+                this.RefreshBuilderWall(entity);
+
+                this.resizePreviewMoveAction.Add(
+                    entity,
+                    before,
+                    entity.transform.position);
+            }
+        }
+
+        if (removed.Count > 0)
+        {
+            this.resizePreviewDeleteAction =
+                EntityPresenceAction.DeleteNow(removed);
+        }
+
+        // Every cell has its own copies, which only take part in their own
+        // consuming relationships, so they are grouped per cell.
+        Dictionary<Vector2Int, Dictionary<SaveableEntity, SaveableEntity>> copiesByCell =
+            new ();
+
+        for (int x = target.xMin; x < target.xMax; x++)
+        {
+            for (int y = target.yMin; y < target.yMax; y++)
+            {
+                Vector2Int cell = new (x, y);
+
+                if (keptCells.Contains(cell))
+                {
+                    continue;
+                }
+
+                int sourceX = SelectionResize.SourceIndexForTarget(
+                    x, target.xMin, target.width, source.xMin, source.width);
+
+                int sourceY = SelectionResize.SourceIndexForTarget(
+                    y, target.yMin, target.height, source.yMin, source.height);
+
+                if (!cells.TryGetValue(
+                        new Vector2Int(sourceX, sourceY),
+                        out List<BuilderEntity> sourceEntities))
+                {
+                    continue;
+                }
+
+                if (!copiesByCell.TryGetValue(
+                        cell,
+                        out Dictionary<SaveableEntity, SaveableEntity> copies))
+                {
+                    copies = new Dictionary<SaveableEntity, SaveableEntity>();
+                    copiesByCell[cell] = copies;
+                }
+
+                this.resizePreviewFilledCells.Add(cell);
+
+                foreach (BuilderEntity sourceEntity in sourceEntities)
+                {
+                    this.CreateResizeCopy(sourceEntity, cell, entries, copies);
+
+                    foreach (BuilderEntity consumed in GetConsumedEntities(sourceEntity))
+                    {
+                        this.CreateResizeCopy(consumed, cell, entries, copies);
+                    }
+                }
+            }
+        }
+
+        foreach (Dictionary<SaveableEntity, SaveableEntity> copies in copiesByCell.Values)
+        {
+            foreach (KeyValuePair<SaveableEntity, SaveableEntity> pair in copies)
+            {
+                if (pair.Value is not BuilderEntity copy ||
+                    !entries.TryGetValue(pair.Key, out ClipboardEntityEntry entry))
+                {
+                    continue;
+                }
+
+                foreach (KeyValuePair<string, object> field in entry.FieldValues)
+                {
+                    copy.SetRuntimeEditableValue(
+                        field.Key,
+                        RemapFieldValue(field.Value, copies));
+                }
+            }
+
+            ApplyCopiedConsumption(copies);
+        }
+
+        List<SaveableEntity> selection = new ();
+
+        foreach (SaveableEntity entity in blockEntities)
+        {
+            if (entity != null && entity.ExistsInWorld && entity.ConsumedBy == null)
+            {
+                selection.Add(entity);
+            }
+        }
+
+        selection.AddRange(
+            this.resizePreviewCreatedEntities.Where(
+                e => e != null && e.ConsumedBy == null));
+
+        this.SetSelection(selection);
+    }
+
+    /// <summary>
+    /// Turns the previewed resize into one undo step: the removed entities stay
+    /// removed, the survivors stay moved, and the created entities stay placed.
+    /// </summary>
+    protected override void ApplyResizePreview()
+    {
+        MapEditorManager manager = MapEditorManager.Instance;
+
+        List<SaveableEntity> replaced = this.FindReplacedEntities();
+
+        manager.BeginTransaction();
+
+        if (replaced.Count > 0)
+        {
+            manager.RegisterAction(EntityPresenceAction.DeleteNow(replaced));
+        }
+
+        if (this.resizePreviewDeleteAction != null)
+        {
+            manager.RegisterAction(this.resizePreviewDeleteAction);
+        }
+
+        if (this.resizePreviewMoveAction != null &&
+            this.resizePreviewMoveAction.HasChanges)
+        {
+            manager.RegisterAction(this.resizePreviewMoveAction);
+        }
+
+        foreach (SaveableEntity entity in this.resizePreviewCreatedEntities)
+        {
+            if (entity != null)
+            {
+                manager.RegisterAction(EntityPresenceAction.Placed(entity));
+            }
+        }
+
+        manager.EndTransaction();
+
+        // Entities dropped by a shrinking resize are only deactivated, so they
+        // would keep the selection on the old, larger block and the handles are
+        // placed from exactly that selection.
+        List<SaveableEntity> selection =
+            MapEditorManager.Instance.SelectedEntities
+                .Where(e => e != null && !this.resizePreviewRemovedEntities.Contains(e))
+                .ToList();
+
+        this.ClearResizePreviewState();
+
+        this.SetSelection(selection);
+
+        if (RuntimePropertyEditor.Instance != null)
+        {
+            RuntimePropertyEditor.Instance.Rebuild();
+        }
+    }
+
+    /// <summary>
+    /// Puts the world back the way it was before the resize was previewed.
+    /// </summary>
+    protected override void CancelResizePreview()
+    {
+        foreach (SaveableEntity copy in this.resizePreviewCreatedEntities)
+        {
+            if (copy != null)
+            {
+                Destroy(copy.gameObject);
+            }
+        }
+
+        if (this.resizePreviewDeleteAction != null)
+        {
+            this.resizePreviewDeleteAction.Undo();
+        }
+
+        foreach (KeyValuePair<SaveableEntity, Vector3> entry in this.resizePreviewStartPositions)
+        {
+            if (entry.Key == null)
+            {
+                continue;
+            }
+
+            entry.Key.transform.position = entry.Value;
+
+            this.RefreshBuilderWall(entry.Key);
+        }
+
+        List<SaveableEntity> restore = new (this.resizeSourceSelection);
+
+        this.ClearResizePreviewState();
+
+        if (restore.Count > 0)
+        {
+            this.SetSelection(restore);
+        }
     }
 
     /// <summary>
@@ -1554,6 +1985,123 @@ public class EntitySelectionManager : SelectionManagerBase
         {
             RuntimePropertyEditor.Instance.Rebuild();
         }
+    }
+
+    /// <summary>
+    /// Creates the copy of one entity that a resized block needs in a cell.
+    /// </summary>
+    /// <param name="source">The entity to copy.</param>
+    /// <param name="cell">The cell of the new block the copy is placed in.</param>
+    /// <param name="entries">The clipboard entries that hold the values to copy.</param>
+    /// <param name="copies">The copies of the block the copy belongs to.</param>
+    /// <returns>The copy, or null when the entity cannot be copied.</returns>
+    private SaveableEntity CreateResizeCopy(
+        BuilderEntity source,
+        Vector2Int cell,
+        Dictionary<SaveableEntity, ClipboardEntityEntry> entries,
+        Dictionary<SaveableEntity, SaveableEntity> copies)
+    {
+        if (source == null ||
+            !entries.TryGetValue(source, out ClipboardEntityEntry entry))
+        {
+            return null;
+        }
+
+        GameObject created = new (entry.PrefabID);
+
+        created.transform.position =
+            this.GetEntityWorldPosition((Vector3Int)cell);
+
+        created.transform.SetParent(this.GetEntityParent());
+
+        BuilderEntity copy = created.AddComponent<BuilderEntity>();
+
+        copy.Initialize(entry.PrefabID);
+
+        copies[source] = copy;
+        this.resizePreviewCreatedEntities.Add(copy);
+
+        return copy;
+    }
+
+    /// <summary>
+    /// Gets the entities that consume the given one, so they are copied with it.
+    /// </summary>
+    /// <param name="consumer">The entity that consumes others.</param>
+    /// <returns>The entities it consumes.</returns>
+    private List<BuilderEntity> GetConsumedEntities(BuilderEntity consumer)
+    {
+        List<BuilderEntity> consumed = new ();
+
+        foreach (BuilderEntity candidate in BuilderRegistry.GetAll())
+        {
+            if (candidate != null && candidate.ConsumedBy == consumer)
+            {
+                consumed.Add(candidate);
+            }
+        }
+
+        return consumed;
+    }
+
+    /// <summary>
+    /// Finds the entities that stand on a cell the resize fills with a copy, so
+    /// they are removed with the resize like a move removes what it lands on.
+    /// </summary>
+    /// <returns>The entities that are replaced by the new block.</returns>
+    private List<SaveableEntity> FindReplacedEntities()
+    {
+        List<SaveableEntity> replaced = new ();
+
+        if (this.resizePreviewFilledCells.Count == 0)
+        {
+            return replaced;
+        }
+
+        HashSet<Vector2Int> cells = new (this.resizePreviewFilledCells);
+        HashSet<SaveableEntity> owned = new (this.resizePreviewCreatedEntities);
+
+        // Survivors that moved already stand on the cell they moved to, and
+        // dropped ones are only deactivated, so neither may be replaced.
+        owned.UnionWith(this.resizePreviewStartPositions.Keys);
+        owned.UnionWith(this.resizePreviewRemovedEntities);
+
+        foreach (SaveableEntity entity in FindObjectsByType<SaveableEntity>())
+        {
+            if (!entity.ExistsInWorld ||
+                entity.ConsumedBy != null ||
+                IsTilemapEntity(entity) ||
+                owned.Contains(entity))
+            {
+                continue;
+            }
+
+            Vector2Int cell =
+                (Vector2Int)this.Grid.WorldToCell(entity.transform.position);
+
+            if (cells.Contains(cell))
+            {
+                replaced.Add(entity);
+            }
+        }
+
+        return replaced;
+    }
+
+    /// <summary>
+    /// Drops everything that belongs to the previewed resize without touching
+    /// the world.
+    /// </summary>
+    private void ClearResizePreviewState()
+    {
+        this.resizePreviewCreatedEntities.Clear();
+        this.resizePreviewFilledCells.Clear();
+        this.resizePreviewStartPositions.Clear();
+        this.resizePreviewRemovedEntities.Clear();
+        this.resizeSourceSelection.Clear();
+
+        this.resizePreviewDeleteAction = null;
+        this.resizePreviewMoveAction = null;
     }
 
     private void RefreshBuilderWall(SaveableEntity entity)

@@ -48,7 +48,14 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// <summary>
     /// Gets a value indicating whether the selection of this controller is currently being moved.
     /// </summary>
-    public bool IsMovingSelection => this.selectionManager.IsInMovementMode;
+    public bool IsMovingSelection =>
+        this.selectionManager.IsInMovementMode ||
+        this.selectionManager.IsResizePreviewOpen;
+
+    /// <summary>
+    /// Gets a value indicating whether a resize handle of this controller is being dragged.
+    /// </summary>
+    public bool IsSelectionResizing => this.selectionManager.IsResizing;
 
     /// <summary>
     /// Gets a value indicating whether the selection of this controller is busy with
@@ -85,6 +92,14 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// Gets the currently active editor tool.
     /// </summary>
     protected EditorTool CurrentTool { get; private set; }
+
+    /// <summary>
+    /// Gets a value indicating whether a resize drag or a resize preview owns the
+    /// selection, so other selection actions must leave it alone.
+    /// </summary>
+    private bool IsResizeBusy =>
+        this.selectionManager.IsResizing ||
+        this.selectionManager.IsResizePreviewOpen;
 
     /// <summary>
     /// Updates the pointer world position.
@@ -166,6 +181,11 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// </summary>
     public void OnDeleteSelection()
     {
+        if (this.IsResizeBusy)
+        {
+            return;
+        }
+
         this.selectionManager.DeleteSelected();
     }
 
@@ -174,6 +194,11 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// </summary>
     public void OnCopySelection()
     {
+        if (this.IsResizeBusy)
+        {
+            return;
+        }
+
         this.selectionManager.CopySelected();
     }
 
@@ -182,6 +207,11 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// </summary>
     public void OnCutSelection()
     {
+        if (this.IsResizeBusy)
+        {
+            return;
+        }
+
         this.selectionManager.CutSelected();
     }
 
@@ -190,6 +220,11 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// </summary>
     public void OnPaste()
     {
+        if (this.IsResizeBusy)
+        {
+            return;
+        }
+
         this.selectionManager.PasteAtPointer();
     }
 
@@ -198,6 +233,11 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// </summary>
     public void OnMoveSelection()
     {
+        if (this.IsResizeBusy)
+        {
+            return;
+        }
+
         this.selectionManager.MoveSelected();
     }
 
@@ -206,6 +246,12 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// </summary>
     public void OnConfirmMove()
     {
+        if (this.selectionManager.IsResizePreviewOpen)
+        {
+            this.selectionManager.ConfirmResize();
+            return;
+        }
+
         this.selectionManager.ConfirmMovingSelected();
     }
 
@@ -214,7 +260,31 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// </summary>
     public void OnCancelMove()
     {
+        if (this.selectionManager.IsResizePreviewOpen)
+        {
+            this.selectionManager.CancelResize();
+            return;
+        }
+
         this.selectionManager.CancelMovingSelected();
+    }
+
+    /// <summary>
+    /// Starts resizing the selection when a resize handle was pressed.
+    /// </summary>
+    /// <param name="screenPos">The screen position of the press.</param>
+    /// <returns>True when a handle was grabbed and the press belongs to the resize.</returns>
+    public bool BeginSelectionResize(Vector2 screenPos)
+    {
+        return this.selectionManager.BeginResize(screenPos);
+    }
+
+    /// <summary>
+    /// Ends a resize handle drag and applies the new size as one undo step.
+    /// </summary>
+    public void EndSelectionResize()
+    {
+        this.selectionManager.EndResize();
     }
 
     /// <summary>
@@ -365,6 +435,13 @@ public abstract class EditorControllerBase : MonoBehaviour
                 this.OnPrimaryUp();
             }
 
+            if (BuilderInputSelector.Instance.IsUsingDesktop &&
+                this.selectionManager.IsResizing &&
+                !mouse.leftButton.isPressed)
+            {
+                this.selectionManager.EndResize();
+            }
+
             if (this.primaryHolding && !mouse.leftButton.isPressed)
             {
                 this.primaryHolding = false;
@@ -382,6 +459,11 @@ public abstract class EditorControllerBase : MonoBehaviour
         if (this.CurrentTool == EditorTool.Selection && this.selectionManager.IsDragging)
         {
             this.selectionManager.UpdateDrag(this.CurrentPos);
+        }
+
+        if (this.selectionManager.IsResizing)
+        {
+            this.selectionManager.UpdateResize(this.CurrentPos);
         }
 
         if (this.primaryHolding || this.secondaryHolding)

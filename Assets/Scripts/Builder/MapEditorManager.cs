@@ -164,6 +164,13 @@ public class MapEditorManager : MonoBehaviour
         this.entityController.IsBusy;
 
     /// <summary>
+    /// Gets a value indicating whether a selection resize handle is currently dragged.
+    /// </summary>
+    public bool IsResizingSelection =>
+        this.ActiveController != null &&
+        this.ActiveController.IsSelectionResizing;
+
+    /// <summary>
     /// Gets or sets the map name we are editing.
     /// </summary>
     public string MapName { get => this.mapName; set => this.mapName = value; }
@@ -302,7 +309,7 @@ public class MapEditorManager : MonoBehaviour
     {
         // A move or paste is uncommitted until it is confirmed, so history must
         // not step over it.
-        if (this.IsMovingSelection || this.IsBusy)
+        if (this.IsMovingSelection || this.IsBusy || this.IsResizingSelection)
         {
             return;
         }
@@ -316,7 +323,7 @@ public class MapEditorManager : MonoBehaviour
     /// </summary>
     public void Redo()
     {
-        if (this.IsMovingSelection || this.IsBusy)
+        if (this.IsMovingSelection || this.IsBusy || this.IsResizingSelection)
         {
             return;
         }
@@ -457,6 +464,28 @@ public class MapEditorManager : MonoBehaviour
     {
         return this.entityController.IsPointerOverSelectionButtons(screenPos) ||
             this.tileController.IsPointerOverSelectionButtons(screenPos);
+    }
+
+    /// <summary>
+    /// Starts resizing the selection when the press landed on one of its handles.
+    /// </summary>
+    /// <param name="screenPos">The screen position of the press.</param>
+    /// <returns>True when a handle was grabbed and the press belongs to the resize.</returns>
+    public bool BeginSelectionResize(Vector2 screenPos)
+    {
+        return this.ActiveController != null &&
+            this.ActiveController.BeginSelectionResize(screenPos);
+    }
+
+    /// <summary>
+    /// Ends a resize handle drag and previews the new size.
+    /// </summary>
+    public void EndSelectionResize()
+    {
+        if (this.ActiveController != null)
+        {
+            this.ActiveController.EndSelectionResize();
+        }
     }
 
     /// <summary>

@@ -409,7 +409,10 @@ public abstract class EnemyBody : SaveableEntity, IDamageable
             return;
         }
 
-        Canvas canvas = FindAnyObjectByType<Canvas>();
+        // The loading overlay outlives scene changes and carries its own canvas on
+        // top of everything, so searching for any canvas can put this UI inside it,
+        // where it only shows while the overlay does.
+        Canvas canvas = this.FindWorldUICanvas();
         Camera camera = FindAnyObjectByType<Camera>();
 
         if (canvas == null || camera == null)
@@ -432,6 +435,33 @@ public abstract class EnemyBody : SaveableEntity, IDamageable
             this.DisplayName,
             this.currentHealth,
             this.maxHealth);
+    }
+
+    /// <summary>
+    /// Finds a canvas that belongs to the scene this enemy lives in, so the world
+    /// UI is not parented to a canvas of another scene, such as the loading
+    /// overlay that survives a scene change.
+    /// </summary>
+    /// <returns>The canvas to parent the world UI to, or null when there is none.</returns>
+    private Canvas FindWorldUICanvas()
+    {
+        Canvas fallback = null;
+
+        foreach (Canvas candidate in FindObjectsByType<Canvas>(FindObjectsInactive.Exclude))
+        {
+            if (candidate.gameObject.scene == this.gameObject.scene)
+            {
+                return candidate;
+            }
+
+            if (fallback == null &&
+                candidate.GetComponentInParent<BuilderLoadingOverlay>() == null)
+            {
+                fallback = candidate;
+            }
+        }
+
+        return fallback;
     }
 
     /// <summary>
