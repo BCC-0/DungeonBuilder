@@ -59,11 +59,6 @@ public enum EditLayer
 public class MapEditorManager : MonoBehaviour
 {
     /// <summary>
-    /// Time in seconds the clipboard toast takes to fade in and out.
-    /// </summary>
-    private const float ClipboardToastFadeDuration = 0.15f;
-
-    /// <summary>
     /// Seconds the entity fade of a layer change takes.
     /// </summary>
     private const float LayerFadeDuration = 0.25f;
@@ -108,18 +103,6 @@ public class MapEditorManager : MonoBehaviour
 
     [SerializeField]
     private float layerTransitionDuration = 0.25f;
-
-    [Header("Clipboard Feedback")]
-    [SerializeField]
-    private CanvasGroup clipboardToastCanvasGroup;
-
-    [SerializeField]
-    private SpriteFontText clipboardToastText;
-
-    [SerializeField]
-    private float clipboardToastDuration = 1.4f;
-
-    private Sequence clipboardToastSequence;
 
     /// <summary>
     /// Renderers the layer fade writes to, collected once per layer change.
@@ -340,42 +323,12 @@ public class MapEditorManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Shows a short message about a clipboard action, such as how many items
-    /// were copied. Falls back to the console when no toast is assigned.
+    /// Reports a clipboard action, such as how many items were copied, to the console.
     /// </summary>
     /// <param name="message">The message to show.</param>
     public void ShowClipboardMessage(string message)
     {
-        if (this.clipboardToastText != null)
-        {
-            this.clipboardToastText.SetText(message);
-        }
-
-        if (this.clipboardToastCanvasGroup == null)
-        {
-            Debug.Log(message);
-            return;
-        }
-
-        this.clipboardToastSequence?.Kill();
-
-        this.clipboardToastCanvasGroup.gameObject.SetActive(true);
-        this.clipboardToastCanvasGroup.alpha = 0f;
-
-        this.clipboardToastSequence = DOTween.Sequence();
-
-        this.clipboardToastSequence
-            .Append(
-                this.clipboardToastCanvasGroup.DOFade(
-                    1f,
-                    ClipboardToastFadeDuration))
-            .AppendInterval(this.clipboardToastDuration)
-            .Append(
-                this.clipboardToastCanvasGroup.DOFade(
-                    0f,
-                    ClipboardToastFadeDuration))
-            .OnComplete(() =>
-                this.clipboardToastCanvasGroup.gameObject.SetActive(false));
+        Debug.Log(message);
     }
 
     /// <summary>
