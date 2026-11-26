@@ -21,6 +21,8 @@ public class BuilderMobileInputHandler : MonoBehaviour
     [SerializeField]
     private float mobileZoomSpeed = 0.2f;
     [SerializeField]
+    private float doubleTapWindow = 0.3f;
+    [SerializeField]
     private RectTransform ripplePrefab;
     [SerializeField]
     private Canvas uiCanvas;
@@ -34,7 +36,12 @@ public class BuilderMobileInputHandler : MonoBehaviour
     private Sequence currentRippleSequence;
     private Dictionary<int, bool> touchesOverUI = new ();
     private bool isSelectionStarted;
+    private bool isResizingSelection;
     private Vector2 lastTouchScreenPos;
+    private float lastTapTime = -999f;
+    private Vector2 lastTapPosition;
+    private List<SaveableEntity> entitiesBeforeTap = new ();
+    private List<Vector2Int> tilesBeforeTap = new ();
 
     private EditorControllerBase ActiveController => MapEditorManager.Instance.ActiveController;
 
@@ -76,14 +83,48 @@ public class BuilderMobileInputHandler : MonoBehaviour
 
     private void HandleNoTouch()
     {
+        if (this.isResizingSelection)
+        {
+            this.isResizingSelection = false;
+            this.isTouching = false;
+            this.touchHoldTimer = 0;
+            this.isTouchPanningOverride = false;
+
+            MapEditorManager.Instance.EndSelectionResize();
+        }
+
         if (this.isTouching && this.IsTap())
         {
-            this.ActiveController.OnPrimaryDown();
-            this.ActiveController.OnPrimaryUp();
-
-            if (MapEditorManager.Instance.CurrentTool == EditorTool.Drag)
+            if (this.IsDoubleTap(this.lastTouchScreenPos))
             {
-                this.SelectAtPointer(this.lastTouchScreenPos);
+                this.lastTapTime = -999f;
+
+                this.RestoreSelectionBeforeTap();
+                this.ToggleSelectionMenu(this.lastTouchScreenPos);
+            }
+            else
+            {
+                this.lastTapTime = Time.unscaledTime;
+                this.lastTapPosition = this.lastTouchScreenPos;
+
+                this.CaptureSelectionBeforeTap();
+
+                MapEditorManager.Instance.HideSelectionMenu();
+
+                this.ActiveController.OnPrimaryDown();
+                this.ActiveController.OnPrimaryUp();
+
+                EditorTool tool = MapEditorManager.Instance.CurrentTool;
+
+                if (tool == EditorTool.Drag)
+                {
+                    this.SelectAtPointer(this.lastTouchScreenPos);
+                }
+                else if (tool == EditorTool.Brush &&
+                         MapEditorManager.Instance.CurrentLayer == EditLayer.Foreground)
+                {
+                    this.SelectEntityAtPointer(this.lastTouchScreenPos);
+                }
             }
         }
         else if (this.isTouching)
@@ -128,6 +169,31 @@ public class BuilderMobileInputHandler : MonoBehaviour
     }
 
     /// <summary>
+    /// Gets a value indicating whether the released tap completes a double tap.
+    /// </summary>
+    /// <param name="screenPos">The screen position that was tapped.</param>
+    /// <returns>True when the tap is the second one of a double tap.</returns>
+    private bool IsDoubleTap(Vector2 screenPos)
+    {
+        return Time.unscaledTime - this.lastTapTime <= this.doubleTapWindow &&
+            Vector2.Distance(screenPos, this.lastTapPosition) <=
+                Mathf.Max(20f, Screen.dpi * 0.1f);
+    }
+
+    /// <summary>
+    /// Opens or closes the selection menu at a screen position. This is the touch
+    /// equivalent of a right click.
+    /// </summary>
+    /// <param name="screenPos">The screen position that was double tapped.</param>
+    private void ToggleSelectionMenu(Vector2 screenPos)
+    {
+        Vector3 worldPos = this.cam.ScreenToWorldPoint(screenPos);
+        worldPos.z = 0;
+
+        MapEditorManager.Instance.ToggleSelectionMenu(worldPos);
+    }
+
+    /// <summary>
     /// Selects whatever is under a screen position without leaving the current tool.
     /// Matches a click in the desktop drag tool.
     /// </summary>
@@ -139,6 +205,62 @@ public class BuilderMobileInputHandler : MonoBehaviour
         MapEditorManager.Instance.SelectAtPointer(worldPos);
     }
 
+    /// <summary>
+    /// Selects the entity under a tapped screen position without leaving the tool,
+    /// for brush taps in the foreground layer.
+    /// </summary>
+    /// <param name="screenPos">The screen position that was tapped.</param>
+    private void SelectEntityAtPointer(Vector2 screenPos)
+    {
+        Vector3 worldPos = this.cam.ScreenToWorldPoint(screenPos);
+        worldPos.z = 0;
+        MapEditorManager.Instance.SelectEntityAtPointer(worldPos);
+    }
+
+    /// <summary>
+    /// Remembers the selection before a tap changes it, so a double tap can put it
+    /// back before opening the selection menu.
+    /// </summary>
+    private void CaptureSelectionBeforeTap()
+    {
+        this.entitiesBeforeTap =
+            new List<SaveableEntity>(
+                MapEditorManager.Instance.SelectedEntities);
+
+        this.tilesBeforeTap =
+            new List<Vector2Int>(
+                MapEditorManager.Instance.SelectedTiles);
+    }
+
+    /// <summary>
+    /// Puts the selection back after the first tap of a double tap cleared it, so the
+    /// menu the double tap opens still belongs to the items that were selected.
+    /// </summary>
+    private void RestoreSelectionBeforeTap()
+    {
+        MapEditorManager manager = MapEditorManager.Instance;
+
+        bool hadSelection =
+            this.entitiesBeforeTap.Count > 0 ||
+            this.tilesBeforeTap.Count > 0;
+
+        bool selectionCleared =
+            (manager.SelectedEntities == null ||
+             manager.SelectedEntities.Count == 0) &&
+            (manager.SelectedTiles == null ||
+             manager.SelectedTiles.Count == 0);
+
+        if (!hadSelection || !selectionCleared)
+        {
+            return;
+        }
+
+        manager.SelectedEntities = this.entitiesBeforeTap;
+        manager.SelectedTiles = this.tilesBeforeTap;
+
+        manager.RefreshSelectionVisuals();
+    }
+
     private void HandleOneTouch(UnityEngine.InputSystem.Controls.TouchControl touch)
     {
         int id = touch.touchId.ReadValue();
@@ -146,6 +268,12 @@ public class BuilderMobileInputHandler : MonoBehaviour
         this.lastTouchScreenPos = screenPos;
         Vector3 worldPos = this.cam.ScreenToWorldPoint(screenPos);
         worldPos.z = 0;
+
+        if (this.isResizingSelection)
+        {
+            this.ActiveController.OnPointerMoved(worldPos);
+            return;
+        }
 
         if (!this.touchesOverUI.ContainsKey(id))
         {
@@ -155,6 +283,17 @@ public class BuilderMobileInputHandler : MonoBehaviour
 
         if (this.touchesOverUI[id])
         {
+            return;
+        }
+
+        if (!this.isTouching &&
+            MapEditorManager.Instance.BeginSelectionResize(screenPos))
+        {
+            this.isResizingSelection = true;
+            this.isTouching = true;
+            this.touchStartPosition = screenPos;
+
+            this.ActiveController.OnPointerMoved(worldPos);
             return;
         }
 
@@ -202,6 +341,11 @@ public class BuilderMobileInputHandler : MonoBehaviour
 
     private void HandleMultiTouch(UnityEngine.InputSystem.Controls.TouchControl t1, UnityEngine.InputSystem.Controls.TouchControl t2)
     {
+        if (this.isResizingSelection)
+        {
+            return;
+        }
+
         Vector2 p1 = t1.position.ReadValue();
         Vector2 p2 = t2.position.ReadValue();
         float currentDistance = Vector2.Distance(p1, p2);

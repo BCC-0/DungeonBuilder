@@ -48,7 +48,20 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// <summary>
     /// Gets a value indicating whether the selection of this controller is currently being moved.
     /// </summary>
-    public bool IsMovingSelection => this.selectionManager.IsInMovementMode;
+    public bool IsMovingSelection =>
+        this.selectionManager.IsInMovementMode ||
+        this.selectionManager.IsResizePreviewOpen;
+
+    /// <summary>
+    /// Gets a value indicating whether a resize handle of this controller is being dragged.
+    /// </summary>
+    public bool IsSelectionResizing => this.selectionManager.IsResizing;
+
+    /// <summary>
+    /// Gets a value indicating whether the selection of this controller is busy with
+    /// work spread over several frames, such as pasting many entities.
+    /// </summary>
+    public bool IsBusy => this.selectionManager.IsBusy;
 
     /// <summary>
     /// Gets the shared tilemap used for tile painting.
@@ -81,6 +94,14 @@ public abstract class EditorControllerBase : MonoBehaviour
     protected EditorTool CurrentTool { get; private set; }
 
     /// <summary>
+    /// Gets a value indicating whether a resize drag or a resize preview owns the
+    /// selection, so other selection actions must leave it alone.
+    /// </summary>
+    private bool IsResizeBusy =>
+        this.selectionManager.IsResizing ||
+        this.selectionManager.IsResizePreviewOpen;
+
+    /// <summary>
     /// Updates the pointer world position.
     /// </summary>
     /// <param name="worldPos">The world position of the pointer.</param>
@@ -104,11 +125,13 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// <summary>
     /// Called when the primary input is pressed.
     /// </summary>
-    public virtual void OnPrimaryDown()
+    /// <param name="selectionMode">How a selection click combines with the current selection.</param>
+    public virtual void OnPrimaryDown(
+        SelectionMode selectionMode = SelectionMode.Replace)
     {
         if (this.CurrentTool == EditorTool.Selection)
         {
-            this.selectionManager.BeginDrag(this.CurrentPos);
+            this.selectionManager.BeginDrag(this.CurrentPos, selectionMode);
             return;
         }
 
@@ -160,7 +183,51 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// </summary>
     public void OnDeleteSelection()
     {
+        if (this.IsResizeBusy)
+        {
+            return;
+        }
+
         this.selectionManager.DeleteSelected();
+    }
+
+    /// <summary>
+    /// Copies the currently selected items to the clipboard.
+    /// </summary>
+    public void OnCopySelection()
+    {
+        if (this.IsResizeBusy)
+        {
+            return;
+        }
+
+        this.selectionManager.CopySelected();
+    }
+
+    /// <summary>
+    /// Cuts the currently selected items to the clipboard.
+    /// </summary>
+    public void OnCutSelection()
+    {
+        if (this.IsResizeBusy)
+        {
+            return;
+        }
+
+        this.selectionManager.CutSelected();
+    }
+
+    /// <summary>
+    /// Pastes the clipboard at the pointer and starts moving the pasted items.
+    /// </summary>
+    public void OnPaste()
+    {
+        if (this.IsResizeBusy)
+        {
+            return;
+        }
+
+        this.selectionManager.PasteAtPointer();
     }
 
     /// <summary>
@@ -168,6 +235,11 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// </summary>
     public void OnMoveSelection()
     {
+        if (this.IsResizeBusy)
+        {
+            return;
+        }
+
         this.selectionManager.MoveSelected();
     }
 
@@ -176,6 +248,12 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// </summary>
     public void OnConfirmMove()
     {
+        if (this.selectionManager.IsResizePreviewOpen)
+        {
+            this.selectionManager.ConfirmResize();
+            return;
+        }
+
         this.selectionManager.ConfirmMovingSelected();
     }
 
@@ -184,7 +262,31 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// </summary>
     public void OnCancelMove()
     {
+        if (this.selectionManager.IsResizePreviewOpen)
+        {
+            this.selectionManager.CancelResize();
+            return;
+        }
+
         this.selectionManager.CancelMovingSelected();
+    }
+
+    /// <summary>
+    /// Starts resizing the selection when a resize handle was pressed.
+    /// </summary>
+    /// <param name="screenPos">The screen position of the press.</param>
+    /// <returns>True when a handle was grabbed and the press belongs to the resize.</returns>
+    public bool BeginSelectionResize(Vector2 screenPos)
+    {
+        return this.selectionManager.BeginResize(screenPos);
+    }
+
+    /// <summary>
+    /// Ends a resize handle drag and applies the new size as one undo step.
+    /// </summary>
+    public void EndSelectionResize()
+    {
+        this.selectionManager.EndResize();
     }
 
     /// <summary>
@@ -209,10 +311,13 @@ public abstract class EditorControllerBase : MonoBehaviour
     /// Selects the entity or tile at the given world position, as if it was clicked.
     /// </summary>
     /// <param name="worldPos">The world position that was clicked.</param>
-    public void SelectAt(Vector2 worldPos)
+    /// <param name="selectionMode">How the pick combines with the current selection.</param>
+    public void SelectAt(
+        Vector2 worldPos,
+        SelectionMode selectionMode = SelectionMode.Replace)
     {
         this.selectionManager.CurrentPos = worldPos;
-        this.selectionManager.BeginDrag(worldPos);
+        this.selectionManager.BeginDrag(worldPos, selectionMode);
         this.selectionManager.EndDrag();
     }
 
@@ -225,6 +330,28 @@ public abstract class EditorControllerBase : MonoBehaviour
     public bool IsPointerOverSelectionButtons(Vector2 screenPos)
     {
         return this.selectionManager.IsPointerOverSelectionButtons(screenPos);
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the selection menu is open.
+    /// </summary>
+    public bool IsSelectionMenuOpen => this.selectionManager.IsSelectionMenuOpen;
+
+    /// <summary>
+    /// Opens the selection menu at the given world position.
+    /// </summary>
+    /// <param name="worldPos">The world position the menu is opened at.</param>
+    public void OnSelectionMenuRequested(Vector2 worldPos)
+    {
+        this.selectionManager.ShowSelectionMenu(worldPos);
+    }
+
+    /// <summary>
+    /// Closes the selection menu.
+    /// </summary>
+    public void OnSelectionMenuDismissed()
+    {
+        this.selectionManager.HideSelectionMenu();
     }
 
     /// <summary>
@@ -313,12 +440,21 @@ public abstract class EditorControllerBase : MonoBehaviour
                 this.OnPrimaryUp();
             }
 
-            if (this.primaryHolding && !mouse.leftButton.isPressed)
+            if (BuilderInputSelector.Instance.IsUsingDesktop &&
+                this.selectionManager.IsResizing &&
+                !mouse.leftButton.isPressed)
+            {
+                this.selectionManager.EndResize();
+            }
+
+            if (BuilderInputSelector.Instance.IsUsingDesktop &&
+                this.primaryHolding && !mouse.leftButton.isPressed)
             {
                 this.primaryHolding = false;
             }
 
-            if (this.secondaryHolding && !mouse.rightButton.isPressed)
+            if (BuilderInputSelector.Instance.IsUsingDesktop &&
+                this.secondaryHolding && !mouse.rightButton.isPressed)
             {
                 this.secondaryHolding = false;
             }
@@ -330,6 +466,11 @@ public abstract class EditorControllerBase : MonoBehaviour
         if (this.CurrentTool == EditorTool.Selection && this.selectionManager.IsDragging)
         {
             this.selectionManager.UpdateDrag(this.CurrentPos);
+        }
+
+        if (this.selectionManager.IsResizing)
+        {
+            this.selectionManager.UpdateResize(this.CurrentPos);
         }
 
         if (this.primaryHolding || this.secondaryHolding)

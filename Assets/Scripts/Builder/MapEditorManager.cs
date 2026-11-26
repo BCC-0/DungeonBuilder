@@ -58,6 +58,21 @@ public enum EditLayer
 /// </summary>
 public class MapEditorManager : MonoBehaviour
 {
+    /// <summary>
+    /// Seconds the entity fade of a layer change takes.
+    /// </summary>
+    private const float LayerFadeDuration = 0.25f;
+
+    /// <summary>
+    /// Alpha of the entities of the layer that is being edited.
+    /// </summary>
+    private const float ShownLayerAlpha = 1f;
+
+    /// <summary>
+    /// Alpha of the entities of the layer that is not being edited.
+    /// </summary>
+    private const float HiddenLayerAlpha = 0.2f;
+
     private static MapEditorManager instance;
 
     private EditorControllerBase tileController;
@@ -90,6 +105,18 @@ public class MapEditorManager : MonoBehaviour
     private float layerTransitionDuration = 0.25f;
 
     /// <summary>
+    /// Renderers the layer fade writes to, collected once per layer change.
+    /// </summary>
+    private List<SpriteRenderer> layerRenderers = new ();
+
+    private Tween layerFadeTween;
+
+    /// <summary>
+    /// Alpha the entities are currently faded to.
+    /// </summary>
+    private float layerAlpha = 1f;
+
+    /// <summary>
     /// Gets the instance of the MapEditorManager.
     /// </summary>
     public static MapEditorManager Instance
@@ -109,6 +136,29 @@ public class MapEditorManager : MonoBehaviour
     public bool IsMovingSelection =>
         this.tileController.IsMovingSelection ||
         this.entityController.IsMovingSelection;
+
+    /// <summary>
+    /// Gets a value indicating whether either layer is busy with work spread over
+    /// several frames, such as pasting many entities. Nothing may be edited or undone
+    /// while this is true.
+    /// </summary>
+    public bool IsBusy =>
+        this.tileController.IsBusy ||
+        this.entityController.IsBusy;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the inventory is open covering the
+    /// editor. Editor visuals that draw above the inventory, such as the selection
+    /// resize handles, are hidden while this is true.
+    /// </summary>
+    public bool IsInventoryOpen { get; set; }
+
+    /// <summary>
+    /// Gets a value indicating whether a selection resize handle is currently dragged.
+    /// </summary>
+    public bool IsResizingSelection =>
+        this.ActiveController != null &&
+        this.ActiveController.IsSelectionResizing;
 
     /// <summary>
     /// Gets or sets the map name we are editing.
@@ -173,24 +223,10 @@ public class MapEditorManager : MonoBehaviour
 
         this.StartCoroutine(this.WaitForSwitch());
 
-        float targetAlpha = layer == EditLayer.Foreground ? 1f : 0.2f;
-
-        HashSet<SpriteRenderer> renderers = new HashSet<SpriteRenderer>();
-
-        foreach (SaveableEntity entity in FindObjectsByType<SaveableEntity>())
-        {
-            foreach (SpriteRenderer sr in
-                     entity.GetComponentsInChildren<SpriteRenderer>(true))
-            {
-                if (sr == null || !renderers.Add(sr))
-                {
-                    continue;
-                }
-
-                sr.DOKill();
-                sr.DOFade(targetAlpha, 0.25f);
-            }
-        }
+        this.FadeEntityLayer(
+            layer == EditLayer.Foreground
+                ? ShownLayerAlpha
+                : HiddenLayerAlpha);
 
         this.UpdateLayerButtonVisuals(layer);
     }
@@ -252,10 +288,22 @@ public class MapEditorManager : MonoBehaviour
     public void EndTransaction() => this.undoRedoManager.EndTransaction();
 
     /// <summary>
+    /// Cancels the open transaction and reverts everything registered in it.
+    /// </summary>
+    public void CancelTransaction() => this.undoRedoManager.CancelTransaction();
+
+    /// <summary>
     /// Undoes last action.
     /// </summary>
     public void Undo()
     {
+        // A move or paste is uncommitted until it is confirmed, so history must
+        // not step over it.
+        if (this.IsMovingSelection || this.IsBusy || this.IsResizingSelection)
+        {
+            return;
+        }
+
         this.undoRedoManager.Undo();
         this.RefreshAfterHistory();
     }
@@ -265,8 +313,22 @@ public class MapEditorManager : MonoBehaviour
     /// </summary>
     public void Redo()
     {
+        if (this.IsMovingSelection || this.IsBusy || this.IsResizingSelection)
+        {
+            return;
+        }
+
         this.undoRedoManager.Redo();
         this.RefreshAfterHistory();
+    }
+
+    /// <summary>
+    /// Reports a clipboard action, such as how many items were copied, to the console.
+    /// </summary>
+    /// <param name="message">The message to show.</param>
+    public void ShowClipboardMessage(string message)
+    {
+        Debug.Log(message);
     }
 
     /// <summary>
@@ -284,6 +346,39 @@ public class MapEditorManager : MonoBehaviour
         this.selectedTiles.Clear();
         this.selectedEntities.Clear();
         this.selectedEntities.Add(entity);
+
+        EntitySelectionVisualizer visualizer =
+            FindAnyObjectByType<EntitySelectionVisualizer>();
+
+        if (visualizer != null)
+        {
+            visualizer.Refresh();
+        }
+    }
+
+    /// <summary>
+    /// Selects several entities for reference navigation without changing
+    /// the active tool or editing layer.
+    /// </summary>
+    /// <param name="entities">The entities to select.</param>
+    public void SelectEntitiesForReference(IReadOnlyList<SaveableEntity> entities)
+    {
+        if (entities == null || entities.Count == 0)
+        {
+            return;
+        }
+
+        this.selectedTiles.Clear();
+        this.selectedEntities.Clear();
+
+        foreach (SaveableEntity entity in entities)
+        {
+            if (entity != null &&
+                !this.selectedEntities.Contains(entity))
+            {
+                this.selectedEntities.Add(entity);
+            }
+        }
 
         EntitySelectionVisualizer visualizer =
             FindAnyObjectByType<EntitySelectionVisualizer>();
@@ -324,7 +419,10 @@ public class MapEditorManager : MonoBehaviour
     /// Entities are preferred over tiles. When there is nothing to select, the selection is cleared.
     /// </summary>
     /// <param name="worldPos">The world position that was clicked.</param>
-    public void SelectAtPointer(Vector2 worldPos)
+    /// <param name="selectionMode">How the pick combines with the current selection.</param>
+    public void SelectAtPointer(
+        Vector2 worldPos,
+        SelectionMode selectionMode = SelectionMode.Replace)
     {
         EditLayer? targetLayer = null;
 
@@ -340,7 +438,12 @@ public class MapEditorManager : MonoBehaviour
         if (targetLayer == null)
         {
             // Clicking empty space drops the selection but keeps the tool.
-            this.activeController.ResetSelectionTool();
+            // An additive click leaves the selection as it is instead.
+            if (selectionMode == SelectionMode.Replace)
+            {
+                this.activeController.ResetSelectionTool();
+            }
+
             return;
         }
 
@@ -349,7 +452,28 @@ public class MapEditorManager : MonoBehaviour
             this.SetLayer(targetLayer.Value);
         }
 
-        this.activeController.SelectAt(worldPos);
+        this.activeController.SelectAt(worldPos, selectionMode);
+    }
+
+    /// <summary>
+    /// Selects the entity under the pointer without leaving the foreground layer.
+    /// The brush leaves an entity it clicks standing instead of overwriting it, so
+    /// that click can select the entity just like a click in the drag tool. Unlike
+    /// <see cref="SelectAtPointer"/>, clicking empty space leaves the selection as it is.
+    /// </summary>
+    /// <param name="worldPos">The world position that was clicked.</param>
+    /// <param name="selectionMode">How the pick combines with the current selection.</param>
+    public void SelectEntityAtPointer(
+        Vector2 worldPos,
+        SelectionMode selectionMode = SelectionMode.Replace)
+    {
+        if (this.currentLayer != EditLayer.Foreground ||
+            !this.entityController.CanSelectAt(worldPos))
+        {
+            return;
+        }
+
+        this.entityController.SelectAt(worldPos, selectionMode);
     }
 
     /// <summary>
@@ -365,9 +489,106 @@ public class MapEditorManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Starts resizing the selection when the press landed on one of its handles.
+    /// </summary>
+    /// <param name="screenPos">The screen position of the press.</param>
+    /// <returns>True when a handle was grabbed and the press belongs to the resize.</returns>
+    public bool BeginSelectionResize(Vector2 screenPos)
+    {
+        return this.ActiveController != null &&
+            this.ActiveController.BeginSelectionResize(screenPos);
+    }
+
+    /// <summary>
+    /// Ends a resize handle drag and previews the new size.
+    /// </summary>
+    public void EndSelectionResize()
+    {
+        if (this.ActiveController != null)
+        {
+            this.ActiveController.EndSelectionResize();
+        }
+    }
+
+    /// <summary>
     /// Deletes the currently selected items.
     /// </summary>
     public void OnDeleteSelection() => this.ActiveController.OnDeleteSelection();
+
+    /// <summary>
+    /// Copies the currently selected items to the clipboard.
+    /// </summary>
+    public void OnCopySelection() => this.ActiveController.OnCopySelection();
+
+    /// <summary>
+    /// Cuts the currently selected items to the clipboard.
+    /// </summary>
+    public void OnCutSelection() => this.ActiveController.OnCutSelection();
+
+    /// <summary>
+    /// Pastes the clipboard at the pointer and starts moving the pasted items,
+    /// so the player can choose the position before confirming. The editing layer
+    /// and tool are switched to what the clipboard holds, so the paste can always
+    /// be placed and moved right away.
+    /// </summary>
+    public void OnPasteSelection()
+    {
+        if (!BuilderClipboard.HasContent ||
+            this.IsMovingSelection ||
+            this.IsBusy ||
+            this.IsResizingSelection)
+        {
+            return;
+        }
+
+        EditLayer contentLayer =
+            BuilderClipboard.Entities != null
+                ? EditLayer.Foreground
+                : EditLayer.Background;
+
+        if (this.currentLayer != contentLayer)
+        {
+            this.SetLayer(contentLayer);
+        }
+
+        this.SelectSelection();
+
+        this.ActiveController.OnPaste();
+    }
+
+    /// <summary>
+    /// Opens the selection menu at the press, or closes it when it is already open.
+    /// The menu opens even without a selection; actions that need one are faded and
+    /// cannot be used instead of hiding the whole menu.
+    /// </summary>
+    /// <param name="worldPos">The world position that was right clicked or double tapped.</param>
+    /// <returns>True when the press was used by the menu and must not reach the tool.</returns>
+    public bool ToggleSelectionMenu(Vector2 worldPos)
+    {
+        if (this.IsMovingSelection)
+        {
+            return false;
+        }
+
+        if (this.ActiveController.IsSelectionMenuOpen)
+        {
+            this.ActiveController.OnSelectionMenuDismissed();
+
+            return true;
+        }
+
+        this.ActiveController.OnSelectionMenuRequested(worldPos);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Closes the selection menu when it is open.
+    /// </summary>
+    public void HideSelectionMenu()
+    {
+        this.ActiveController.OnSelectionMenuDismissed();
+    }
 
     /// <summary>
     /// Moves the currently selected items.
@@ -383,6 +604,15 @@ public class MapEditorManager : MonoBehaviour
     /// Cancels the move action.
     /// </summary>
     public void OnCancelMove() => this.ActiveController.OnCancelMove();
+
+    /// <summary>
+    /// Refreshes the selection visuals and inspector after the selection lists were
+    /// changed without a selection action, such as restoring them after a double tap.
+    /// </summary>
+    public void RefreshSelectionVisuals()
+    {
+        this.RefreshAfterHistory();
+    }
 
     /// <summary>
     /// Refreshes the selection, inspector and visuals after an undo or redo.
@@ -456,6 +686,93 @@ public class MapEditorManager : MonoBehaviour
         this.canSwitch = false;
         yield return new WaitForSeconds(0.1f);
         this.canSwitch = true;
+    }
+
+    /// <summary>
+    /// Fades the entities to the alpha of the layer that is being edited. One tween
+    /// drives every renderer instead of one tween per renderer, because a large map
+    /// has thousands of them and creating that many tweens freezes the editor.
+    /// </summary>
+    /// <param name="targetAlpha">The alpha the entities end at.</param>
+    private void FadeEntityLayer(float targetAlpha)
+    {
+        this.layerFadeTween?.Kill();
+        this.layerFadeTween = null;
+
+        // Another item of the layer that is already being edited must not fade
+        // anything, and the renderers already have the right alpha.
+        if (Mathf.Approximately(this.layerAlpha, targetAlpha))
+        {
+            return;
+        }
+
+        this.CollectLayerRenderers();
+
+        this.layerFadeTween = DOTween
+            .To(
+                () => this.layerAlpha,
+                alpha => this.SetLayerAlpha(alpha),
+                targetAlpha,
+                LayerFadeDuration)
+            .SetEase(Ease.OutQuad);
+    }
+
+    /// <summary>
+    /// Collects the renderers of the entities that are in the world, including
+    /// deactivated ones, so the fade can write to them without searching the scene
+    /// every frame and an entity restored by undo already has the layer's alpha.
+    /// </summary>
+    private void CollectLayerRenderers()
+    {
+        this.layerRenderers.Clear();
+
+        HashSet<SpriteRenderer> seen = new HashSet<SpriteRenderer>();
+
+        foreach (SaveableEntity entity in
+                 FindObjectsByType<SaveableEntity>(FindObjectsInactive.Include))
+        {
+            foreach (SpriteRenderer renderer in
+                     entity.GetComponentsInChildren<SpriteRenderer>(true))
+            {
+                if (renderer == null || !seen.Add(renderer))
+                {
+                    continue;
+                }
+
+                this.layerRenderers.Add(renderer);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Writes the layer alpha to every collected renderer, skipping the ones that
+    /// already have it and dropping the ones that were destroyed.
+    /// </summary>
+    /// <param name="alpha">The alpha to apply.</param>
+    private void SetLayerAlpha(float alpha)
+    {
+        this.layerAlpha = alpha;
+
+        for (int i = this.layerRenderers.Count - 1; i >= 0; i--)
+        {
+            SpriteRenderer renderer = this.layerRenderers[i];
+
+            if (renderer == null)
+            {
+                this.layerRenderers.RemoveAt(i);
+                continue;
+            }
+
+            Color color = renderer.color;
+
+            if (Mathf.Approximately(color.a, alpha))
+            {
+                continue;
+            }
+
+            color.a = alpha;
+            renderer.color = color;
+        }
     }
 
     private void UpdateLayerButtonVisuals(EditLayer layer)

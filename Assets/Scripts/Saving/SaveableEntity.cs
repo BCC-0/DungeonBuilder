@@ -19,15 +19,6 @@ public abstract class SaveableEntity : MonoBehaviour
     [SerializeField]
     private SpriteRenderer spriteRenderer;
 
-    [Header("Hurt Effect")]
-    [SerializeField]
-    private Color hurtColor = Color.red;
-
-    [SerializeField]
-    private float hurtFlashDuration = 0.15f;
-
-    private Coroutine hurtFlashCoroutine;
-
     private SaveableEntity consumedBy;
 
     /// <summary>
@@ -189,20 +180,6 @@ public abstract class SaveableEntity : MonoBehaviour
     public virtual void OnFinishMapLoad()
     {
         this.ResolvePendingReferences();
-    }
-
-    /// <summary>
-    /// Plays a hurt effect by flashing all enabled child sprite renderers red
-    /// before returning them to their original colors.
-    /// </summary>
-    public void FlashHurtEffect()
-    {
-        if (this.hurtFlashCoroutine != null)
-        {
-            this.StopCoroutine(this.hurtFlashCoroutine);
-        }
-
-        this.hurtFlashCoroutine = this.StartCoroutine(this.HurtFlashRoutine());
     }
 
     /// <summary>
@@ -651,82 +628,6 @@ public abstract class SaveableEntity : MonoBehaviour
                 }
             }
         }
-    }
-
-    /// <summary>
-    /// Tweens enabled child sprite renderers to the hurt color and back
-    /// to their original colors.
-    /// </summary>
-    /// <returns>An enumerator for the hurt effect coroutine.</returns>
-    private IEnumerator HurtFlashRoutine()
-    {
-        SpriteRenderer[] renderers =
-            this.GetComponentsInChildren<SpriteRenderer>();
-
-        List<SpriteRenderer> enabledRenderers = new List<SpriteRenderer>();
-        List<Color> originalColors = new List<Color>();
-
-        foreach (SpriteRenderer renderer in renderers)
-        {
-            if (renderer.enabled)
-            {
-                enabledRenderers.Add(renderer);
-                originalColors.Add(renderer.color);
-            }
-        }
-
-        float halfDuration = Mathf.Max(0.01f, this.hurtFlashDuration / 2f);
-        float elapsed = 0f;
-
-        while (elapsed < halfDuration)
-        {
-            elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsed / halfDuration);
-
-            for (int i = 0; i < enabledRenderers.Count; i++)
-            {
-                if (enabledRenderers[i] != null)
-                {
-                    enabledRenderers[i].color = Color.Lerp(
-                        originalColors[i],
-                        this.hurtColor,
-                        t);
-                }
-            }
-
-            yield return null;
-        }
-
-        elapsed = 0f;
-
-        while (elapsed < halfDuration)
-        {
-            elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsed / halfDuration);
-
-            for (int i = 0; i < enabledRenderers.Count; i++)
-            {
-                if (enabledRenderers[i] != null)
-                {
-                    enabledRenderers[i].color = Color.Lerp(
-                        this.hurtColor,
-                        originalColors[i],
-                        t);
-                }
-            }
-
-            yield return null;
-        }
-
-        for (int i = 0; i < enabledRenderers.Count; i++)
-        {
-            if (enabledRenderers[i] != null)
-            {
-                enabledRenderers[i].color = originalColors[i];
-            }
-        }
-
-        this.hurtFlashCoroutine = null;
     }
 
     /// <summary>

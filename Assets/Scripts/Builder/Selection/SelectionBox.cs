@@ -14,6 +14,26 @@ public class SelectionBox : MonoBehaviour
     private RectTransform rectTransform;
 
     /// <summary>
+    /// Gets the color the outline is drawn with, so other selection visuals can
+    /// match it.
+    /// </summary>
+    public Color OutlineColor
+    {
+        get
+        {
+            foreach (Image image in this.images)
+            {
+                if (image != null)
+                {
+                    return image.color;
+                }
+            }
+
+            return Color.white;
+        }
+    }
+
+    /// <summary>
     /// Visualizes the selection box starting at the given position in world space.
     /// </summary>
     /// <param name="startWorldPos">The position to start dragging at.</param>
@@ -46,7 +66,10 @@ public class SelectionBox : MonoBehaviour
     /// </summary>
     public void StopSelection()
     {
-        foreach (Image image in this.images) { image.enabled = false; }
+        foreach (Image image in this.images)
+        {
+            image.enabled = false;
+        }
     }
 
     /// <summary>

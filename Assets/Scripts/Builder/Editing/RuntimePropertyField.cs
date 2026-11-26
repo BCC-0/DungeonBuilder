@@ -12,6 +12,11 @@ using UnityEngine.UI;
 /// </summary>
 public class RuntimePropertyField : MonoBehaviour
 {
+    /// <summary>
+    /// Text shown for a value that differs between the selected targets.
+    /// </summary>
+    private const string MixedValuePlaceholder = "-";
+
     [SerializeField]
     private SpriteFontText label;
     [SerializeField]
@@ -216,6 +221,38 @@ public class RuntimePropertyField : MonoBehaviour
         return attribute != null
             ? attribute.MaxReferences
             : -1;
+    }
+
+    /// <summary>
+    /// Gets the reference at one visible index from every target, so a reference
+    /// button can select all of them for multi-editing. Targets that have no
+    /// reference at that index are skipped.
+    /// </summary>
+    /// <param name="index">The visible reference index that was clicked.</param>
+    /// <returns>The referenced entities, without duplicates.</returns>
+    public List<SaveableEntity> GetReferences(int index)
+    {
+        List<SaveableEntity> references = new List<SaveableEntity>();
+
+        if (this.targets == null ||
+            index < 0)
+        {
+            return references;
+        }
+
+        foreach (object target in this.targets)
+        {
+            SaveableEntity entity =
+                this.GetReference(target, index);
+
+            if (entity != null &&
+                !references.Contains(entity))
+            {
+                references.Add(entity);
+            }
+        }
+
+        return references;
     }
 
     /// <summary>
@@ -964,9 +1001,11 @@ public class RuntimePropertyField : MonoBehaviour
             this.GetCurrentValue();
 
         this.enumText.SetText(
-            value != null
-                ? value.ToString()
-                : string.Empty);
+            this.HasMixedValues()
+                ? MixedValuePlaceholder
+                : value != null
+                    ? value.ToString()
+                    : string.Empty);
     }
 
     private void SetupReferenceList()
@@ -1017,6 +1056,7 @@ public class RuntimePropertyField : MonoBehaviour
             int index = i;
 
             button.SetEntity(entity);
+            button.SetReferenceTargets(this.GetReferences(index));
 
             button.SetConsumed(
                 entity.ConsumedBy != null);
@@ -1054,8 +1094,16 @@ public class RuntimePropertyField : MonoBehaviour
             return null;
         }
 
-        object target =
-            this.targets[0];
+        return this.GetReference(this.targets[0], index);
+    }
+
+    private SaveableEntity GetReference(object target, int index)
+    {
+        if (target == null ||
+            index < 0)
+        {
+            return null;
+        }
 
         if (!this.IsReferenceList())
         {
@@ -1210,6 +1258,33 @@ public class RuntimePropertyField : MonoBehaviour
     }
 
     /// <summary>
+    /// Gets a value indicating whether the field has different values on the targets.
+    /// </summary>
+    /// <returns>True when at least two targets disagree.</returns>
+    private bool HasMixedValues()
+    {
+        if (this.targets == null ||
+            this.targets.Count < 2)
+        {
+            return false;
+        }
+
+        object first = this.GetFieldValue(this.targets[0]);
+
+        for (int i = 1; i < this.targets.Count; i++)
+        {
+            if (!object.Equals(
+                    first,
+                    this.GetFieldValue(this.targets[i])))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Writes a value to one target.
     /// </summary>
     private void SetValue(object target, object value)
@@ -1221,6 +1296,14 @@ public class RuntimePropertyField : MonoBehaviour
     {
         if (this.updating)
         {
+            return;
+        }
+
+        // The placeholder is not an edit, it only shows that the values differ.
+        if (value == MixedValuePlaceholder &&
+            this.HasMixedValues())
+        {
+            this.RefreshInput();
             return;
         }
 
@@ -1388,11 +1471,13 @@ public class RuntimePropertyField : MonoBehaviour
             this.GetCurrentValue();
 
         string text =
-            value != null
-                ? Convert.ToString(
-                    value,
-                    CultureInfo.InvariantCulture)
-                : string.Empty;
+            this.HasMixedValues()
+                ? MixedValuePlaceholder
+                : value != null
+                    ? Convert.ToString(
+                        value,
+                        CultureInfo.InvariantCulture)
+                    : string.Empty;
 
         this.updating = true;
 
@@ -1427,6 +1512,12 @@ public class RuntimePropertyField : MonoBehaviour
 
         this.updating = false;
 
+        if (this.HasMixedValues())
+        {
+            this.SetSliderValueText(MixedValuePlaceholder);
+            return;
+        }
+
         this.UpdateSliderValueLabel(
             sliderValue);
     }
@@ -1438,9 +1529,16 @@ public class RuntimePropertyField : MonoBehaviour
     /// <param name="value">The value to display.</param>
     private void UpdateSliderValueLabel(float value)
     {
-        string text =
-            FormatNumber(value);
+        this.SetSliderValueText(
+            FormatNumber(value));
+    }
 
+    /// <summary>
+    /// Shows text in the slider's input field and label without triggering the handlers.
+    /// </summary>
+    /// <param name="text">The text to display.</param>
+    private void SetSliderValueText(string text)
+    {
         if (this.sliderInputField != null)
         {
             this.sliderInputField.SetTextWithoutNotify(text);
