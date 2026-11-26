@@ -447,12 +447,14 @@ public abstract class EditorControllerBase : MonoBehaviour
                 this.selectionManager.EndResize();
             }
 
-            if (this.primaryHolding && !mouse.leftButton.isPressed)
+            if (BuilderInputSelector.Instance.IsUsingDesktop &&
+                this.primaryHolding && !mouse.leftButton.isPressed)
             {
                 this.primaryHolding = false;
             }
 
-            if (this.secondaryHolding && !mouse.rightButton.isPressed)
+            if (BuilderInputSelector.Instance.IsUsingDesktop &&
+                this.secondaryHolding && !mouse.rightButton.isPressed)
             {
                 this.secondaryHolding = false;
             }
