@@ -32,6 +32,10 @@ public class ReferenceButton : MonoBehaviour
     {
         this.entity = entity;
 
+        HoverInfoTarget.Attach(
+            this.gameObject,
+            HoverInfo.ForEntity(entity));
+
         this.CreateOverlayImages();
         this.HideOverlay(this.wallOverlayImage);
         this.HideOverlay(this.headImage);

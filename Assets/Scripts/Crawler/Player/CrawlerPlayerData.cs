@@ -12,7 +12,7 @@ public class CrawlerPlayerData : HurtFlashEntity
 {
     [Header("Player Attributes")]
     [SerializeField]
-    [SaveField(1, 200, displayName: "health")]
+    [SaveField(1, 200, displayName: "health", description: "The max amount of health the player can have.")]
     private int maxHealth = 100;
 
     [SerializeField]
@@ -24,7 +24,7 @@ public class CrawlerPlayerData : HurtFlashEntity
     private SpriteFontText healthText;
 
     [SerializeField]
-    [SaveField(1, 12, displayName: "speed")]
+    [SaveField(1, 12, displayName: "speed", description: "The speed the player walks at.")]
     private float moveSpeed = 5f;
 
     [Header("Inventory")]

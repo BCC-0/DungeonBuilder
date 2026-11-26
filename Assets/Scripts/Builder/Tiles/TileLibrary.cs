@@ -94,6 +94,33 @@ public class TileLibrary : ScriptableObject
     }
 
     /// <summary>
+    /// Gets the entry for a tile from all TileLibraries in Resources.
+    /// </summary>
+    /// <param name="tile">The tile to find.</param>
+    /// <returns>The entry, or null when the tile is not part of a library.</returns>
+    public static TileEntry GetEntryForTileGlobal(TileBase tile)
+    {
+        if (tile == null)
+        {
+            return null;
+        }
+
+        LoadAllLibraries();
+
+        foreach (TileLibrary library in allLibraries)
+        {
+            TileEntry entry = library.GetEntryForTile(tile);
+
+            if (entry != null)
+            {
+                return entry;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Initialize the dictionary for fast lookup.
     /// </summary>
     public void Initialize()
@@ -170,6 +197,34 @@ public class TileLibrary : ScriptableObject
     }
 
     /// <summary>
+    /// Gets the entry for a tile in this library.
+    /// </summary>
+    /// <param name="tile">The tile to find.</param>
+    /// <returns>The entry, or null when the tile is not in this library.</returns>
+    public TileEntry GetEntryForTile(TileBase tile)
+    {
+        if (tile == null)
+        {
+            return null;
+        }
+
+        if (this.tileMap == null)
+        {
+            this.Initialize();
+        }
+
+        foreach (TileEntry entry in this.tileMap.Values)
+        {
+            if (entry.Tile == tile)
+            {
+                return entry;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Gets all valid tile entries as inventory items.
     /// </summary>
     /// <returns>The inventory items represented by this library.</returns>
@@ -231,6 +286,11 @@ public class TileLibrary : ScriptableObject
         [SerializeField]
         private string behaviorTypeName;
 
+        [SerializeField]
+        [TextArea(2, 6)]
+        [Tooltip("Description shown in the builder when the player hovers over this tile.")]
+        private string description;
+
         /// <summary>
         /// Gets or sets the tile ID.
         /// </summary>
@@ -256,6 +316,16 @@ public class TileLibrary : ScriptableObject
         {
             get { return this.behaviorTypeName; }
             set { this.behaviorTypeName = value; }
+        }
+
+        /// <summary>
+        /// Gets or sets the description shown in the builder when the player
+        /// hovers over this tile.
+        /// </summary>
+        public string Description
+        {
+            get { return this.description; }
+            set { this.description = value; }
         }
     }
 }

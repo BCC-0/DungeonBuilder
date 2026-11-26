@@ -1886,6 +1886,54 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 325431403}
   m_CullTransparentMesh: 1
+--- !u!1 &366445195
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 366445196}
+  - component: {fileID: 366445197}
+  m_Layer: 0
+  m_Name: HoverToolTipManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &366445196
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 366445195}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1554308927}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &366445197
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 366445195}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 56b103d790c2e0647899d1f5b2beb92c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HoverTooltipManager
+  tooltipPrefab: {fileID: -4619347959028861619, guid: 7e64b736d4e839044833cd073d28f0a5, type: 3}
+  tooltipParent: {fileID: 1617474114}
+  hoverDelay: 0.6
+  cursorOffset: {x: 24, y: -24}
 --- !u!1 &384013407
 GameObject:
   m_ObjectHideFlags: 0
@@ -11299,6 +11347,7 @@ Transform:
   - {fileID: 35717379}
   - {fileID: 1740962442}
   - {fileID: 1062655931}
+  - {fileID: 366445196}
   - {fileID: 1617474114}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -12404,9 +12453,6 @@ MonoBehaviour:
   backgroundLayerImage: {fileID: 205616415}
   foregroundLayerImage: {fileID: 559147937}
   layerTransitionDuration: 0.25
-  clipboardToastCanvasGroup: {fileID: 0}
-  clipboardToastText: {fileID: 0}
-  clipboardToastDuration: 1.4
 --- !u!1 &1740962441
 GameObject:
   m_ObjectHideFlags: 0
@@ -16355,6 +16401,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SaveableTilemap
   uniqueID: Tilemap
   spriteRenderer: {fileID: 0}
+  hoverName: 
+  hoverDescription: 
   tilemap: {fileID: 7453032813957364448}
 --- !u!483693784 &1478311151914156580
 TilemapRenderer:

@@ -196,7 +196,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f162a1fe513da454ba930aa444eaf1a9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PrefabIdentity
-  prefabID: ChickenBody
+  prefabID: Chicken Body
 --- !u!114 &728198483378389784
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -211,6 +211,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ChickenBody
   uniqueID: 
   spriteRenderer: {fileID: 6041290313076171271}
+  hoverDescription: Tries to keep a minimum distance from the player.
   hurtColor: {r: 1, g: 0, b: 0, a: 1}
   hurtFlashDuration: 0.15
   maxHealth: 10

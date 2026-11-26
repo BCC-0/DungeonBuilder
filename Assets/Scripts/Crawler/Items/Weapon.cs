@@ -8,7 +8,7 @@ public abstract class Weapon : EquippableItem
 {
     [Header("Weapon Stats")]
     [SerializeField]
-    [RuntimeEditable(priority:10, displayName: "Damage")]
+    [RuntimeEditable(min: 1, 100, priority: 10, displayName: "Damage", description: "The damage this weapon deals.")]
     private float baseDamage;
 
     [SerializeField]

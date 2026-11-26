@@ -88,11 +88,16 @@ public class RuntimePropertyField : MonoBehaviour
         this.field = field;
         this.targets = targets;
         this.builderFieldName = null;
+
         this.onValueChanged = onValueChanged;
 
         if (this.label != null)
         {
             this.label.SetText(displayName);
+
+            HoverInfoTarget.Attach(
+                this.label.gameObject,
+                HoverInfo.ForField(field, displayName));
         }
 
         this.Setup();
@@ -133,11 +138,16 @@ public class RuntimePropertyField : MonoBehaviour
         this.field = editableValue.Field;
         this.targets = new List<object>(targets);
         this.builderFieldName = fieldName;
+
         this.onValueChanged = onValueChanged;
 
         if (this.label != null)
         {
             this.label.SetText(displayName);
+
+            HoverInfoTarget.Attach(
+                this.label.gameObject,
+                HoverInfo.ForField(editableValue.Field, displayName));
         }
 
         this.Setup();
@@ -776,20 +786,35 @@ public class RuntimePropertyField : MonoBehaviour
     }
 
     /// <summary>
-    /// Gets the slider range of the field, if it has one.
+    /// Gets the slider range of the field, if it has one. Fields that are
+    /// marked with a <see cref="SaveFieldAttribute"/> range use that one,
+    /// fields that are only runtime editable use their range instead.
     /// </summary>
     private bool TryGetRange(out float min, out float max)
     {
-        SaveFieldAttribute attribute =
+        SaveFieldAttribute saveAttribute =
             this.field != null
                 ? this.field.GetCustomAttribute<SaveFieldAttribute>()
                 : null;
 
-        if (attribute != null &&
-            attribute.HasRange)
+        if (saveAttribute != null &&
+            saveAttribute.HasRange)
         {
-            min = attribute.Min;
-            max = attribute.Max;
+            min = saveAttribute.Min;
+            max = saveAttribute.Max;
+            return true;
+        }
+
+        RuntimeEditableAttribute runtimeAttribute =
+            this.field != null
+                ? this.field.GetCustomAttribute<RuntimeEditableAttribute>()
+                : null;
+
+        if (runtimeAttribute != null &&
+            runtimeAttribute.HasRange)
+        {
+            min = runtimeAttribute.Min;
+            max = runtimeAttribute.Max;
             return true;
         }
 

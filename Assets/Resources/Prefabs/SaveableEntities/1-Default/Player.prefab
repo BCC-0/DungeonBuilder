@@ -121,6 +121,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CrawlerPlayerData
   uniqueID: Player
   spriteRenderer: {fileID: 3064584090858952109}
+  hoverName: Player
+  hoverDescription: The spawn point of the player. Each map needs exactly one.
   hurtColor: {r: 1, g: 0, b: 0, a: 1}
   hurtFlashDuration: 0.15
   maxHealth: 100

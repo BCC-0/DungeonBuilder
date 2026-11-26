@@ -19,6 +19,19 @@ public class RuntimePositionField : MonoBehaviour
     [SerializeField]
     private TMP_InputField positionY;
 
+    [Header("Hover Info")]
+    [SerializeField]
+    [Tooltip("Optional. The label the popup belongs to. Defaults to the child named Label.")]
+    private SpriteFontText hoverLabel;
+
+    [SerializeField]
+    private string hoverName = "Position";
+
+    [SerializeField]
+    [TextArea(2, 6)]
+    private string hoverDescription =
+        "The grid position of the selected object. Edit X and Y to move it.";
+
     private IReadOnlyList<SaveableEntity> targets;
 
     private IReadOnlyList<Vector2Int> tileTargets;
@@ -41,6 +54,7 @@ public class RuntimePositionField : MonoBehaviour
         this.tileTargets = null;
         this.targets = entities;
 
+        this.AttachHoverInfo();
         this.Refresh();
         this.RegisterListeners();
     }
@@ -59,6 +73,7 @@ public class RuntimePositionField : MonoBehaviour
         this.tileTargets = positions;
         this.targets = null;
 
+        this.AttachHoverInfo();
         this.Refresh();
         this.RegisterListeners();
     }
@@ -161,6 +176,25 @@ public class RuntimePositionField : MonoBehaviour
         }
 
         this.updating = false;
+    }
+
+    /// <summary>
+    /// Shows the hover popup when the cursor rests on the position label.
+    /// </summary>
+    private void AttachHoverInfo()
+    {
+        Transform label = this.hoverLabel != null
+            ? this.hoverLabel.transform
+            : this.transform.Find("Label");
+
+        if (label == null)
+        {
+            return;
+        }
+
+        HoverInfoTarget.Attach(
+            label.gameObject,
+            new HoverInfo(this.hoverName, this.hoverDescription));
     }
 
     /// <summary>

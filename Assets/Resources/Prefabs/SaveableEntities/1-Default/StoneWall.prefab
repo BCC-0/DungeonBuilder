@@ -371,7 +371,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f162a1fe513da454ba930aa444eaf1a9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PrefabIdentity
-  prefabID: StoneWall
+  prefabID: Stone Wall
 --- !u!114 &8961929238548103114
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -386,12 +386,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Wall
   uniqueID: 
   spriteRenderer: {fileID: 3824165684395835649}
-  hurtColor: {r: 1, g: 0, b: 0, a: 1}
-  hurtFlashDuration: 0.15
+  hoverName: Stone Wall
+  hoverDescription: 
   overlayRenderer: {fileID: 8948860393547176164}
   cellSize: 1
   rotateSpriteWithOverlay: 0
   orientation: 0
+  cornerSprite: {fileID: 0}
+  innerCornerSprite: {fileID: 0}
 --- !u!61 &3299872983932712086
 BoxCollider2D:
   m_ObjectHideFlags: 0

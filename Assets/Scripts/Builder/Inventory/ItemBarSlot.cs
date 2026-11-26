@@ -66,6 +66,10 @@ public class ItemBarSlot : MonoBehaviour
 
         this.item = item;
 
+        HoverInfoTarget.Attach(
+            this.gameObject,
+            HoverInfo.ForInventoryItem(item));
+
         if (this.item == null)
         {
             this.itemImage.gameObject.SetActive(false);
@@ -206,6 +210,10 @@ public class ItemBarSlot : MonoBehaviour
     {
         this.inventoryController =
             FindAnyObjectByType<InventoryController>();
+
+        HoverInfoTarget.Attach(
+            this.gameObject,
+            HoverInfo.ForInventoryItem(this.item));
 
         if (this.item == null)
         {
