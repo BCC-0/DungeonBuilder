@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
 /// Moving a single tile to another cell.
@@ -46,8 +46,8 @@ public class MoveTileAction : IUndoableAction
 
         if (!this.tilemap.MoveTile(from, to))
         {
-            Debug.LogWarning(
-                $"MoveTileAction: could not move tile from {from} to {to}.");
+            WarningManager.Warn(
+                $"Could not move tile from {from} to {to}.");
         }
     }
 }

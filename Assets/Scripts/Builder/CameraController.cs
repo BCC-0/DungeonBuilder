@@ -24,6 +24,8 @@ public class CameraController : MonoBehaviour
     [SerializeField]
     private SpriteFontText zoomText;
     [SerializeField]
+    private SpriteFontText positionText;
+    [SerializeField]
     private float inertiaDamping = 6f;
     [SerializeField]
     private float inertiaThreshold = 0.01f;
@@ -41,6 +43,8 @@ public class CameraController : MonoBehaviour
     private Vector2? lastPointerPosition = null;
     private bool isPanning = false;
     private Tween navigationTween;
+    private int shownPositionX = int.MinValue;
+    private int shownPositionY = int.MinValue;
 
     /// <summary>
     /// Gets a value indicating whether the camera is currently panning.
@@ -243,6 +247,36 @@ public class CameraController : MonoBehaviour
     private void Update()
     {
         this.ApplyInertia();
+        this.UpdatePositionText();
+    }
+
+    /// <summary>
+    /// Shows where the camera is in the world as whole numbers, using the same
+    /// numbers the editor uses for entities and tiles.
+    /// </summary>
+    private void UpdatePositionText()
+    {
+        if (this.positionText == null)
+        {
+            return;
+        }
+
+        Vector3 position = this.transform.position;
+        int x = Mathf.FloorToInt(position.x);
+        int y = Mathf.FloorToInt(position.y);
+
+        // Rebuilding the sprite text every frame is wasteful, so only do it
+        // when the whole numbers actually change.
+        if (x == this.shownPositionX &&
+            y == this.shownPositionY)
+        {
+            return;
+        }
+
+        this.shownPositionX = x;
+        this.shownPositionY = y;
+
+        this.positionText.SetText($"({x},{y})");
     }
 
     private void ApplyInertia()
@@ -300,4 +334,4 @@ public class CameraController : MonoBehaviour
         float magnification = DefaultCameraSize / this.cam.orthographicSize;
         this.zoomText.SetText($"{magnification:F2}x");
     }
-}
+}

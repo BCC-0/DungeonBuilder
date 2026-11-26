@@ -12,7 +12,7 @@ public abstract class EnemyBody : HurtFlashEntity, IDamageable
 {
     private static List<EnemyBody> activeEnemies = new List<EnemyBody>();
 
-    [SaveField(priority: 10, displayName: "Name", description: "The name of this entity.")]
+    [SaveField(priority: 10, displayName: "Name", description: "The name of this enemy.")]
     private string displayName;
 
     /// <summary>
@@ -41,7 +41,7 @@ public abstract class EnemyBody : HurtFlashEntity, IDamageable
     /// The head that is attached to this body.
     /// </summary>
     [SerializeField]
-    [SaveField(referenceMode: ReferenceMode.Consuming, priority: 9)]
+    [SaveField(referenceMode: ReferenceMode.Consuming, priority: 9, description: "The head attached to this body. Each enemy needs a body and a head.")]
     private EnemyHead head;
 
     /// <summary>

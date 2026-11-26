@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -348,8 +348,7 @@ public class RuntimePositionField : MonoBehaviour
         }
         catch (EditException exception)
         {
-            Debug.LogWarning(
-                $"RuntimePositionField: {exception.Message}");
+            WarningManager.Warn(exception.Message);
 
             this.Refresh();
         }
@@ -412,8 +411,7 @@ public class RuntimePositionField : MonoBehaviour
         }
         catch (EditException exception)
         {
-            Debug.LogWarning(
-                $"RuntimePositionField: {exception.Message}");
+            WarningManager.Warn(exception.Message);
 
             this.Refresh();
         }
@@ -490,4 +488,4 @@ public class RuntimePositionField : MonoBehaviour
 
         return true;
     }
-}
+}
