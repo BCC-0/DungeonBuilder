@@ -630,7 +630,8 @@ public class TileSelectionManager : SelectionManagerBase
 
     /// <summary>
     /// Selects every tile whose cell falls within the dragged rectangle.
-    /// With Shift or Ctrl the box contents are added to the selection instead.
+    /// With Ctrl the box contents are toggled: tiles that were already selected
+    /// are dropped and the others are added. Shift only adds.
     /// </summary>
     /// <param name="rect">The world-space rectangle of the drag.</param>
     /// <param name="selectionMode">How the box contents combine with the current selection.</param>
@@ -667,9 +668,13 @@ public class TileSelectionManager : SelectionManagerBase
 
         if (selectionMode != SelectionMode.Replace)
         {
-            selected = this.AddToSelection(
-                MapEditorManager.Instance.SelectedTiles,
-                selected);
+            selected = selectionMode == SelectionMode.Toggle
+                ? this.ToggleInSelection(
+                    MapEditorManager.Instance.SelectedTiles,
+                    selected)
+                : this.AddToSelection(
+                    MapEditorManager.Instance.SelectedTiles,
+                    selected);
         }
 
         this.SetSelection(selected);

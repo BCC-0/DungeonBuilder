@@ -9,7 +9,7 @@ using UnityEngine.Rendering;
 /// consumes an <see cref="EnemyHead"/> that decides when and how it acts.
 /// </summary>
 [RequireComponent(typeof(SortingGroup))]
-public abstract class EnemyBody : SaveableEntity, IDamageable
+public abstract class EnemyBody : HurtFlashEntity, IDamageable
 {
     private static List<EnemyBody> activeEnemies = new List<EnemyBody>();
 

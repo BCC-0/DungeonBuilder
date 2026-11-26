@@ -14716,6 +14716,70 @@ MonoBehaviour:
         m_CallState: 2
     m_ActionId: 23c239c9-e09c-44ee-9188-c6fad6bc9dcc
     m_ActionName: 'Builder/PickTool[/Keyboard/i]'
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 2019441082}
+        m_TargetAssemblyTypeName: BuilderDesktopInputHandler, Assembly-CSharp
+        m_MethodName: OnCut
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: 0df547cc-46ff-475a-a85e-db7b1457b1a5
+    m_ActionName: 'Builder/Cut[/Keyboard/x]'
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 2019441082}
+        m_TargetAssemblyTypeName: BuilderDesktopInputHandler, Assembly-CSharp
+        m_MethodName: OnCopy
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: cf1e6412-bd8a-416c-8e49-6ebcfec4b45d
+    m_ActionName: 'Builder/Copy[/Keyboard/c]'
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 2019441082}
+        m_TargetAssemblyTypeName: BuilderDesktopInputHandler, Assembly-CSharp
+        m_MethodName: OnPaste
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: 2b1ded67-3609-42d2-b7fa-3e83b07d5133
+    m_ActionName: 'Builder/Paste[/Keyboard/v]'
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 2019441082}
+        m_TargetAssemblyTypeName: BuilderDesktopInputHandler, Assembly-CSharp
+        m_MethodName: OnShiftModifier
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: 8d49f6c9-ed36-44a6-8bb1-6bca1e457752
+    m_ActionName: 'Builder/Shift[/Keyboard/shift]'
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: Keyboard&Mouse
   m_DefaultActionMap: Builder
@@ -14752,7 +14816,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BuilderMobileInputHandler
   cam: {fileID: 47208768}
   cameraController: {fileID: 35717380}
-  holdThreshold: 0.2
+  holdThreshold: 0.4
   mobileZoomSpeed: 0.2
   doubleTapWindow: 0.3
   ripplePrefab: {fileID: 1892960647589689741, guid: 51dd3f7d8c055874f8c7e169f28ed26a, type: 3}
@@ -16291,8 +16355,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SaveableTilemap
   uniqueID: Tilemap
   spriteRenderer: {fileID: 0}
-  hurtColor: {r: 1, g: 0, b: 0, a: 1}
-  hurtFlashDuration: 0.15
   tilemap: {fileID: 7453032813957364448}
 --- !u!483693784 &1478311151914156580
 TilemapRenderer:

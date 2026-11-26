@@ -8,7 +8,7 @@ using UnityEngine.UI;
 /// Contains all player-related stats and inventory data.
 /// Handles equipped items, health, and inventory management.
 /// </summary>
-public class CrawlerPlayerData : SaveableEntity
+public class CrawlerPlayerData : HurtFlashEntity
 {
     [Header("Player Attributes")]
     [SerializeField]

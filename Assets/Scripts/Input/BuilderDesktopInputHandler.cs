@@ -30,6 +30,9 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     private bool command;
     private bool shift;
 
+    private InputAction commandAction;
+    private InputAction shiftAction;
+
     private EditorControllerBase ActiveController => MapEditorManager.Instance.ActiveController;
 
     /// <summary>
@@ -89,6 +92,7 @@ public class BuilderDesktopInputHandler : MonoBehaviour
 
         if (ctx.started)
         {
+            this.ClearInputFocus();
             this.isPrimaryHeld = true;
             this.primarySelectionMode = this.GetSelectionMode();
             this.isDragClickPending = this.ToolSelectsOnClick();
@@ -485,6 +489,8 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     /// <param name="ctx">The input context.</param>
     public void OnCommand(InputAction.CallbackContext ctx)
     {
+        this.commandAction = ctx.action;
+
         // The modifier is tracked even while typing, so a release inside a text
         // field cannot leave the shortcut state stuck.
         if (ctx.started)
@@ -503,6 +509,8 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     /// <param name="ctx">The input context.</param>
     public void OnShiftModifier(InputAction.CallbackContext ctx)
     {
+        this.shiftAction = ctx.action;
+
         if (ctx.started)
         {
             this.shift = true;
@@ -548,7 +556,7 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     }
 
     /// <summary>
-    /// Ctrl + Y should undo.
+    /// Ctrl + Y should redo.
     /// </summary>
     /// <param name="ctx">The input context.</param>
     public void OnRedo(InputAction.CallbackContext ctx)
@@ -564,46 +572,76 @@ public class BuilderDesktopInputHandler : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Ctrl + C copies the current selection to the clipboard.
+    /// </summary>
+    /// <param name="ctx">The input context.</param>
+    public void OnCopy(InputAction.CallbackContext ctx)
+    {
+        if (!this.CanUseClipboardShortcut(ctx))
+        {
+            return;
+        }
+
+        MapEditorManager.Instance.OnCopySelection();
+    }
+
+    /// <summary>
+    /// Ctrl + X cuts the current selection to the clipboard.
+    /// </summary>
+    /// <param name="ctx">The input context.</param>
+    public void OnCut(InputAction.CallbackContext ctx)
+    {
+        if (!this.CanUseClipboardShortcut(ctx))
+        {
+            return;
+        }
+
+        MapEditorManager.Instance.OnCutSelection();
+    }
+
+    /// <summary>
+    /// Ctrl + V pastes the clipboard at the pointer and starts moving the copies.
+    /// </summary>
+    /// <param name="ctx">The input context.</param>
+    public void OnPaste(InputAction.CallbackContext ctx)
+    {
+        if (!this.CanUseClipboardShortcut(ctx))
+        {
+            return;
+        }
+
+        MapEditorManager.Instance.OnPasteSelection();
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether a clipboard shortcut may run. Moving or
+    /// resizing the selection owns the clipboard, so those block the shortcut.
+    /// </summary>
+    /// <param name="ctx">The input context.</param>
+    /// <returns>True when the shortcut should run.</returns>
+    private bool CanUseClipboardShortcut(InputAction.CallbackContext ctx)
+    {
+        return ctx.started &&
+            !this.IsTyping() &&
+            this.IsCommandHeld() &&
+            !MapEditorManager.Instance.IsMovingSelection &&
+            !MapEditorManager.Instance.IsResizingSelection &&
+            !MapEditorManager.Instance.IsBusy;
+    }
+
     private void Update()
     {
+        this.SyncModifiers();
+
         if (this.IsTyping())
         {
             this.CancelCameraInput();
             return;
         }
 
-        this.HandleClipboardShortcuts();
         this.HandleMouseMovement();
         this.HandleCameraPan();
-    }
-
-    /// <summary>
-    /// Polls the clipboard shortcuts (Ctrl + C, Ctrl + X, Ctrl + V). They are read
-    /// straight from the keyboard so no input action or asset change is needed.
-    /// </summary>
-    private void HandleClipboardShortcuts()
-    {
-        if (Keyboard.current == null ||
-            !this.IsCommandHeld() ||
-            MapEditorManager.Instance.IsMovingSelection ||
-            MapEditorManager.Instance.IsResizingSelection ||
-            MapEditorManager.Instance.IsBusy)
-        {
-            return;
-        }
-
-        if (Keyboard.current[Key.C].wasPressedThisFrame)
-        {
-            MapEditorManager.Instance.OnCopySelection();
-        }
-        else if (Keyboard.current[Key.X].wasPressedThisFrame)
-        {
-            MapEditorManager.Instance.OnCutSelection();
-        }
-        else if (Keyboard.current[Key.V].wasPressedThisFrame)
-        {
-            MapEditorManager.Instance.OnPasteSelection();
-        }
     }
 
     private void HandleMouseMovement()
@@ -771,5 +809,49 @@ public class BuilderDesktopInputHandler : MonoBehaviour
     {
         this.command = false;
         this.shift = false;
+    }
+
+    /// <summary>
+    /// Reads the modifier actions every frame so a press or release event that was
+    /// missed, for example while the window had no focus, cannot leave Ctrl or
+    /// Shift stuck. The keyboard itself is not polled, only these two actions.
+    /// </summary>
+    private void SyncModifiers()
+    {
+        this.command = this.IsActionPressed(this.commandAction);
+        this.shift = this.IsActionPressed(this.shiftAction);
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether an action is currently actuated.
+    /// </summary>
+    /// <param name="action">The action to check.</param>
+    /// <returns>True while the action is pressed.</returns>
+    private bool IsActionPressed(InputAction action)
+    {
+        if (action == null)
+        {
+            return false;
+        }
+
+        InputActionPhase phase = action.phase;
+
+        return phase == InputActionPhase.Started ||
+            phase == InputActionPhase.Performed;
+    }
+
+    /// <summary>
+    /// Drops keyboard focus from a text field when the world is pressed. A field
+    /// that kept focus after an earlier click would otherwise keep undo, redo and
+    /// the clipboard shortcuts blocked for as long as it stays selected.
+    /// </summary>
+    private void ClearInputFocus()
+    {
+        if (!this.IsTyping() || EventSystem.current == null)
+        {
+            return;
+        }
+
+        EventSystem.current.SetSelectedGameObject(null);
     }
 }

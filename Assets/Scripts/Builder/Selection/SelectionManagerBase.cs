@@ -838,6 +838,30 @@ public abstract class SelectionManagerBase : MonoBehaviour
     }
 
     /// <summary>
+    /// Toggles items in an additive selection: every picked item that was selected
+    /// is removed and the others are added. Adding never grows past
+    /// <see cref="MaxSelectedCells"/>.
+    /// </summary>
+    /// <typeparam name="T">The type of the selected items.</typeparam>
+    /// <param name="current">The items selected before.</param>
+    /// <param name="picked">The items to toggle.</param>
+    /// <returns>The selection to apply.</returns>
+    protected List<T> ToggleInSelection<T>(List<T> current, IEnumerable<T> picked)
+    {
+        List<T> result = current != null ? new List<T>(current) : new List<T>();
+
+        foreach (T item in picked)
+        {
+            if (!result.Remove(item) && result.Count < this.MaxSelectedCells)
+            {
+                result.Add(item);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Toggles one item in an additive selection: it is added when it was not
     /// selected and removed when it was. Adding never grows past
     /// <see cref="MaxSelectedCells"/>.
@@ -848,14 +872,7 @@ public abstract class SelectionManagerBase : MonoBehaviour
     /// <returns>The selection to apply.</returns>
     protected List<T> ToggleInSelection<T>(List<T> current, T item)
     {
-        List<T> result = current != null ? new List<T>(current) : new List<T>();
-
-        if (!result.Remove(item) && result.Count < this.MaxSelectedCells)
-        {
-            result.Add(item);
-        }
-
-        return result;
+        return this.ToggleInSelection(current, new List<T> { item });
     }
 
     /// <summary>
