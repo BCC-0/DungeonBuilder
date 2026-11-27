@@ -17,6 +17,17 @@ public class RuntimePropertyField : MonoBehaviour
     /// </summary>
     private const string MixedValuePlaceholder = "-";
 
+    /// <summary>
+    /// Font size of a label that fits on one line.
+    /// </summary>
+    private const float LabelFontSize = 27f;
+
+    /// <summary>
+    /// Font size of a label that is too wide for one line. Both sizes are a
+    /// multiple of 9 so the pixel font stays consistent.
+    /// </summary>
+    private const float SmallLabelFontSize = 18f;
+
     [SerializeField]
     private SpriteFontText label;
     [SerializeField]
@@ -94,6 +105,7 @@ public class RuntimePropertyField : MonoBehaviour
         if (this.label != null)
         {
             this.label.SetText(displayName);
+            this.label.FitOnOneLine(LabelFontSize, SmallLabelFontSize);
 
             HoverInfoTarget.Attach(
                 this.label.gameObject,
@@ -144,6 +156,7 @@ public class RuntimePropertyField : MonoBehaviour
         if (this.label != null)
         {
             this.label.SetText(displayName);
+            this.label.FitOnOneLine(LabelFontSize, SmallLabelFontSize);
 
             HoverInfoTarget.Attach(
                 this.label.gameObject,
@@ -1349,7 +1362,8 @@ public class RuntimePropertyField : MonoBehaviour
     /// <summary>
     /// Applies a number typed into the slider's input field. The value is only
     /// applied when it parses for the field type and lies inside the allowed
-    /// range, otherwise the slider and input show the real value again.
+    /// range, otherwise a warning is shown and the slider and input show the
+    /// real value again.
     /// </summary>
     /// <param name="value">The text typed into the slider's input field.</param>
     private void OnSliderInputChanged(string value)
@@ -1359,11 +1373,7 @@ public class RuntimePropertyField : MonoBehaviour
             return;
         }
 
-        if (!this.TryConvert(
-                value,
-                this.field.FieldType,
-                out object converted) ||
-            !this.TryGetRange(
+        if (!this.TryGetRange(
                 out float min,
                 out float max))
         {
@@ -1371,18 +1381,46 @@ public class RuntimePropertyField : MonoBehaviour
             return;
         }
 
+        if (!this.TryConvert(
+                value,
+                this.field.FieldType,
+                out object converted))
+        {
+            this.WarnSliderValue(min, max);
+            this.RefreshSlider();
+            return;
+        }
+
         float numericValue =
             Convert.ToSingle(converted);
 
-        if (numericValue < min ||
+        if (float.IsNaN(numericValue) ||
+            float.IsInfinity(numericValue) ||
+            numericValue < min ||
             numericValue > max)
         {
+            this.WarnSliderValue(min, max);
             this.RefreshSlider();
             return;
         }
 
         this.ApplyValue(converted);
         this.RefreshSlider();
+    }
+
+    /// <summary>
+    /// Warns that a typed slider value is not allowed, naming the range.
+    /// </summary>
+    /// <param name="min">The lowest allowed value.</param>
+    /// <param name="max">The highest allowed value.</param>
+    private void WarnSliderValue(float min, float max)
+    {
+        string kind = this.field.FieldType == typeof(int)
+            ? "whole number"
+            : "number";
+
+        WarningManager.Warn(
+            $"Slider value must be a {kind} between {FormatNumber(min)} and {FormatNumber(max)}.");
     }
 
     private void OnToggleChanged(bool value)

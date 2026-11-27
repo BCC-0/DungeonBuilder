@@ -1,4 +1,5 @@
 ﻿using DG.Tweening;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -26,6 +27,8 @@ public class CameraController : MonoBehaviour
     [SerializeField]
     private SpriteFontText positionText;
     [SerializeField]
+    private TMP_InputField positionInput;
+    [SerializeField]
     private float inertiaDamping = 6f;
     [SerializeField]
     private float inertiaThreshold = 0.01f;
@@ -50,6 +53,23 @@ public class CameraController : MonoBehaviour
     /// Gets a value indicating whether the camera is currently panning.
     /// </summary>
     public bool IsPanning { get => this.isPanning; private set => this.isPanning = value; }
+
+    /// <summary>
+    /// Gets the input field that shows and sets the camera position.
+    /// </summary>
+    private TMP_InputField PositionInput
+    {
+        get
+        {
+            if (this.positionInput == null &&
+                this.positionText != null)
+            {
+                this.positionInput = this.positionText.GetComponent<TMP_InputField>();
+            }
+
+            return this.positionInput;
+        }
+    }
 
     /// <summary>
     /// Called by the Pan action in the InputAction map.
@@ -214,6 +234,7 @@ public class CameraController : MonoBehaviour
     {
         this.zoomSlider.value = this.MapCameraSizeToSlider(this.cam.orthographicSize);
         this.UpdateZoomText();
+        this.RegisterPositionInput();
     }
 
     private float MapSliderToCameraSize(float sliderValue)
@@ -256,7 +277,17 @@ public class CameraController : MonoBehaviour
     /// </summary>
     private void UpdatePositionText()
     {
-        if (this.positionText == null)
+        TMP_InputField input = this.PositionInput;
+
+        if (this.positionText == null &&
+            input == null)
+        {
+            return;
+        }
+
+        // While the field is being edited the player's text must stay as it is.
+        if (input != null &&
+            input.isFocused)
         {
             return;
         }
@@ -276,7 +307,110 @@ public class CameraController : MonoBehaviour
         this.shownPositionX = x;
         this.shownPositionY = y;
 
-        this.positionText.SetText($"({x},{y})");
+        string text = $"{x},{y}";
+
+        if (input != null)
+        {
+            input.SetTextWithoutNotify(text);
+        }
+
+        if (this.positionText != null)
+        {
+            this.positionText.SetText(text);
+        }
+    }
+
+    /// <summary>
+    /// Starts listening for a typed camera position.
+    /// </summary>
+    private void RegisterPositionInput()
+    {
+        TMP_InputField input = this.PositionInput;
+
+        if (input == null)
+        {
+            return;
+        }
+
+        input.onEndEdit.RemoveListener(this.OnPositionInputEndEdit);
+        input.onEndEdit.AddListener(this.OnPositionInputEndEdit);
+    }
+
+    /// <summary>
+    /// Moves the camera to the typed position. Warns when the text does not
+    /// contain whole numbers.
+    /// </summary>
+    /// <param name="value">The text of the input field.</param>
+    private void OnPositionInputEndEdit(string value)
+    {
+        if (!this.TryParsePosition(value, out Vector2Int gridPosition))
+        {
+            WarningManager.Warn("Camera position must be two whole numbers, like 3,4.");
+
+            // Show the real camera position again instead of the bad text.
+            this.shownPositionX = int.MinValue;
+            this.shownPositionY = int.MinValue;
+            return;
+        }
+
+        this.CancelMovement();
+
+        if (this.navigationTween != null &&
+            this.navigationTween.IsActive())
+        {
+            this.navigationTween.Kill();
+        }
+
+        this.transform.position = new Vector3(
+            gridPosition.x,
+            gridPosition.y,
+            this.transform.position.z);
+
+        // Rewrite the field in the standard format, e.g. after "3, 4".
+        this.shownPositionX = int.MinValue;
+        this.shownPositionY = int.MinValue;
+    }
+
+    /// <summary>
+    /// Reads a position like "3,4" or "(3,4)". Both values must be whole
+    /// numbers.
+    /// </summary>
+    /// <param name="value">The text to read.</param>
+    /// <param name="gridPosition">The position when the text is valid.</param>
+    /// <returns>True when the text contains a whole number for X and Y.</returns>
+    private bool TryParsePosition(string value, out Vector2Int gridPosition)
+    {
+        gridPosition = Vector2Int.zero;
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        string text = value.Trim();
+
+        if (text.StartsWith("(") &&
+            text.EndsWith(")"))
+        {
+            text = text.Substring(1, text.Length - 2);
+        }
+
+        string[] parts = text.Split(',');
+
+        if (parts.Length != 2)
+        {
+            return false;
+        }
+
+        if (!int.TryParse(parts[0].Trim(), out int x) ||
+            !int.TryParse(parts[1].Trim(), out int y))
+        {
+            return false;
+        }
+
+        gridPosition = new Vector2Int(x, y);
+
+        return true;
     }
 
     private void ApplyInertia()
