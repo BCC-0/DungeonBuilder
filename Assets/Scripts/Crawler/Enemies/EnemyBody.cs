@@ -8,7 +8,7 @@ using UnityEngine.Rendering;
 /// consumes an <see cref="EnemyHead"/> that decides when and how it acts.
 /// </summary>
 [RequireComponent(typeof(SortingGroup))]
-public abstract class EnemyBody : HurtFlashEntity, IDamageable
+public abstract class EnemyBody : StatusEffectEntity, IDamageable
 {
     private static List<EnemyBody> activeEnemies = new List<EnemyBody>();
 
@@ -88,6 +88,8 @@ public abstract class EnemyBody : HurtFlashEntity, IDamageable
 
     private EntityWorldUI entityWorldUI;
 
+    private Transform redirectedPlayerTarget;
+
     private float bobTime;
 
     private int currentHealth;
@@ -139,7 +141,7 @@ public abstract class EnemyBody : HurtFlashEntity, IDamageable
     /// <summary>
     /// Gets the team of this enemy.
     /// </summary>
-    public Team Team => Team.Enemy;
+    public override Team Team => Team.Enemy;
 
     /// <summary>
     /// Gets or sets the multiplier applied to all damage this enemy deals.
@@ -147,7 +149,9 @@ public abstract class EnemyBody : HurtFlashEntity, IDamageable
     /// </summary>
     public float DamageMultiplier
     {
-        get => this.damageMultiplier;
+        get => this.damageMultiplier * (this.StatusEffects != null
+            ? this.StatusEffects.DamageDealtMultiplier
+            : 1f);
         set => this.damageMultiplier = Mathf.Max(0f, value);
     }
 
@@ -157,21 +161,61 @@ public abstract class EnemyBody : HurtFlashEntity, IDamageable
     public bool CanReceiveKnockback => this.canReceiveKnockback;
 
     /// <summary>
-    /// Gets the transform of the player, or null when there is no player.
+    /// Gets the transform the enemy should react to. Usually the player, or
+    /// null when there is no player. Status effects can move it to another
+    /// position, so every enemy reacts to fear and confusion without extra
+    /// code of its own.
     /// </summary>
     public Transform PlayerTransform
     {
         get
         {
             CrawlerPlayerData currentPlayer = this.Player;
-            return currentPlayer != null ? currentPlayer.transform : null;
+
+            if (currentPlayer == null)
+            {
+                return null;
+            }
+
+            if (this.StatusEffects == null ||
+                !this.StatusEffects.ChangesTargetPosition)
+            {
+                return currentPlayer.transform;
+            }
+
+            Vector3 targetPosition = currentPlayer.transform.position;
+            float radius = Mathf.Clamp(this.detectionRange * 0.5f, 1f, 4f);
+
+            if (this.StatusEffects.FleesFromAttacker)
+            {
+                Vector2 awayFromPlayer = this.Origin - (Vector2)targetPosition;
+
+                if (awayFromPlayer.sqrMagnitude < 0.01f)
+                {
+                    awayFromPlayer = Vector2.right;
+                }
+
+                targetPosition += (Vector3)(awayFromPlayer.normalized * radius);
+            }
+
+            if (this.StatusEffects.ConfusesMovement)
+            {
+                targetPosition += Quaternion.Euler(0f, 0f, Time.time * 90f) *
+                    (Vector3.right * radius);
+            }
+
+            this.RedirectedPlayerTarget.position = targetPosition;
+
+            return this.RedirectedPlayerTarget;
         }
     }
 
     /// <summary>
     /// Gets the distance within which this enemy detects the player.
     /// </summary>
-    public float DetectionRange => this.detectionRange;
+    public float DetectionRange => this.StatusEffects != null
+        ? this.detectionRange * this.StatusEffects.VisionMultiplier
+        : this.detectionRange;
 
     /// <summary>
     /// Gets a value indicating whether the player is within the detection
@@ -186,6 +230,11 @@ public abstract class EnemyBody : HurtFlashEntity, IDamageable
             if (playerTransform == null)
             {
                 return false;
+            }
+
+            if (this.StatusEffects != null && this.StatusEffects.RevealsTarget)
+            {
+                return true;
             }
 
             Vector2 position = this.Rb != null
@@ -216,9 +265,26 @@ public abstract class EnemyBody : HurtFlashEntity, IDamageable
     }
 
     /// <summary>
-    /// Gets the movement speed.
+    /// Gets the movement speed, including status effect multipliers. It is
+    /// zero while a status effect prevents movement.
     /// </summary>
-    protected float MoveSpeed => this.moveSpeed;
+    protected float MoveSpeed
+    {
+        get
+        {
+            if (this.StatusEffects == null)
+            {
+                return this.moveSpeed;
+            }
+
+            if (this.StatusEffects.PreventsMovement)
+            {
+                return 0f;
+            }
+
+            return this.moveSpeed * this.StatusEffects.MoveSpeedMultiplier;
+        }
+    }
 
     /// <summary>
     /// Gets the maximum health.
@@ -268,6 +334,26 @@ public abstract class EnemyBody : HurtFlashEntity, IDamageable
     protected Vector2 Origin => this.transform.position;
 
     /// <summary>
+    /// Gets a hidden transform used as the player position while a status
+    /// effect redirects this enemy.
+    /// </summary>
+    private Transform RedirectedPlayerTarget
+    {
+        get
+        {
+            if (this.redirectedPlayerTarget == null)
+            {
+                this.redirectedPlayerTarget =
+                    new GameObject("RedirectedPlayerTarget").transform;
+
+                this.redirectedPlayerTarget.hideFlags = HideFlags.HideAndDontSave;
+            }
+
+            return this.redirectedPlayerTarget;
+        }
+    }
+
+    /// <summary>
     /// Damages this enemy. The body and head can change or block the damage
     /// first, and react to being hit.
     /// </summary>
@@ -280,6 +366,14 @@ public abstract class EnemyBody : HurtFlashEntity, IDamageable
         {
             this.head.OnDamageReceived(ref damage);
         }
+
+        if (this.StatusEffects != null)
+        {
+            damage = damage.WithAmount(
+                damage.Amount * this.StatusEffects.DamageTakenMultiplier);
+        }
+
+        this.ProcessIncomingDamage(damage);
 
         if (damage.Amount <= 0)
         {
@@ -301,6 +395,36 @@ public abstract class EnemyBody : HurtFlashEntity, IDamageable
         {
             this.ApplyKnockback(damage.Direction, damage.Knockback);
         }
+
+        if (this.currentHealth == 0)
+        {
+            this.Die();
+        }
+    }
+
+    /// <summary>
+    /// Applies damage that comes from a status effect, such as poison, or from
+    /// reflected damage. It does not go through the damage multipliers, so
+    /// effects can never feed into each other.
+    /// </summary>
+    /// <param name="amount">The amount of damage.</param>
+    public override void ApplyStatusDamage(float amount)
+    {
+        if (amount <= 0f || !this.ExistsInWorld)
+        {
+            return;
+        }
+
+        this.currentHealth = Mathf.Max(
+            this.currentHealth - Mathf.RoundToInt(amount),
+            0);
+
+        this.entityWorldUI?.UpdateUI(
+            this.DisplayName,
+            this.currentHealth,
+            this.maxHealth);
+
+        this.FlashHurtEffect();
 
         if (this.currentHealth == 0)
         {
@@ -411,7 +535,7 @@ public abstract class EnemyBody : HurtFlashEntity, IDamageable
         // The loading overlay outlives scene changes and carries its own canvas on
         // top of everything, so searching for any canvas can put this UI inside it,
         // where it only shows while the overlay does.
-        Canvas canvas = this.FindWorldUICanvas();
+        Canvas canvas = EntityWorldUI.FindWorldUICanvas(this.gameObject);
         Camera camera = FindAnyObjectByType<Camera>();
 
         if (canvas == null || camera == null)
@@ -434,33 +558,8 @@ public abstract class EnemyBody : HurtFlashEntity, IDamageable
             this.DisplayName,
             this.currentHealth,
             this.maxHealth);
-    }
 
-    /// <summary>
-    /// Finds a canvas that belongs to the scene this enemy lives in, so the world
-    /// UI is not parented to a canvas of another scene, such as the loading
-    /// overlay that survives a scene change.
-    /// </summary>
-    /// <returns>The canvas to parent the world UI to, or null when there is none.</returns>
-    private Canvas FindWorldUICanvas()
-    {
-        Canvas fallback = null;
-
-        foreach (Canvas candidate in FindObjectsByType<Canvas>(FindObjectsInactive.Exclude))
-        {
-            if (candidate.gameObject.scene == this.gameObject.scene)
-            {
-                return candidate;
-            }
-
-            if (fallback == null &&
-                candidate.GetComponentInParent<BuilderLoadingOverlay>() == null)
-            {
-                fallback = candidate;
-            }
-        }
-
-        return fallback;
+        this.WorldUI = this.entityWorldUI;
     }
 
     /// <summary>
@@ -576,6 +675,11 @@ public abstract class EnemyBody : HurtFlashEntity, IDamageable
     private void OnDestroy()
     {
         this.entityWorldUI?.Destroy();
+
+        if (this.redirectedPlayerTarget != null)
+        {
+            Destroy(this.redirectedPlayerTarget.gameObject);
+        }
     }
 
     /// <summary>

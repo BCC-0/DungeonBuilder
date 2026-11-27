@@ -8,7 +8,7 @@ using UnityEngine.UI;
 /// Contains all player-related stats and inventory data.
 /// Handles equipped items, health, and inventory management.
 /// </summary>
-public class CrawlerPlayerData : HurtFlashEntity
+public class CrawlerPlayerData : StatusEffectEntity
 {
     [Header("Player Attributes")]
     [SerializeField]
@@ -68,9 +68,26 @@ public class CrawlerPlayerData : HurtFlashEntity
     public int CurrentHealth => this.currentHealth;
 
     /// <summary>
-    /// Gets the player's move speed.
+    /// Gets the player's move speed, including status effect multipliers. It
+    /// is zero while a status effect prevents movement.
     /// </summary>
-    public float MoveSpeed => this.moveSpeed;
+    public float MoveSpeed
+    {
+        get
+        {
+            if (this.StatusEffects == null)
+            {
+                return this.moveSpeed;
+            }
+
+            if (this.StatusEffects.PreventsMovement)
+            {
+                return 0f;
+            }
+
+            return this.moveSpeed * this.StatusEffects.MoveSpeedMultiplier;
+        }
+    }
 
     /// <summary>
     /// Gets the player's inventory.
@@ -96,6 +113,11 @@ public class CrawlerPlayerData : HurtFlashEntity
     /// Gets the last use time.
     /// </summary>
     public float LastUseTime => this.lastUseTime;
+
+    /// <summary>
+    /// Gets the team of the player. Reflected damage is dealt with it.
+    /// </summary>
+    public override Team Team => Team.Player;
 
     /// <summary>
     /// Heals the player.
@@ -130,6 +152,34 @@ public class CrawlerPlayerData : HurtFlashEntity
         this.SetHealthSlider();
         this.FlashHurtEffect();
         return this.currentHealth;
+    }
+
+    /// <summary>
+    /// Applies damage that comes from a status effect, such as poison, or from
+    /// reflected damage. It does not go through the damage multipliers, so
+    /// effects can never feed into each other.
+    /// </summary>
+    /// <param name="amount">The amount of damage.</param>
+    public override void ApplyStatusDamage(float amount)
+    {
+        if (amount <= 0f)
+        {
+            return;
+        }
+
+        int health = this.TakeDamage(Mathf.Max(1, Mathf.RoundToInt(amount)));
+
+        if (health > 0)
+        {
+            return;
+        }
+
+        CrawlerPlayerHandler handler = this.GetComponent<CrawlerPlayerHandler>();
+
+        if (handler != null)
+        {
+            handler.Die();
+        }
     }
 
     /// <summary>

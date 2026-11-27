@@ -92,7 +92,16 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
     [SerializeField]
     private float deathSpriteFadeDuration = 1f;
 
+    [Header("Status Effects")]
+    [SerializeField]
+    private GameObject statusEffectUIPrefab;
+
+    [SerializeField]
+    private Vector2 statusEffectUIOffset = new Vector2(0f, 1.5f);
+
     private bool isDead;
+
+    private EntityWorldUI statusWorldUI;
 
     /// <summary>
     /// Gets the last direction this player was facing.
@@ -102,12 +111,23 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
     /// <summary>
     /// Gets a value indicating whether the player can currently move.
     /// </summary>
-    public bool CanMove => this.movementLockCount <= 0;
+    public bool CanMove =>
+        this.movementLockCount <= 0 &&
+        (this.playerData == null || !this.playerData.StatusEffects.PreventsMovement);
 
     /// <summary>
     /// Gets the team of the player.
     /// </summary>
     public Team Team => Team.Player;
+
+    /// <summary>
+    /// Gets the multiplier on the damage this player deals, including status
+    /// effects such as strength.
+    /// </summary>
+    public float DamageMultiplier =>
+        this.playerData != null && this.playerData.StatusEffects != null
+            ? this.playerData.StatusEffects.DamageDealtMultiplier
+            : 1f;
 
     /// <summary>
     /// Applies damage to the player if the attacking team is allowed to
@@ -121,7 +141,12 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
             return;
         }
 
-        this.playerData.TakeDamage(Mathf.RoundToInt(info.Amount));
+        DamageInfo scaled = info.WithAmount(
+            info.Amount * this.playerData.StatusEffects.DamageTakenMultiplier);
+
+        this.playerData.ProcessIncomingDamage(scaled);
+
+        this.playerData.TakeDamage(Mathf.RoundToInt(scaled.Amount));
 
         if (info.Knockback > 0f)
         {
@@ -156,6 +181,14 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
     /// <param name="move">The movement direction.</param>
     public void SetMovement(Vector2 move)
     {
+        if (this.playerData != null &&
+            this.playerData.StatusEffects != null &&
+            this.playerData.StatusEffects.ConfusesMovement)
+        {
+            // Confusion turns the movement of the player ninety degrees.
+            move = new Vector2(move.y, -move.x);
+        }
+
         this.movementDirection = move.normalized;
     }
 
@@ -175,7 +208,9 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
     /// </summary>
     public void Attack()
     {
-        if (this.CanMove && !this.isDead)
+        if (this.CanMove &&
+            !this.isDead &&
+            !this.playerData.StatusEffects.PreventsAttack)
         {
             this.playerData.UseWeapon(this);
         }
@@ -186,7 +221,9 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
     /// </summary>
     public void UseTool()
     {
-        if (this.CanMove && !this.isDead)
+        if (this.CanMove &&
+            !this.isDead &&
+            !this.playerData.StatusEffects.PreventsItemUse)
         {
             this.playerData.UseTool(this);
         }
@@ -291,6 +328,14 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
         }
 
         this.isDead = true;
+
+        this.playerData.StatusEffects?.ClearAll();
+
+        if (this.statusWorldUI != null)
+        {
+            this.statusWorldUI.Destroy();
+            this.statusWorldUI = null;
+        }
 
         this.SetCanMove(false);
         this.movementDirection = Vector2.zero;
@@ -628,6 +673,37 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
         this.rigidbody2d.linearVelocity = Vector2.zero;
     }
 
+    private void CreateStatusEffectUI()
+    {
+        if (this.statusEffectUIPrefab == null)
+        {
+            return;
+        }
+
+        Canvas canvas = EntityWorldUI.FindWorldUICanvas(this.gameObject);
+        Camera worldCamera = this.playerCamera != null
+            ? this.playerCamera
+            : FindAnyObjectByType<Camera>();
+
+        if (canvas == null || worldCamera == null)
+        {
+            Debug.LogWarning(
+                "Could not initialize the player status effect UI: Canvas or Camera not found.",
+                this);
+
+            return;
+        }
+
+        this.statusWorldUI = new EntityWorldUI(
+            this.statusEffectUIPrefab,
+            canvas,
+            worldCamera,
+            this.statusEffectUIOffset,
+            includeVitals: false);
+
+        this.playerData.WorldUI = this.statusWorldUI;
+    }
+
     private void Start()
     {
         this.rigidbody2d = this.GetComponent<Rigidbody2D>();
@@ -648,11 +724,23 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
         this.deathCanvasGroup.interactable = false;
         this.deathCanvasGroup.blocksRaycasts = false;
         this.deathCanvasGroup.gameObject.SetActive(false);
+
+        this.CreateStatusEffectUI();
     }
 
     private void Update()
     {
         this.UpdateAnimator();
+    }
+
+    private void LateUpdate()
+    {
+        this.statusWorldUI?.UpdateUIPosition(this.transform.position);
+    }
+
+    private void OnDestroy()
+    {
+        this.statusWorldUI?.Destroy();
     }
 
     private void FixedUpdate()
@@ -686,7 +774,18 @@ public class CrawlerPlayerHandler : MonoBehaviour, IDamageable, IKnockbackable
             }
 
             // TODO: Add get item animation!
-            this.playerData.AddToInventory(itemObject.TakeItem());
+            Item item = itemObject.TakeItem();
+
+            if (item is ConsumableItem consumable)
+            {
+                consumable.Use(this, this.playerData);
+                Destroy(item);
+            }
+            else
+            {
+                this.playerData.AddToInventory(item);
+            }
+
             Destroy(gameObject);
         }
     }

@@ -26,6 +26,10 @@ public class DamageSource : MonoBehaviour
     [Min(0f)]
     private float knockback;
 
+    [Header("Status Effects")]
+    [SerializeField]
+    private StatusEffectApplication[] effects;
+
     /// <summary>
     /// Gets or sets the damage dealt per hit.
     /// </summary>
@@ -112,7 +116,8 @@ public class DamageSource : MonoBehaviour
             this.team,
             this.melee,
             this,
-            this.knockback));
+            this.knockback,
+            this.effects));
 
         this.nextHitTime[target] = Time.time + this.repeatInterval;
     }

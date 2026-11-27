@@ -52,7 +52,7 @@ public class MeleeWeapon : Weapon
     {
         if (this.hitbox != null)
         {
-            this.hitbox.Activate(this.CreateDamage(direction), this.activeDuration);
+            this.hitbox.Activate(this.CreateDamage(direction, playerHandler), this.activeDuration);
         }
         else
         {

@@ -166,6 +166,12 @@ public class ChickenHead : EnemyHead
 
     private void TryAttack()
     {
+        if (this.Body != null && this.Body.StatusEffects.PreventsAttack)
+        {
+            this.nextAttackTime = Time.time + 0.5f;
+            return;
+        }
+
         Transform player = this.Body != null
             ? this.Body.PlayerTransform
             : null;
@@ -286,7 +292,7 @@ public class ChickenHead : EnemyHead
             minMultiplier,
             maxMultiplier);
 
-        this.nextAttackTime = Time.time + randomInterval;
+        this.nextAttackTime = Time.time + this.ScaleAttackInterval(randomInterval);
     }
 
     private void ShootEgg(Vector2 direction)

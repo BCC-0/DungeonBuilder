@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+using System.Collections.Generic;
+using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
@@ -12,14 +13,20 @@ public class EntityWorldUI
 
     private readonly SpriteFontText nameText;
     private readonly Slider healthSlider;
+    private readonly bool showVitals;
+    private readonly List<Image> statusIcons = new List<Image>();
 
     private readonly Vector3 offset;
+
+    private Transform statusContainer;
+    private GameObject statusIconTemplate;
 
     private string displayName;
     private float? currentHealth;
     private float? maxHealth;
 
     private bool isBehindCamera;
+    private int statusEffectCount;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EntityWorldUI"/> class.
@@ -29,22 +36,43 @@ public class EntityWorldUI
     /// <param name="worldCamera">The main camera.</param>
     /// <param name="offset">By how much the UI should be offset.</param>
     /// <param name="parent">The parent of the UI prefab.</param>
+    /// <param name="includeVitals">
+    /// Whether the name and health of the entity are shown. False turns this
+    /// UI into a status effect display only.
+    /// </param>
     public EntityWorldUI(
         GameObject prefab,
         Canvas canvas,
         Camera worldCamera,
         Vector3 offset,
-        Transform parent = null)
+        Transform parent = null,
+        bool includeVitals = true)
     {
         this.canvas = canvas;
         this.worldCamera = worldCamera;
         this.offset = offset;
+        this.showVitals = includeVitals;
 
         GameObject instance = Object.Instantiate(
             prefab,
             parent != null ? parent : canvas.transform);
 
         this.uiTransform = instance.GetComponent<RectTransform>();
+
+        Transform statusRoot = instance.transform.Find("StatusEffects");
+
+        if (statusRoot != null)
+        {
+            this.statusContainer = statusRoot;
+
+            Transform iconTemplate = statusRoot.Find("StatusIcon");
+
+            if (iconTemplate != null)
+            {
+                this.statusIconTemplate = iconTemplate.gameObject;
+                this.statusIconTemplate.SetActive(false);
+            }
+        }
 
         this.nameText = instance.transform
             .Find("DisplayName")
@@ -64,12 +92,51 @@ public class EntityWorldUI
     public static bool IsEnabled { get; private set; } = true;
 
     /// <summary>
+    /// Gets a value indicating whether the UI has anything to show.
+    /// </summary>
+    private bool HasContent =>
+        this.statusEffectCount > 0 ||
+        (this.showVitals &&
+            (!string.IsNullOrEmpty(this.displayName) ||
+             (this.currentHealth.HasValue &&
+              this.maxHealth.HasValue &&
+              this.maxHealth.Value > 0)));
+
+    /// <summary>
     /// Enables or disables all entity world UI instances.
     /// </summary>
     /// <param name="enabled">A value indicating whether the UI prefab should be enabled.</param>
     public static void SetGlobalEnabled(bool enabled)
     {
         IsEnabled = enabled;
+    }
+
+    /// <summary>
+    /// Finds a canvas that belongs to the scene of the given object, so world
+    /// UI is not parented to a canvas of another scene, such as the loading
+    /// overlay that survives a scene change.
+    /// </summary>
+    /// <param name="owner">The object the UI belongs to.</param>
+    /// <returns>The canvas to parent the world UI to, or null when there is none.</returns>
+    public static Canvas FindWorldUICanvas(GameObject owner)
+    {
+        Canvas fallback = null;
+
+        foreach (Canvas candidate in Object.FindObjectsByType<Canvas>(FindObjectsInactive.Exclude))
+        {
+            if (owner != null && candidate.gameObject.scene == owner.scene)
+            {
+                return candidate;
+            }
+
+            if (fallback == null &&
+                candidate.GetComponentInParent<BuilderLoadingOverlay>() == null)
+            {
+                fallback = candidate;
+            }
+        }
+
+        return fallback;
     }
 
     /// <summary>
@@ -93,7 +160,7 @@ public class EntityWorldUI
                           maxHealth.HasValue &&
                           maxHealth.Value > 0;
 
-        if (this.nameText != null)
+        if (this.showVitals && this.nameText != null)
         {
             this.nameText.gameObject.SetActive(showName);
 
@@ -103,7 +170,7 @@ public class EntityWorldUI
             }
         }
 
-        if (this.healthSlider != null)
+        if (this.showVitals && this.healthSlider != null)
         {
             this.healthSlider.gameObject.SetActive(showHealth);
 
@@ -112,6 +179,58 @@ public class EntityWorldUI
                 this.healthSlider.maxValue = maxHealth.Value;
                 this.healthSlider.value = Mathf.Clamp(
                     maxHealth.Value - currentHealth.Value, 0, maxHealth.Value);
+            }
+        }
+
+        this.UpdateVisibility();
+    }
+
+    /// <summary>
+    /// Shows an icon for every active status effect.
+    /// </summary>
+    /// <param name="effects">The active effects, in display order.</param>
+    public void SetStatusEffects(IReadOnlyList<StatusEffectDefinition> effects)
+    {
+        int count = effects != null ? effects.Count : 0;
+        this.statusEffectCount = count;
+
+        if (this.statusContainer != null)
+        {
+            this.statusContainer.gameObject.SetActive(count > 0);
+        }
+
+        if (this.statusContainer == null || this.statusIconTemplate == null)
+        {
+            this.UpdateVisibility();
+            return;
+        }
+
+        while (this.statusIcons.Count < count)
+        {
+            GameObject iconObject = Object.Instantiate(
+                this.statusIconTemplate,
+                this.statusContainer);
+
+            iconObject.name = "StatusIcon" + this.statusIcons.Count;
+            this.statusIcons.Add(iconObject.GetComponent<Image>());
+        }
+
+        for (int i = 0; i < this.statusIcons.Count; i++)
+        {
+            Image icon = this.statusIcons[i];
+
+            if (icon == null)
+            {
+                continue;
+            }
+
+            bool visible = i < count;
+            icon.gameObject.SetActive(visible);
+
+            if (visible)
+            {
+                StatusEffectDefinition definition = effects[i];
+                icon.sprite = definition != null ? definition.Icon : null;
             }
         }
 
@@ -130,13 +249,7 @@ public class EntityWorldUI
             return;
         }
 
-        bool hasContent =
-            !string.IsNullOrEmpty(this.displayName) ||
-            (this.currentHealth.HasValue &&
-             this.maxHealth.HasValue &&
-             this.maxHealth.Value > 0);
-
-        if (!hasContent)
+        if (!this.HasContent)
         {
             this.uiTransform.gameObject.SetActive(false);
             return;
@@ -197,13 +310,7 @@ public class EntityWorldUI
             return;
         }
 
-        bool hasContent =
-            !string.IsNullOrEmpty(this.displayName) ||
-            (this.currentHealth.HasValue &&
-             this.maxHealth.HasValue &&
-             this.maxHealth.Value > 0);
-
         this.uiTransform.gameObject.SetActive(
-            IsEnabled && hasContent && !this.isBehindCamera);
+            IsEnabled && this.HasContent && !this.isBehindCamera);
     }
 }

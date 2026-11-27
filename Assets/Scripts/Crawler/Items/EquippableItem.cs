@@ -107,7 +107,8 @@ public abstract class EquippableItem : Item
     /// <returns>Whether the item can be used.</returns>
     public bool CanUse(CrawlerPlayerData playerData)
     {
-        float lastUse = playerData.LastUseTime + this.cooldown;
+        float cooldown = this.cooldown * playerData.StatusEffects.AttackSpeedMultiplier;
+        float lastUse = playerData.LastUseTime + cooldown;
         return Time.time >= lastUse;
     }
 

@@ -36,6 +36,11 @@ public readonly struct DamageInfo
     public readonly float Knockback;
 
     /// <summary>
+    /// The status effects this damage applies to the target. Null for none.
+    /// </summary>
+    public readonly StatusEffectApplication[] Effects;
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="DamageInfo"/> struct.
     /// </summary>
     /// <param name="amount">The amount.</param>
@@ -44,7 +49,15 @@ public readonly struct DamageInfo
     /// <param name="melee">Indicating whether this is melee damage.</param>
     /// <param name="source">The source of this damage.</param>
     /// <param name="knockback">The strength of the knockback, zero for none.</param>
-    public DamageInfo(float amount, Vector2 direction, Team team, bool melee, object source, float knockback = 0f)
+    /// <param name="effects">The status effects this damage applies, or null for none.</param>
+    public DamageInfo(
+        float amount,
+        Vector2 direction,
+        Team team,
+        bool melee,
+        object source,
+        float knockback = 0f,
+        StatusEffectApplication[] effects = null)
     {
         this.Amount = amount;
         this.Direction = direction;
@@ -52,6 +65,7 @@ public readonly struct DamageInfo
         this.Melee = melee;
         this.Source = source;
         this.Knockback = knockback;
+        this.Effects = effects;
     }
 
     /// <summary>
@@ -61,6 +75,13 @@ public readonly struct DamageInfo
     /// <returns>The new damage info.</returns>
     public DamageInfo WithAmount(float amount)
     {
-        return new DamageInfo(amount, this.Direction, this.Team, this.Melee, this.Source, this.Knockback);
+        return new DamageInfo(
+            amount,
+            this.Direction,
+            this.Team,
+            this.Melee,
+            this.Source,
+            this.Knockback,
+            this.Effects);
     }
 }

@@ -99,6 +99,20 @@ public abstract class EnemyHead : SaveableEntity
     }
 
     /// <summary>
+    /// Scales an attack interval by the attack speed of the body this head
+    /// belongs to, so attack speed status effects work for every head that
+    /// uses this helper.
+    /// </summary>
+    /// <param name="interval">The unscaled interval in seconds.</param>
+    /// <returns>The interval after the status effects of the body are applied.</returns>
+    protected float ScaleAttackInterval(float interval)
+    {
+        return this.body != null
+            ? interval * this.body.StatusEffects.AttackSpeedMultiplier
+            : interval;
+    }
+
+    /// <summary>
     /// Called when the enemy is about to receive damage. Change the amount
     /// to block or scale the damage, or react to being hit.
     /// </summary>

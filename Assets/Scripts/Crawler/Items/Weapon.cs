@@ -14,6 +14,10 @@ public abstract class Weapon : EquippableItem
     [SerializeField]
     private float knockbackForce;
 
+    [Header("Status Effects")]
+    [SerializeField]
+    private StatusEffectApplication[] onHitEffects;
+
     /// <summary>
     /// Gets the base damage of this weapon.
     /// </summary>
@@ -54,9 +58,21 @@ public abstract class Weapon : EquippableItem
     /// Creates the damage info for an attack with this weapon.
     /// </summary>
     /// <param name="direction">The direction of the attack.</param>
+    /// <param name="playerHandler">The player that attacks, for its status effects.</param>
     /// <returns>The damage info for this attack.</returns>
-    protected DamageInfo CreateDamage(Vector2 direction)
+    protected DamageInfo CreateDamage(Vector2 direction, CrawlerPlayerHandler playerHandler)
     {
-        return new DamageInfo(this.baseDamage, direction, Team.Player, true, this, this.knockbackForce);
+        float multiplier = playerHandler != null
+            ? playerHandler.DamageMultiplier
+            : 1f;
+
+        return new DamageInfo(
+            this.baseDamage * multiplier,
+            direction,
+            Team.Player,
+            true,
+            this,
+            this.knockbackForce,
+            this.onHitEffects);
     }
 }
