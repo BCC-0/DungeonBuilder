@@ -225,7 +225,8 @@ public class EntitySelectionManager : SelectionManagerBase
 
         if (parent == null)
         {
-            Debug.LogWarning("Cannot paste entities: no 'Entity parent' object found.");
+            WarningManager.Warn(
+                "Cannot paste entities: no 'Entity parent' object found.");
             return;
         }
 

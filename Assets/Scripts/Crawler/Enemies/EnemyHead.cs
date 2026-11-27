@@ -78,6 +78,12 @@ public abstract class EnemyHead : SaveableEntity
     }
 
     /// <summary>
+    /// Called every frame by the body while the enemy is alive. The head
+    /// decides what to do with it.
+    /// </summary>
+    public abstract void Tick();
+
+    /// <summary>
     /// Updates the head's sorting order. The head renders behind the body
     /// when looking up, and in front of the body in every other direction.
     /// </summary>
@@ -91,12 +97,6 @@ public abstract class EnemyHead : SaveableEntity
         this.SpriteRenderer.sortingOrder =
             this.SortingDirection == EnemyBody.Direction.Up ? -1 : 1;
     }
-
-    /// <summary>
-    /// Called every frame by the body while the enemy is alive. The head
-    /// decides what to do with it.
-    /// </summary>
-    public abstract void Tick();
 
     /// <summary>
     /// Called when the enemy is about to receive damage. Change the amount

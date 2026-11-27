@@ -59,6 +59,11 @@ public class PlaytestManager : MonoBehaviour
         catch (PlaytestException exception)
         {
             Debug.LogError(exception);
+
+            foreach (string error in exception.Errors)
+            {
+                WarningManager.Warn(error);
+            }
         }
     }
 
@@ -410,6 +415,14 @@ public class PlaytestManager : MonoBehaviour
                     field?.GetCustomAttribute<SaveFieldAttribute>();
 
                 if (attribute == null)
+                {
+                    continue;
+                }
+
+                // Heads are checked by VerifyEnemyHeads, which names the enemy
+                // and where it stands. Counting them here as well would report
+                // the same missing head as a second, less useful warning.
+                if (typeof(EnemyHead).IsAssignableFrom(field.FieldType))
                 {
                     continue;
                 }

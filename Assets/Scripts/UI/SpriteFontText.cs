@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using TMPro;
@@ -11,6 +11,16 @@ using UnityEngine;
 [RequireComponent(typeof(TMP_Text))]
 public class SpriteFontText : MonoBehaviour
 {
+    /// <summary>
+    /// The width used while measuring text, large enough that it never wraps.
+    /// </summary>
+    private const float MeasureWidthLimit = 10000f;
+
+    /// <summary>
+    /// Seconds between two warnings that an input field is full.
+    /// </summary>
+    private const float WarningInterval = 0.5f;
+
     [SerializeField]
     private TMP_SpriteAsset spriteAsset;
     [SerializeField]
@@ -32,12 +42,46 @@ public class SpriteFontText : MonoBehaviour
     private float caretBlinkSeconds = 0.5f;
     [SerializeField]
     private Color caretColor = Color.white;
+    [SerializeField]
+    [Tooltip("How many characters the input field accepts. 0 means no limit.")]
+    private int maxCharacters = 10;
 
     private TMP_Text target;
     private float blinkTimer;
     private bool caretVisible = true;
     private int lastCaretPosition = -1;
     private bool lastFocused;
+    private bool keepWordsWhole;
+    private float lastWarningTime = float.NegativeInfinity;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether words are kept whole when the
+    /// text is laid out. A word that does not fit moves to the next line, and
+    /// a word that is wider than a line is broken with hyphens.
+    /// </summary>
+    /// <value>True to wrap without splitting words.</value>
+    public bool KeepWordsWhole
+    {
+        get
+        {
+            return this.keepWordsWhole;
+        }
+
+        set
+        {
+            if (this.keepWordsWhole == value)
+            {
+                return;
+            }
+
+            this.keepWordsWhole = value;
+
+            if (this.spriteAsset != null)
+            {
+                this.Refresh();
+            }
+        }
+    }
 
     /// <returns>The text component this script writes to.</returns>
     private TMP_Text Target
@@ -73,6 +117,41 @@ public class SpriteFontText : MonoBehaviour
     }
 
     /// <summary>
+    /// Uses the small font size when the current text is wider than the
+    /// component, so it would no longer fit on one line.
+    /// </summary>
+    /// <param name="normalSize">Font size used when the text fits.</param>
+    /// <param name="smallSize">Font size used when the text is too wide.</param>
+    public void FitOnOneLine(float normalSize, float smallSize)
+    {
+        TMP_Text target = this.Target;
+
+        if (target == null)
+        {
+            return;
+        }
+
+        target.fontSize = normalSize;
+
+        float availableWidth = this.GetWrapWidth();
+
+        if (availableWidth <= 0f)
+        {
+            return;
+        }
+
+        float width = target.GetPreferredValues(
+            target.text,
+            MeasureWidthLimit,
+            MeasureWidthLimit).x;
+
+        if (width > availableWidth)
+        {
+            target.fontSize = smallSize;
+        }
+    }
+
+    /// <summary>
     /// Rebuilds the target text from the current source text.
     /// </summary>
     public void Refresh()
@@ -84,8 +163,12 @@ public class SpriteFontText : MonoBehaviour
         }
 
         int caretIndex = this.ShowCaret ? Mathf.Clamp(this.inputField.stringPosition, 0, this.sourceText.Length) : -1;
+        string text = this.keepWordsWhole && this.inputField == null
+            ? this.WrapText(this.sourceText)
+            : this.sourceText;
+
         this.Target.spriteAsset = this.spriteAsset;
-        this.Target.text = this.Convert(this.sourceText, caretIndex);
+        this.Target.text = this.Convert(text, caretIndex);
     }
 
     /// <param name="builder">Builder receiving the output.</param>
@@ -165,6 +248,168 @@ public class SpriteFontText : MonoBehaviour
         return builder.ToString();
     }
 
+    /// <summary>
+    /// Wraps the text so words are never split. A word that does not fit on
+    /// the current line moves to the next line, and a word that is wider than
+    /// a whole line is broken up with hyphens.
+    /// </summary>
+    /// <param name="text">Plain text to wrap.</param>
+    /// <returns>The text with manual line breaks.</returns>
+    private string WrapText(string text)
+    {
+        float maxWidth = this.GetWrapWidth();
+
+        if (string.IsNullOrEmpty(text) || maxWidth <= 0f)
+        {
+            return text;
+        }
+
+        string normalized = text.Replace("\r\n", "\n").Replace('\r', '\n');
+        string[] paragraphs = normalized.Split('\n');
+        StringBuilder builder = new StringBuilder(normalized.Length + 16);
+
+        for (int i = 0; i < paragraphs.Length; i++)
+        {
+            if (i > 0)
+            {
+                builder.Append('\n');
+            }
+
+            this.AppendWrappedParagraph(builder, paragraphs[i], maxWidth);
+        }
+
+        return builder.ToString();
+    }
+
+    /// <summary>
+    /// Appends one line of already broken text. Words are moved to the next
+    /// line when they do not fit, and hyphenated when they are wider than a
+    /// line on their own.
+    /// </summary>
+    /// <param name="builder">Builder receiving the wrapped paragraph.</param>
+    /// <param name="paragraph">The paragraph without line breaks.</param>
+    /// <param name="maxWidth">The width a line may use.</param>
+    private void AppendWrappedParagraph(
+        StringBuilder builder,
+        string paragraph,
+        float maxWidth)
+    {
+        string[] words = paragraph.Split(' ');
+        string line = string.Empty;
+
+        foreach (string word in words)
+        {
+            if (string.IsNullOrEmpty(word))
+            {
+                continue;
+            }
+
+            string candidate = line.Length == 0
+                ? word
+                : line + " " + word;
+
+            if (this.MeasureWidth(candidate) <= maxWidth)
+            {
+                line = candidate;
+                continue;
+            }
+
+            if (line.Length > 0)
+            {
+                builder.Append(line);
+                builder.Append('\n');
+                line = string.Empty;
+            }
+
+            line = this.Hyphenate(builder, word, maxWidth);
+        }
+
+        builder.Append(line);
+    }
+
+    /// <summary>
+    /// Breaks a word that is wider than a line into hyphenated parts, so the
+    /// word is only split at a visible hyphen.
+    /// </summary>
+    /// <param name="builder">Builder receiving the finished parts.</param>
+    /// <param name="word">The word to break up.</param>
+    /// <param name="maxWidth">The width a line may use.</param>
+    /// <returns>The last part of the word, which still fits on a line.</returns>
+    private string Hyphenate(
+        StringBuilder builder,
+        string word,
+        float maxWidth)
+    {
+        string remaining = word;
+
+        while (remaining.Length > 0 &&
+               this.MeasureWidth(remaining) > maxWidth)
+        {
+            int length = remaining.Length - 1;
+
+            while (length > 1 &&
+                   this.MeasureWidth(
+                       remaining.Substring(0, length) + "-") > maxWidth)
+            {
+                length--;
+            }
+
+            if (length <= 1)
+            {
+                // Not even one character fits next to a hyphen, so let the
+                // text overflow instead of looping forever.
+                return remaining;
+            }
+
+            builder.Append(remaining, 0, length);
+            builder.Append('-');
+            builder.Append('\n');
+
+            remaining = remaining.Substring(length);
+        }
+
+        return remaining;
+    }
+
+    /// <summary>
+    /// Measures how wide the given plain text is when it is drawn with the
+    /// sprite font, without wrapping it.
+    /// </summary>
+    /// <param name="text">Plain text to measure.</param>
+    /// <returns>The width in local units.</returns>
+    private float MeasureWidth(string text)
+    {
+        if (string.IsNullOrEmpty(text) ||
+            this.Target == null ||
+            this.spriteAsset == null)
+        {
+            return 0f;
+        }
+
+        string converted = this.Convert(text, -1);
+
+        return this.Target.GetPreferredValues(
+            converted,
+            MeasureWidthLimit,
+            MeasureWidthLimit).x;
+    }
+
+    /// <summary>
+    /// Gets the horizontal space a line may use before it wraps.
+    /// </summary>
+    /// <returns>The available width in local units.</returns>
+    private float GetWrapWidth()
+    {
+        if (this.Target == null)
+        {
+            return 0f;
+        }
+
+        Vector4 margins = this.Target.margin;
+
+        return this.Target.rectTransform.rect.width - margins.x - margins.z;
+    }
+
     /// <param name="lookup">Character to sprite index map.</param>
     /// <returns>The caret tag, invisible but space-preserving while blinking off, or null if the caret character has no sprite.</returns>
     private string BuildCaretToken(Dictionary<char, int> lookup)
@@ -229,6 +474,65 @@ public class SpriteFontText : MonoBehaviour
         this.blinkTimer = 0f;
         this.caretVisible = true;
         this.SetText(value);
+    }
+
+    /// <summary>
+    /// Applies the character limit to the input field this text displays.
+    /// </summary>
+    private void ApplyCharacterLimit()
+    {
+        if (this.inputField == null ||
+            this.maxCharacters <= 0)
+        {
+            return;
+        }
+
+        if (this.inputField.characterValidation != TMP_InputField.CharacterValidation.None)
+        {
+            // A custom validator replaces the field's own validation, so fall
+            // back to the built-in limit to keep that validation working.
+            this.inputField.characterLimit = this.maxCharacters;
+            return;
+        }
+
+        this.inputField.onValidateInput = this.ValidateCharacter;
+    }
+
+    /// <summary>
+    /// Drops a character when the input field is already full.
+    /// </summary>
+    /// <param name="text">The text the field contains before the character is added.</param>
+    /// <param name="charIndex">Where the character would be inserted.</param>
+    /// <param name="addedChar">The character the player typed.</param>
+    /// <returns>The character to add, or '\0' to drop it.</returns>
+    private char ValidateCharacter(string text, int charIndex, char addedChar)
+    {
+        if (this.maxCharacters <= 0 ||
+            text.Length < this.maxCharacters)
+        {
+            return addedChar;
+        }
+
+        this.WarnCharacterLimit();
+
+        return '\0';
+    }
+
+    /// <summary>
+    /// Shows a warning that the input field is full, at most once per interval.
+    /// </summary>
+    private void WarnCharacterLimit()
+    {
+        float now = Time.unscaledTime;
+
+        if (now - this.lastWarningTime < WarningInterval)
+        {
+            return;
+        }
+
+        this.lastWarningTime = now;
+
+        WarningManager.Warn($"This field can contain at most {this.maxCharacters} characters.");
     }
 
     private void HideInputVisuals()
@@ -297,6 +601,8 @@ public class SpriteFontText : MonoBehaviour
             this.sourceText = this.inputField.text;
             this.HideInputVisuals();
         }
+
+        this.ApplyCharacterLimit();
 
         this.Refresh();
     }

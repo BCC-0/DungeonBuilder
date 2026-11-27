@@ -33,6 +33,7 @@ public class SaveFieldAttribute : PropertyAttribute
     /// <param name="maxReferences">How many references this field can have.</param>
     /// <param name="priority">The inspector display priority. Higher values appear first.</param>
     /// <param name="displayName">The custom inspector display name.</param>
+    /// <param name="description">The description shown when the player hovers over the field.</param>
     public SaveFieldAttribute(
         float min = float.MinValue,
         float max = float.MaxValue,
@@ -40,7 +41,8 @@ public class SaveFieldAttribute : PropertyAttribute
         int minReferences = 1,
         int maxReferences = 1,
         int priority = 0,
-        string displayName = null)
+        string displayName = null,
+        string description = null)
     {
         this.HasRange = min != float.MinValue || max != float.MaxValue;
         this.Min = min;
@@ -50,6 +52,7 @@ public class SaveFieldAttribute : PropertyAttribute
         this.MaxReferences = maxReferences;
         this.Priority = priority;
         this.DisplayName = displayName;
+        this.Description = description;
     }
 
     /// <summary>
@@ -92,4 +95,9 @@ public class SaveFieldAttribute : PropertyAttribute
     /// Gets the custom inspector display name.
     /// </summary>
     public string DisplayName { get; }
+
+    /// <summary>
+    /// Gets the description shown when the player hovers over the field.
+    /// </summary>
+    public string Description { get; }
 }

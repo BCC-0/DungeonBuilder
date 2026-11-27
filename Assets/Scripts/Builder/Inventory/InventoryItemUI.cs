@@ -35,6 +35,10 @@ public class InventoryItemUI : MonoBehaviour
         this.item = inventoryItem;
         this.inventoryController = controller;
 
+        HoverInfoTarget.Attach(
+            this.gameObject,
+            HoverInfo.ForInventoryItem(inventoryItem));
+
         if (this.itemImage != null)
         {
             this.itemImage.sprite = this.item.Sprite;

@@ -19,6 +19,12 @@ public abstract class SaveableEntity : MonoBehaviour
     [SerializeField]
     private SpriteRenderer spriteRenderer;
 
+    [Header("Hover Info")]
+    [SerializeField]
+    [TextArea(2, 6)]
+    [Tooltip("Description shown in the builder when the player hovers over this entity. The name is the prefab's name.")]
+    private string hoverDescription;
+
     private SaveableEntity consumedBy;
 
     /// <summary>
@@ -68,6 +74,24 @@ public abstract class SaveableEntity : MonoBehaviour
     public virtual InventoryItem GetAsInventoryItem()
     {
         return new InventoryItem(this.gameObject, this.spriteRenderer.sprite);
+    }
+
+    /// <summary>
+    /// Gets the name and description shown when the player hovers over this
+    /// entity in the builder. The name is the prefab id from the entity's
+    /// <see cref="PrefabIdentity"/>, the description is edited on the prefab.
+    /// </summary>
+    /// <returns>The hover info of this entity.</returns>
+    public HoverInfo GetHoverInfo()
+    {
+        string name = this.GetPrefabID();
+
+        if (string.IsNullOrEmpty(name))
+        {
+            name = this.name;
+        }
+
+        return new HoverInfo(name, this.hoverDescription);
     }
 
     /// <summary>

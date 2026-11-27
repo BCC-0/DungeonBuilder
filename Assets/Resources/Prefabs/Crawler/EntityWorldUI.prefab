@@ -200,7 +200,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 16}
-  m_SizeDelta: {x: 192, y: 50}
+  m_SizeDelta: {x: 224, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &4367265696635954235
 CanvasRenderer:
@@ -230,10 +230,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: <sprite=3 tint=1><space=0.1em><sprite=8 tint=1><space=0.1em><sprite=18
-    tint=1><space=0.1em><sprite=15 tint=1><space=0.1em><sprite=11 tint=1><space=0.1em><sprite=0
-    tint=1><space=0.1em><sprite=24 tint=1><space=0.1em><space=0.5em><space=0.1em><sprite=13
-    tint=1><space=0.1em><sprite=0 tint=1><space=0.1em><sprite=12 tint=1><space=0.1em><sprite=4
+  m_text: <sprite=2 tint=1><space=0.1em><sprite=7 tint=1><space=0.1em><sprite=0 tint=1><space=0.1em><sprite=17
+    tint=1><space=0.1em><sprite=0 tint=1><space=0.1em><sprite=2 tint=1><space=0.1em><sprite=19
+    tint=1><space=0.1em><sprite=4 tint=1><space=0.1em><sprite=17 tint=1><space=0.1em><sprite=18
     tint=1>
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -261,8 +260,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 18
-  m_fontSizeBase: 18
+  m_fontSize: 27
+  m_fontSizeBase: 27
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -320,7 +319,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SpriteFontText
   spriteAsset: {fileID: 11400000, guid: 095015a35aad0ea44896c253d1a1ff3e, type: 2}
   inputField: {fileID: 0}
-  sourceText: display name
+  sourceText: characters
   characters: ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,!?'":;-+_=()[]/\#|
   spaceWidthEm: 0.5
   letterSpacingEm: 0.1
@@ -328,6 +327,7 @@ MonoBehaviour:
   caretCharacter: 124
   caretBlinkSeconds: 0.5
   caretColor: {r: 1, g: 1, b: 1, a: 1}
+  maxCharacters: 10
 --- !u!1 &8546738904797329605
 GameObject:
   m_ObjectHideFlags: 0

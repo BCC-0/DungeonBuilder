@@ -48,7 +48,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f162a1fe513da454ba930aa444eaf1a9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PrefabIdentity
-  prefabID: ChickenHead
+  prefabID: Chicken Head
 --- !u!114 &549940747786579685
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -63,8 +63,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ChickenHead
   uniqueID: 
   spriteRenderer: {fileID: 8832082082192167856}
-  hurtColor: {r: 1, g: 0, b: 0, a: 1}
-  hurtFlashDuration: 0.15
+  hoverDescription: Shoots an egg at the player in straight lines.
   attackSpeed: 1
   eggSpeed: 6
   eggDamage: 1

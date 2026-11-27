@@ -1,5 +1,4 @@
-﻿
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -13,21 +12,21 @@ public abstract class EnemyBody : HurtFlashEntity, IDamageable
 {
     private static List<EnemyBody> activeEnemies = new List<EnemyBody>();
 
-    [SaveField(priority: 10)]
+    [SaveField(priority: 10, displayName: "Name", description: "The name of this enemy.")]
     private string displayName;
 
     /// <summary>
     /// The maximum health.
     /// </summary>
     [SerializeField]
-    [SaveField(1, 500, priority: 8, displayName: "health")]
+    [SaveField(1, 500, priority: 8, displayName: "health", description: "The max amount of health the enemy can have.")]
     private int maxHealth = 10;
 
     /// <summary>
     /// The movement speed.
     /// </summary>
     [SerializeField]
-    [SaveField(0, 12, priority: 7, displayName: "speed")]
+    [SaveField(0, 12, priority: 7, displayName: "speed", description: "The speed the enemy moves at.")]
     private float moveSpeed = 2f;
 
     /// <summary>
@@ -35,14 +34,14 @@ public abstract class EnemyBody : HurtFlashEntity, IDamageable
     /// this range the enemy wanders instead of reacting to the player.
     /// </summary>
     [SerializeField]
-    [SaveField(1, 30, priority: 6, displayName: "range")]
+    [SaveField(1, 30, priority: 6, displayName: "range", description: "The range from where the enemy can spot the player.")]
     private float detectionRange = 8f;
 
     /// <summary>
     /// The head that is attached to this body.
     /// </summary>
     [SerializeField]
-    [SaveField(referenceMode: ReferenceMode.Consuming, priority: 9)]
+    [SaveField(referenceMode: ReferenceMode.Consuming, priority: 9, description: "The head attached to this body. Each enemy needs a body and a head.")]
     private EnemyHead head;
 
     /// <summary>

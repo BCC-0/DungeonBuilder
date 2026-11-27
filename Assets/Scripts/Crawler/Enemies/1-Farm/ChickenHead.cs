@@ -1,4 +1,3 @@
-
 using System.Collections;
 using UnityEngine;
 using Direction = EnemyBody.Direction;
@@ -10,19 +9,19 @@ using Direction = EnemyBody.Direction;
 public class ChickenHead : EnemyHead
 {
     [Header("Attack")]
-    [SaveField(1, 10, displayName: "Attack speed")]
+    [SaveField(1, 10, displayName: "Attack speed", description: "The speed at which this enemy attacks.")]
     [SerializeField]
     private float attackSpeed = 1f;
 
-    [SaveField(1, 20, displayName: "Egg speed")]
+    [SaveField(1, 20, displayName: "Egg speed", description: "The speed at which an egg moves.")]
     [SerializeField]
     private float eggSpeed = 6f;
 
-    [SaveField(1, 50, displayName: "Egg damage")]
+    [SaveField(1, 50, displayName: "Egg damage", description: "The damage an egg deals.")]
     [SerializeField]
     private int eggDamage = 1;
 
-    [SaveField(0, 10, displayName: "Knockback")]
+    [SaveField(0, 10, displayName: "Knockback", description: "The knockback an egg deals.")]
     [SerializeField]
     private int eggKnockback = 5;
 

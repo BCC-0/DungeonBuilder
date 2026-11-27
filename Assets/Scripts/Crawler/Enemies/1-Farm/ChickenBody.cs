@@ -1,5 +1,4 @@
-
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
 /// The chicken enemy body behaviour.
@@ -7,7 +6,7 @@ using UnityEngine;
 public class ChickenBody : EnemyBody
 {
     [Header("Movement")]
-    [SaveField(min: 1, max: 10, displayName: "distance")]
+    [SaveField(min: 1, max: 10, displayName: "distance", description: "The distance this enemy tries to be from the player.")]
     private int minDistance = 3;
 
     private float distanceTolerance = 0.2f;
